@@ -1,6 +1,8 @@
 package vn.edu.fpt.security;
 
+import vn.edu.fpt.entity.Role;
 import vn.edu.fpt.entity.User;
+import vn.edu.fpt.respository.RoleRepository;
 import vn.edu.fpt.respository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -19,6 +21,7 @@ import java.util.List;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -41,10 +44,19 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     private Collection<? extends GrantedAuthority> getAuthorities(User user) {
-        // TODO: Load user roles and permissions from database
-        // For now, return empty list
+
         List<GrantedAuthority> authorities = new ArrayList<>();
-        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+
+        if (user.getRole_id() != null) {
+            Role role = roleRepository.findById(user.getRole_id())
+                    .orElseThrow(() -> new RuntimeException("Role not found"));
+
+            authorities.add(
+                    new SimpleGrantedAuthority(
+                            "ROLE_" + role.getCode()
+                    )
+            );
+        }
         return authorities;
     }
 }

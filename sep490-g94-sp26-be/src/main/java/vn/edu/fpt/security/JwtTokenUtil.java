@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import vn.edu.fpt.exception.AppException;
+import vn.edu.fpt.exception.ERROR_CODE;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
@@ -96,7 +98,7 @@ public class JwtTokenUtil {
             return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
         } catch (Exception e) {
             log.error("Token validation failed: {}", e.getMessage());
-            return false;
+            throw new AppException(ERROR_CODE.UNAUTHENTICATED);
         }
     }
 
@@ -106,7 +108,7 @@ public class JwtTokenUtil {
             return !isTokenExpired(token);
         } catch (Exception e) {
             log.error("Token validation failed: {}", e.getMessage());
-            return false;
+            throw new AppException(ERROR_CODE.UNAUTHENTICATED);
         }
     }
 

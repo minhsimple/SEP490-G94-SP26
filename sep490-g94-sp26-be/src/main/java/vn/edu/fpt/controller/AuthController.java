@@ -1,6 +1,7 @@
 package vn.edu.fpt.controller;
 
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -8,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 
 import vn.edu.fpt.dto.*;
 import vn.edu.fpt.entity.User;
+import vn.edu.fpt.exception.AppException;
+import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.service.AuthService;
 
 @RestController
@@ -36,8 +39,12 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ApiResponse<AuthResponse> refreshToken(@RequestBody RefreshTokenRequest request) {
-        AuthResponse response = authService.refreshToken(request);
+    public ApiResponse<AuthResponse> refreshToken(HttpServletRequest request) {
+        String refreshToken = extractTokenFromRequest(request);
+        if (refreshToken == null) {
+            throw new AppException(ERROR_CODE.INVALID_REFRESH_TOKEN);
+        }
+        AuthResponse response = authService.refreshToken(refreshToken);
         return ApiResponse.<AuthResponse>builder()
                 .message("Token refreshed successfully")
                 .data(response)
@@ -47,6 +54,9 @@ public class AuthController {
     @GetMapping("/me")
     public ApiResponse<User> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new AppException(ERROR_CODE.UNAUTHENTICATED);
+        }
         String email = authentication.getName();
         User user = authService.getCurrentUser(email);
         return ApiResponse.<User>builder()
@@ -56,11 +66,37 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Void> logout() {
+    public ApiResponse<Void> logout(HttpServletRequest request) {
+        String refreshToken = extractTokenFromRequest(request);
+        if (refreshToken == null) {
+            throw new AppException(ERROR_CODE.INVALID_REFRESH_TOKEN);
+        }
+        authService.logout(refreshToken);
         SecurityContextHolder.clearContext();
         return ApiResponse.<Void>builder()
                 .message("Logout successful")
                 .build();
+    }
+
+    @PostMapping("/logout-all")
+    public ApiResponse<Void> logoutAllDevices(HttpServletRequest request) {
+        String token = extractTokenFromRequest(request);
+        if (token == null) {
+            throw new AppException(ERROR_CODE.UNAUTHENTICATED);
+        }
+        authService.logoutAllDevices(token);
+        SecurityContextHolder.clearContext();
+        return ApiResponse.<Void>builder()
+                .message("Logged out from all devices successfully")
+                .build();
+    }
+
+    private String extractTokenFromRequest(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
     }
 }
 

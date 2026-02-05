@@ -2,6 +2,7 @@ package vn.edu.fpt.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -9,15 +10,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.AuthResponse;
 import vn.edu.fpt.dto.LoginRequest;
-import vn.edu.fpt.dto.RefreshTokenRequest;
 import vn.edu.fpt.dto.RegisterRequest;
+import vn.edu.fpt.entity.RefreshToken;
 import vn.edu.fpt.entity.User;
 import vn.edu.fpt.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
+import vn.edu.fpt.respository.RefreshTokenRepository;
 import vn.edu.fpt.respository.UserRepository;
 import vn.edu.fpt.security.JwtTokenUtil;
 import vn.edu.fpt.service.AuthService;
+
+import java.time.LocalDateTime;
 
 /**
  * Implementation of AuthService for authentication operations.
@@ -28,9 +32,13 @@ import vn.edu.fpt.service.AuthService;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
+
+    @Value("${jwt.refresh-expiration:604800000}")
+    private Long refreshExpiration;
 
     @Override
     @Transactional
@@ -47,7 +55,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         log.info("User login attempt for email: {}", request.getEmail());
 
@@ -60,26 +68,57 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public AuthResponse refreshToken(RefreshTokenRequest request) {
-        String refreshToken = request.getRefreshToken();
+    @Transactional
+    public AuthResponse refreshToken(String refreshTokenStr) {
+        // Validate JWT signature and expiration
+        validateRefreshToken(refreshTokenStr);
 
-        validateRefreshToken(refreshToken);
+        // Find refresh token in database and validate it's not revoked
+        RefreshToken refreshToken = refreshTokenRepository.findByTokenAndRevokedFalse(refreshTokenStr)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVALID_REFRESH_TOKEN));
 
-        String email = jwtTokenUtil.extractUsername(refreshToken);
-        User user = findUserByEmail(email);
+        if (!refreshToken.isValid()) {
+            throw new AppException(ERROR_CODE.INVALID_REFRESH_TOKEN);
+        }
 
+        User user = refreshToken.getUser();
         String newAccessToken = jwtTokenUtil.generateTokenWithUserId(user.getEmail(), user.getId());
 
         log.info("Token refreshed successfully for user: {}", user.getId());
         return AuthResponse.builder()
                 .accessToken(newAccessToken)
-                .refreshToken(refreshToken)
+                .refreshToken(refreshTokenStr)
                 .tokenType("Bearer")
                 .userId(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void logout(String refreshToken) {
+        log.info("Logout request received");
+
+        refreshTokenRepository.findByToken(refreshToken)
+                .ifPresent(token -> {
+                    token.setRevoked(true);
+                    refreshTokenRepository.save(token);
+                    log.info("Refresh token revoked for user: {}", token.getUser().getId());
+                });
+    }
+
+    @Override
+    @Transactional
+    public void logoutAllDevices(String token) {
+        log.info("Logout all devices request received");
+
+        // Extract email from token
+        String email = jwtTokenUtil.extractUsername(token);
+        User user = findUserByEmail(email);
+        refreshTokenRepository.revokeAllTokensByUser(user);
+
+        log.info("All refresh tokens revoked for user: {}", user.getId());
     }
 
     @Override
@@ -126,11 +165,20 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthResponse buildAuthResponse(User user) {
         String accessToken = jwtTokenUtil.generateTokenWithUserId(user.getEmail(), user.getId());
-        String refreshToken = jwtTokenUtil.generateRefreshToken(user.getEmail());
+        String refreshTokenStr = jwtTokenUtil.generateRefreshToken(user.getEmail());
+
+        // Save refresh token to database
+        RefreshToken refreshToken = RefreshToken.builder()
+                .user(user)
+                .token(refreshTokenStr)
+                .expiresAt(LocalDateTime.now().plusSeconds(refreshExpiration / 1000))
+                .revoked(false)
+                .build();
+        refreshTokenRepository.save(refreshToken);
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(refreshToken)
+                .refreshToken(refreshTokenStr)
                 .tokenType("Bearer")
                 .userId(user.getId())
                 .email(user.getEmail())

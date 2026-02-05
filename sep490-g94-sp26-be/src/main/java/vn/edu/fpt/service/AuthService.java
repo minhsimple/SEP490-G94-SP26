@@ -2,7 +2,6 @@ package vn.edu.fpt.service;
 
 import vn.edu.fpt.dto.AuthResponse;
 import vn.edu.fpt.dto.LoginRequest;
-import vn.edu.fpt.dto.RefreshTokenRequest;
 import vn.edu.fpt.dto.RegisterRequest;
 import vn.edu.fpt.entity.User;
 
@@ -30,10 +29,10 @@ public interface AuthService {
     /**
      * Refresh the access token using a valid refresh token.
      *
-     * @param request the refresh token request
+     * @param refreshToken the refresh token from Authorization header
      * @return AuthResponse with new access token
      */
-    AuthResponse refreshToken(RefreshTokenRequest request);
+    AuthResponse refreshToken(String refreshToken);
 
     /**
      * Get the current user by email.
@@ -42,5 +41,19 @@ public interface AuthService {
      * @return the User entity
      */
     User getCurrentUser(String email);
+
+    /**
+     * Logout user by revoking the refresh token.
+     *
+     * @param refreshToken the refresh token to revoke
+     */
+    void logout(String refreshToken);
+
+    /**
+     * Logout user from all devices by revoking all refresh tokens.
+     *
+     * @param token the access token or refresh token to extract user
+     */
+    void logoutAllDevices(String token);
 }
 
