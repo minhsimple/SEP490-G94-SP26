@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/SEP490-G94-SP26.iml" filepath="$PROJECT_DIR$/.idea/SEP490-G94-SP26.iml" />
+      <module fileurl="file://$PROJECT_DIR$/sep490-g94-sp26-be/sep490-g94-sp26-be.iml" filepath="$PROJECT_DIR$/sep490-g94-sp26-be/sep490-g94-sp26-be.iml" />
+    </modules>
+  </component>
+</project>
