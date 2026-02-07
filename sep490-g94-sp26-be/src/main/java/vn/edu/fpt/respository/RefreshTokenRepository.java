@@ -6,21 +6,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import vn.edu.fpt.entity.RefreshToken;
-import vn.edu.fpt.entity.User;
 
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Integer> {
 
     Optional<RefreshToken> findByToken(String token);
 
     Optional<RefreshToken> findByTokenAndRevokedFalse(String token);
 
     @Modifying
-    @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.user = :user AND rt.revoked = false")
-    void revokeAllTokensByUser(@Param("user") User user);
+    @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.userId = :userId AND rt.revoked = false")
+    void revokeAllTokensByUserId(@Param("userId") Integer userId);
 
     @Modifying
     @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.token = :token")

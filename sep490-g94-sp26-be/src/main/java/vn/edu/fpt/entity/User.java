@@ -38,6 +38,6 @@ public class User extends BaseEntity {
 
     @Column(name = "role_id")
     @Comment("role id")
-    UUID role_id;
+    Integer role_id;
     }
 

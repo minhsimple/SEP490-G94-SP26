@@ -25,7 +25,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailAndIsActive(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         if (!user.getIsActive()) {
@@ -39,8 +39,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 true,
                 true,
                 true,
-                getAuthorities(user)
-        );
+                getAuthorities(user));
     }
 
     private Collection<? extends GrantedAuthority> getAuthorities(User user) {
@@ -53,11 +52,8 @@ public class CustomUserDetailsService implements UserDetailsService {
 
             authorities.add(
                     new SimpleGrantedAuthority(
-                            "ROLE_" + role.getCode()
-                    )
-            );
+                            "ROLE_" + role.getCode()));
         }
         return authorities;
     }
 }
-

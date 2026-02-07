@@ -1,4 +1,4 @@
-package vn.edu.fpt.dto;
+package vn.edu.fpt.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,8 +9,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginRequest {
+public class RegisterRequest {
     private String email;
     private String password;
+    private String fullName;
+    private String phone;
 }
 

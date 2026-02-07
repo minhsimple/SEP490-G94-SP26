@@ -1,4 +1,4 @@
-package vn.edu.fpt.dto;
+package vn.edu.fpt.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;

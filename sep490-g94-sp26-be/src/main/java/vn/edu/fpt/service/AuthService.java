@@ -1,8 +1,8 @@
 package vn.edu.fpt.service;
 
-import vn.edu.fpt.dto.AuthResponse;
-import vn.edu.fpt.dto.LoginRequest;
-import vn.edu.fpt.dto.RegisterRequest;
+import vn.edu.fpt.dto.response.AuthResponse;
+import vn.edu.fpt.dto.request.LoginRequest;
+import vn.edu.fpt.dto.request.RegisterRequest;
 import vn.edu.fpt.entity.User;
 
 /**

@@ -15,6 +15,7 @@ import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Slf4j
@@ -112,14 +113,15 @@ public class JwtTokenUtil {
         }
     }
 
-    public Integer extractUserId(String token) {
+    public UUID extractUserId(String token) {
         Claims claims = extractAllClaims(token);
-        return claims.get("userId", Integer.class);
+        String userIdStr = claims.get("userId", String.class);
+        return userIdStr != null ? UUID.fromString(userIdStr) : null;
     }
 
     public String generateTokenWithUserId(String username, Integer userId) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("userId", userId);
+        claims.put("userId", userId.toString());
         return createToken(claims, username, expiration);
     }
 }

@@ -1,6 +1,6 @@
 package vn.edu.fpt.exception;
 
-import vn.edu.fpt.dto.ApiResponse;
+import vn.edu.fpt.dto.response.ApiResponse;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.validation.ConstraintViolationException;

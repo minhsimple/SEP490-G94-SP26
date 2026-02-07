@@ -7,9 +7,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.edu.fpt.enums.RecordStatus;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -31,9 +34,10 @@ public abstract class BaseEntity {
     @Column(name = "updated_by")
     Integer updatedBy;
 
+    @Column(name = "status")
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    RecordStatus status = RecordStatus.ACTIVE;
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    private RecordStatus status;
 
     @PrePersist
     private void prePersist() {
@@ -44,7 +48,7 @@ public abstract class BaseEntity {
             setUpdatedAt(createdAt);
         }
         if (status == null) {
-            setStatus(RecordStatus.ACTIVE);
+            setStatus(RecordStatus.active);
         }
     }
 

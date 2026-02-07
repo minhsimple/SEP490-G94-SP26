@@ -1,4 +1,4 @@
-package vn.edu.fpt.dto;
+package vn.edu.fpt.dto.request;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;

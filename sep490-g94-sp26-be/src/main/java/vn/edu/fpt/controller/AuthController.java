@@ -7,7 +7,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import vn.edu.fpt.dto.*;
+import vn.edu.fpt.dto.request.LoginRequest;
+import vn.edu.fpt.dto.request.RegisterRequest;
+import vn.edu.fpt.dto.response.ApiResponse;
+import vn.edu.fpt.dto.response.AuthResponse;
 import vn.edu.fpt.entity.User;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -38,6 +41,7 @@ public class AuthController {
                 .build();
     }
 
+    // sử dụng khi access token hết hạn, lấy access token mới
     @PostMapping("/refresh")
     public ApiResponse<AuthResponse> refreshToken(HttpServletRequest request) {
         String refreshToken = extractTokenFromRequest(request);
@@ -51,6 +55,7 @@ public class AuthController {
                 .build();
     }
 
+    // Lấy thông tin user hiện tại
     @GetMapping("/me")
     public ApiResponse<User> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

@@ -8,15 +8,17 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.edu.fpt.dto.AuthResponse;
-import vn.edu.fpt.dto.LoginRequest;
-import vn.edu.fpt.dto.RegisterRequest;
+import vn.edu.fpt.dto.response.AuthResponse;
+import vn.edu.fpt.dto.request.LoginRequest;
+import vn.edu.fpt.dto.request.RegisterRequest;
 import vn.edu.fpt.entity.RefreshToken;
+import vn.edu.fpt.entity.Role;
 import vn.edu.fpt.entity.User;
 import vn.edu.fpt.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.respository.RefreshTokenRepository;
+import vn.edu.fpt.respository.RoleRepository;
 import vn.edu.fpt.respository.UserRepository;
 import vn.edu.fpt.security.JwtTokenUtil;
 import vn.edu.fpt.service.AuthService;
@@ -32,6 +34,7 @@ import java.time.LocalDateTime;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
@@ -43,15 +46,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        log.info("Registering new user with email: {}", request.getEmail());
-
         validateEmailNotExists(request.getEmail());
 
         User user = createUser(request);
         user = userRepository.save(user);
 
-        log.info("User registered successfully with id: {}", user.getId());
-        return buildAuthResponse(user);
+//        return buildAuthResponse(user);
+        // Chỉ trả về thông tin user, không tạo token (user phải login riêng)
+        return AuthResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .build();
     }
 
     @Override
@@ -59,11 +65,14 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse login(LoginRequest request) {
         log.info("User login attempt for email: {}", request.getEmail());
 
-        authenticateUser(request.getEmail(), request.getPassword());
+        try {
+            authenticateUser(request.getEmail(), request.getPassword());
+        } catch (Exception ex) {
+            throw new AppException(ERROR_CODE.USER_NOT_EXISTED);
+        }
 
         User user = findUserByEmail(request.getEmail());
 
-        log.info("User logged in successfully with id: {}", user.getId());
         return buildAuthResponse(user);
     }
 
@@ -81,7 +90,10 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ERROR_CODE.INVALID_REFRESH_TOKEN);
         }
 
-        User user = refreshToken.getUser();
+        // Get user by userId from refresh token
+        User user = userRepository.findById(refreshToken.getUserId())
+                .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
+
         String newAccessToken = jwtTokenUtil.generateTokenWithUserId(user.getEmail(), user.getId());
 
         log.info("Token refreshed successfully for user: {}", user.getId());
@@ -104,7 +116,7 @@ public class AuthServiceImpl implements AuthService {
                 .ifPresent(token -> {
                     token.setRevoked(true);
                     refreshTokenRepository.save(token);
-                    log.info("Refresh token revoked for user: {}", token.getUser().getId());
+                    log.info("Refresh token revoked for userId: {}", token.getUserId());
                 });
     }
 
@@ -116,7 +128,7 @@ public class AuthServiceImpl implements AuthService {
         // Extract email from token
         String email = jwtTokenUtil.extractUsername(token);
         User user = findUserByEmail(email);
-        refreshTokenRepository.revokeAllTokensByUser(user);
+        refreshTokenRepository.revokeAllTokensByUserId(user.getId());
 
         log.info("All refresh tokens revoked for user: {}", user.getId());
     }
@@ -124,13 +136,18 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public User getCurrentUser(String email) {
+        User currentUser = userRepository.findByEmailAndIsActive(email)
+                .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
+        Role role = roleRepository
+                .findById(currentUser.getRole_id())
+                .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
         return findUserByEmail(email);
     }
 
     // ==================== Private Helper Methods ====================
 
     private void validateEmailNotExists(String email) {
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.findByEmailAndIsActive(email).isPresent()) {
             throw new AppException(ERROR_CODE.USER_EXISTED);
         }
     }
@@ -143,12 +160,11 @@ public class AuthServiceImpl implements AuthService {
 
     private void authenticateUser(String email, String password) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password)
-        );
+                new UsernamePasswordAuthenticationToken(email, password));
     }
 
     private User findUserByEmail(String email) {
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmailAndIsActive(email)
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
     }
 
@@ -159,7 +175,7 @@ public class AuthServiceImpl implements AuthService {
                 .fullName(request.getFullName())
                 .phone(request.getPhone())
                 .isActive(true)
-                .status(RecordStatus.ACTIVE)
+                .status(RecordStatus.active)
                 .build();
     }
 
@@ -169,7 +185,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Save refresh token to database
         RefreshToken refreshToken = RefreshToken.builder()
-                .user(user)
+                .userId(user.getId())
                 .token(refreshTokenStr)
                 .expiresAt(LocalDateTime.now().plusSeconds(refreshExpiration / 1000))
                 .revoked(false)
@@ -186,4 +202,3 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 }
-

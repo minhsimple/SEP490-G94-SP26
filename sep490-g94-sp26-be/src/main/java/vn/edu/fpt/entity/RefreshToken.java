@@ -18,12 +18,11 @@ import java.util.UUID;
 public class RefreshToken {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    User user;
+    @Column(name = "user_id", nullable = false)
+    Integer userId;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     String token;

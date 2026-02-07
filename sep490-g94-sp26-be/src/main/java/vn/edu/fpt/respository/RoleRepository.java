@@ -6,8 +6,8 @@ import vn.edu.fpt.entity.Role;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface RoleRepository extends JpaRepository<Role, UUID> {
+public interface RoleRepository extends JpaRepository<Role, Integer> {
     @Override
-    Optional<Role> findById(UUID uuid);
+    Optional<Role> findById(Integer id);
 
 }
