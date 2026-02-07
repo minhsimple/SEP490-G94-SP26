@@ -43,6 +43,7 @@ public enum ERROR_CODE {
      * Other Error
      */
     ROLE_EXISTED(4001, "Vai trò đã tồn tại", HttpStatus.BAD_REQUEST),
+
     ROLE_NOT_EXISTED(4002, "Vai trò không tồn tại", HttpStatus.NOT_FOUND),
 
 
