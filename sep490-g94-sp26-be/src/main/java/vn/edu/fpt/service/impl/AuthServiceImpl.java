@@ -136,7 +136,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional(readOnly = true)
     public User getCurrentUser(String email) {
-        User currentUser = userRepository.findByEmailAndIsActive(email)
+        User currentUser = userRepository.findByEmailAndIsActive(email, true)
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
         Role role = roleRepository
                 .findById(currentUser.getRole_id())
@@ -147,7 +147,7 @@ public class AuthServiceImpl implements AuthService {
     // ==================== Private Helper Methods ====================
 
     private void validateEmailNotExists(String email) {
-        if (userRepository.findByEmailAndIsActive(email).isPresent()) {
+        if (userRepository.findByEmailAndIsActive(email, true).isPresent()) {
             throw new AppException(ERROR_CODE.USER_EXISTED);
         }
     }
@@ -164,7 +164,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private User findUserByEmail(String email) {
-        return userRepository.findByEmailAndIsActive(email)
+        return userRepository.findByEmailAndIsActive(email, true)
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
     }
 

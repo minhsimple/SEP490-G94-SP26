@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Repository
 public interface UserRepository extends BaseRepository<User, Integer> {
-    Optional<User> findByEmailAndIsActive(String email);
+    Optional<User> findByEmailAndIsActive(String email, Boolean isActive);
 
     Optional<User> findByIdAndIsActive(UUID id, Boolean isActive);
 
