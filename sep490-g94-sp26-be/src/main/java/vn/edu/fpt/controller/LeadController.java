@@ -36,40 +36,41 @@ public class LeadController {
                 .build();
     }
     @Operation(summary = "Cập nhật khách hàng tiềm năng mới")
-    @PostMapping("/create")
-    public ApiResponse<LeadResponse> updateLead(@RequestBody @Valid LeadRequest request) {
-        LeadResponse response = leadService.createLead(request);
+    @PostMapping("/update")
+    public ApiResponse<LeadResponse> updateLead(@RequestBody @Valid LeadRequest request,
+                                                @RequestParam Integer leadId) {
+        LeadResponse response = leadService.updateLead(leadId,request);
         return ApiResponse.<LeadResponse>builder()
                 .data(response)
                 .build();
     }
-    @Operation(summary = "Lấy tất cả danh sách khách hàng tiềm năng ")
-    @GetMapping("/get-all")
+    @Operation(summary = "Xem chi tiết thông tin khách hàng tiềm năng ")
+    @PostMapping("/{id}")
+    public ApiResponse<LeadResponse> viewDetailLead(@PathVariable Integer id) {
+        LeadResponse response = leadService.getLeadById(id);
+        return ApiResponse.<LeadResponse>builder()
+                .data(response)
+                .build();
+    }
+    @Operation(summary = "Xem danh sách khách hàng tiềm năng ")
+    @GetMapping("/search")
     public ApiResponse<SimplePage<LeadResponse>> getAll(
+            @RequestBody @Valid LeadRequest filter,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
                     direction = Sort.Direction.DESC
             ) Pageable pageable) {
         return ApiResponse.<SimplePage<LeadResponse>>builder()
-                .data(leadService.getAllLeads(pageable))
+                .data(leadService.getAllLeads(pageable,filter))
                 .build();
     }
-
-//    @GetMapping("/{id}")
-//    public LeadResponse getLeadById(@PathVariable Integer id) {
-//        return leadService.getById(id);
-//    }
-//
-//    @Operation(summary = "Xem danh sách hợp đồng")
-//    @PostMapping("/search")
-//    public ApiResponse<SimplePage<ContractFilterForOfficialResponse>> filterContractForOfficial(
-//            @RequestBody ContractFilterForOfficialRequest filter,
-//            @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
-//                    sort = Constants.SORT.SORT_BY,
-//                    direction = Sort.Direction.DESC) Pageable pageable) {
-//        return ApiResponse.<SimplePage<ContractFilterForOfficialResponse>>builder()
-//                .data(contractService.filterContractForOfficial(filter, pageable))
-//                .build();
-//    }
+    @Operation(summary = "Thay đổi status (bật tắt) khách hàng tiềm năng ")
+    @PostMapping("/{id}/change-status")
+    public ApiResponse<LeadResponse> changeStatusLead(@PathVariable Integer id) {
+        LeadResponse response = leadService.changeStatusLead(id);
+        return ApiResponse.<LeadResponse>builder()
+                .data(response)
+                .build();
+    }
 
 }

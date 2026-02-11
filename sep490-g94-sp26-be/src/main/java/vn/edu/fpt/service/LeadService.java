@@ -13,7 +13,7 @@ public interface LeadService {
 
     LeadResponse getLeadById(Integer id);
 
-    SimplePage<LeadResponse> getAllLeads(Pageable pageable);
+    SimplePage<LeadResponse> getAllLeads(Pageable pageable,LeadRequest filter);
 
-    void delete(Integer id);
+    LeadResponse changeStatusLead(Integer id);
 }

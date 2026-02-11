@@ -41,7 +41,7 @@ public class Lead extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "lead_state", nullable = false)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-    LeadState leadState = LeadState.NEW;
+    LeadState leadState ;
 
     @Column(name = "assigned_sales_id")
     Integer assignedSalesId;

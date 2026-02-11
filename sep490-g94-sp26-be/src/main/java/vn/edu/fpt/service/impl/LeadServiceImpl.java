@@ -51,8 +51,18 @@ public class LeadServiceImpl implements LeadService {
     }
 
     @Override
-    public SimplePage<LeadResponse> getAllLeads(Pageable pageable) {
-        Page<Lead> page = leadRepository.findAllByStatus(RecordStatus.active, pageable);
+    public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadRequest filter) {
+//        Page<Lead> page = leadRepository.findAllByStatus(RecordStatus.active, pageable);
+        Page<Lead> page = leadRepository.filterLeadsByStatus(
+                filter.getFullName(),
+                filter.getPhone(),
+                filter.getEmail(),
+                filter.getSource(),
+                filter.getNotes(),
+                filter.getAssignedSalesId(),
+                filter.getLocationId(),
+                filter.getState(),
+                RecordStatus.active, pageable);
 
         List<LeadResponse> responses = page.getContent()
                 .stream()
@@ -67,7 +77,17 @@ public class LeadServiceImpl implements LeadService {
     }
 
     @Override
-    public void delete(Integer id) {
+    public LeadResponse changeStatusLead(Integer id) {
+        Lead lead = leadRepository.findById(id)
+                .orElseThrow(() -> new AppException(ERROR_CODE.LEAD_NOT_EXISTED));
 
+        if (lead.getStatus() == RecordStatus.active) {
+            lead.setStatus(RecordStatus.inactive);
+        } else {
+            lead.setStatus(RecordStatus.active);
+        }
+
+        leadRepository.save(lead);
+        return leadMapper.toResponse(lead);
     }
 }
