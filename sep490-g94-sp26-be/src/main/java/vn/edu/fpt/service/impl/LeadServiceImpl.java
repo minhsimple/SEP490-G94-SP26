@@ -52,7 +52,7 @@ public class LeadServiceImpl implements LeadService {
 
     @Override
     public SimplePage<LeadResponse> getAllLeads(Pageable pageable) {
-        Page<Lead> page = leadRepository.findAll(pageable);
+        Page<Lead> page = leadRepository.findAllByStatus(RecordStatus.active, pageable);
 
         List<LeadResponse> responses = page.getContent()
                 .stream()

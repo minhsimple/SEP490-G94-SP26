@@ -35,6 +35,14 @@ public class LeadController {
                 .data(response)
                 .build();
     }
+    @Operation(summary = "Cập nhật khách hàng tiềm năng mới")
+    @PostMapping("/create")
+    public ApiResponse<LeadResponse> updateLead(@RequestBody @Valid LeadRequest request) {
+        LeadResponse response = leadService.createLead(request);
+        return ApiResponse.<LeadResponse>builder()
+                .data(response)
+                .build();
+    }
     @Operation(summary = "Lấy tất cả danh sách khách hàng tiềm năng ")
     @GetMapping("/get-all")
     public ApiResponse<SimplePage<LeadResponse>> getAll(

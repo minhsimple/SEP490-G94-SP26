@@ -7,6 +7,8 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.Comment;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.edu.fpt.enums.LeadState;
 
 import java.util.UUID;
@@ -38,6 +40,7 @@ public class Lead extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "lead_state", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     LeadState leadState = LeadState.NEW;
 
     @Column(name = "assigned_sales_id")
