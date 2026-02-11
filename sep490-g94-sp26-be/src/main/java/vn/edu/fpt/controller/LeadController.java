@@ -13,6 +13,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.lead.LeadRequest;
+import vn.edu.fpt.dto.request.lead.LeadsFilterRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.lead.LeadResponse;
 import vn.edu.fpt.enums.Constants;
@@ -53,9 +54,9 @@ public class LeadController {
                 .build();
     }
     @Operation(summary = "Xem danh sách khách hàng tiềm năng ")
-    @GetMapping("/search")
+    @PostMapping("/search")
     public ApiResponse<SimplePage<LeadResponse>> getAll(
-            @RequestBody @Valid LeadRequest filter,
+            @RequestBody @Valid LeadsFilterRequest filter,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
                     direction = Sort.Direction.DESC

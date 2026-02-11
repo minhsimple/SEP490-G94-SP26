@@ -27,8 +27,6 @@ public class LeadResponse {
 
     Integer assignedSalesId;
 
-    String createdFrom;
-
     Integer locationId;
 
     String locationName;

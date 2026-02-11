@@ -9,14 +9,12 @@ import vn.edu.fpt.enums.LeadState;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LeadRequest {
-    @NotBlank(message = "Họ tên không được để trống")
+public class LeadsFilterRequest {
+
     String fullName;
 
     String phone;
 
-    @NotBlank(message = "Email không được để trống")
-    @Email(message = "Email không đúng định dạng")
     String email;
 
     String source;
