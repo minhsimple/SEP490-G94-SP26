@@ -49,6 +49,16 @@ public enum ERROR_CODE {
      * Lead Error
      */
     LEAD_NOT_EXISTED(5001, "Khách hàng tiềm năng không tồn tại", HttpStatus.NOT_FOUND),
+
+    /**
+     * Customer Error
+     */
+    CUSTOMER_NOT_EXISTED(6001, "Khách hàng không tồn tại", HttpStatus.NOT_FOUND),
+
+    /**
+     * Location Error
+     */
+    LOCATION_NOT_EXISTED(7001, "Địa điểm không tồn tại", HttpStatus.NOT_FOUND),
     ;
 
     ERROR_CODE(int code, String message, HttpStatusCode statusCode) {

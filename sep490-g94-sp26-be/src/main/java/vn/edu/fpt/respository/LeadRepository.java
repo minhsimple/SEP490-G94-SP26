@@ -16,7 +16,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface LeadRepository extends BaseRepository<Lead, Integer>, JpaSpecificationExecutor<Lead> {
+public interface LeadRepository extends BaseRepository<Lead, Integer> {
 
     Optional<Lead> findByIdAndStatus(Integer id, RecordStatus status);
 

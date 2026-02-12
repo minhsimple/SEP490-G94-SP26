@@ -43,7 +43,7 @@ public class Lead extends BaseEntity {
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(
             name = "lead_state",
-            columnDefinition = "lead_state",
+            //columnDefinition = "lead_state",
             nullable = false
     )
     LeadState leadState ;
