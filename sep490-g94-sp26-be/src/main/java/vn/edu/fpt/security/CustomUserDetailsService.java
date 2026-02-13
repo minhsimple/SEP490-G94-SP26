@@ -2,6 +2,7 @@ package vn.edu.fpt.security;
 
 import vn.edu.fpt.entity.Role;
 import vn.edu.fpt.entity.User;
+import vn.edu.fpt.enums.RecordStatus;
 import vn.edu.fpt.respository.RoleRepository;
 import vn.edu.fpt.respository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmailAndIsActive(email, true)
+        User user = userRepository.findByEmailAndStatus(email, RecordStatus.active)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
         if (!user.getIsActive()) {
