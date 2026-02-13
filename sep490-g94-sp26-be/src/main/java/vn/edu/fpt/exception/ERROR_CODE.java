@@ -49,6 +49,8 @@ public enum ERROR_CODE {
      * Lead Error
      */
     LEAD_NOT_EXISTED(5001, "Khách hàng tiềm năng không tồn tại", HttpStatus.NOT_FOUND),
+    LEAD_NOT_IN_NEW_STATE(5002, "Khách hàng tiềm năng không ở trạng thái mới", HttpStatus.BAD_REQUEST),
+    LEAD_NOT_MATCH_LOCATION(5003, "Khách hàng tiềm năng không thuộc chi nhánh", HttpStatus.BAD_REQUEST),
 
     /**
      * Customer Error
