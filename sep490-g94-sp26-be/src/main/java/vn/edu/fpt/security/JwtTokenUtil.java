@@ -113,10 +113,10 @@ public class JwtTokenUtil {
         }
     }
 
-    public UUID extractUserId(String token) {
+    public Integer extractUserId(String token) {
         Claims claims = extractAllClaims(token);
         String userIdStr = claims.get("userId", String.class);
-        return userIdStr != null ? UUID.fromString(userIdStr) : null;
+        return userIdStr != null ? Integer.parseInt(userIdStr) : null;
     }
 
     public String generateTokenWithUserId(String username, Integer userId) {

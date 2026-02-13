@@ -40,52 +40,26 @@ public enum ERROR_CODE {
 
 
     /**
-     * Other Error
+     * Role Error
      */
     ROLE_EXISTED(4001, "Vai trò đã tồn tại", HttpStatus.BAD_REQUEST),
-
     ROLE_NOT_EXISTED(4002, "Vai trò không tồn tại", HttpStatus.NOT_FOUND),
 
-
-
-    PERMISSION_NOT_EXISTED(4003, "Quyền không tồn tại", HttpStatus.NOT_FOUND),
-    PERMISSION_EXISTED(4004, "Quyền đã tồn tại", HttpStatus.NOT_FOUND),
-
-    MENU_NOT_EXISTED(4005, "Menu không tồn tại", HttpStatus.NOT_FOUND),
-    MENU_EXISTED(4006, "Menu đã tồn tại", HttpStatus.NOT_FOUND),
-
-    DEPARTMENT_NOT_EXISTED(4007, "Đơn vị không tồn tại", HttpStatus.NOT_FOUND),
-    DEPARTMENT_EXISTED(4008, "Đơn vị đã tồn tại", HttpStatus.NOT_FOUND),
-
-    ERROR_WHILE_SEND_EMAIL(4009, "Lỗi khi gửi email", HttpStatus.SERVICE_UNAVAILABLE),
-    FILE_NULL(4010, "Tập tin không được để trống", HttpStatus.BAD_REQUEST),
-    NO_ACCESS_TO_RESOURCES(4011, "Không có quyền truy cập vào tài nguyên", HttpStatus.BAD_REQUEST),
-    MULTIPLE_DEFAULT_ROLES_NOT_ALLOWED(4012, "Không được phép có nhiều vai trò mặc định", HttpStatus.SERVICE_UNAVAILABLE),
+    /**
+     * Lead Error
+     */
+    LEAD_NOT_EXISTED(5001, "Khách hàng tiềm năng không tồn tại", HttpStatus.NOT_FOUND),
 
     /**
-     * Notify Error
+     * Customer Error
      */
-    NOTY_CONFIG_NOT_FOUND(4015, "Không tìm thấy cấu hình thông báo", HttpStatus.NOT_FOUND),
-    NOTY_CREATE_INVALID_PARAM(4016, "Ít nhất một tùy chọn - sendByEmail hoặc sendBySystem phải được chọn", HttpStatus.BAD_REQUEST),
-    NOTY_EXISTED(4016, "Cấu hình thông báo đã tồn tại", HttpStatus.BAD_REQUEST),
-
-    MENU_NEED_REMOVE_FROM_ROLE(4017, "Danh sách vai trò cần xóa menu: ", HttpStatus.BAD_REQUEST),
-
-    DATA_NOT_FOUND(4020, "Không tìm thấy dữ liệu ", HttpStatus.BAD_REQUEST),
-    TYPE_NOT_FOUND(4021, "Loại không tồn tại", HttpStatus.BAD_REQUEST),
-    TYPE_NOT_PERMISSION(4022, "Không có quyền với loại hồ sơ", HttpStatus.BAD_REQUEST),
-    PROFILE_NOT_PERMISSION(4023, "Hồ sơ không tồn tại hoặc không có quyền với hồ sơ", HttpStatus.BAD_REQUEST),
+    CUSTOMER_NOT_EXISTED(6001, "Khách hàng không tồn tại", HttpStatus.NOT_FOUND),
 
     /**
-     * AppConfig Error
+     * Location Error
      */
-    APP_CONFIG_EXISTED(4021, "Mã cấu hình đã tồn tại", HttpStatus.BAD_REQUEST),
-    APP_CONFIG_NOT_FOUND(4022, "Mã cấu hình không tồn tại", HttpStatus.BAD_REQUEST),
-    APP_CONFIG_MISSING_CODE(4028, "Thiếu thông tin mã cấu hình", HttpStatus.BAD_REQUEST),
-    APP_CONFIG_MISSING_VALUE(4029, "Thiếu thông tin giá trị cấu hình", HttpStatus.BAD_REQUEST),
-
-    ERROR_REDIS(5003, "Err redis", HttpStatus.BAD_REQUEST),
-    ERROR_WHILE_CALL_CATEGORY_SERVICE(5002, "Lỗi khi call category service - ", HttpStatus.SERVICE_UNAVAILABLE);
+    LOCATION_NOT_EXISTED(7001, "Địa điểm không tồn tại", HttpStatus.NOT_FOUND),
+    ;
 
     ERROR_CODE(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

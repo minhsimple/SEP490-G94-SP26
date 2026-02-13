@@ -39,5 +39,9 @@ public class User extends BaseEntity {
     @Column(name = "role_id")
     @Comment("role id")
     Integer role_id;
+
+    @Column(name = "location_id")
+    @Comment("location id")
+    Integer locationId;
     }
 

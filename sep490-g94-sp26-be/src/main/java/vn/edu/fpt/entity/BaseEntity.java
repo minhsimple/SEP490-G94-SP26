@@ -9,11 +9,15 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import vn.edu.fpt.enums.RecordStatus;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @SuperBuilder
@@ -25,14 +29,16 @@ public abstract class BaseEntity {
     @Column(name = "created_at", nullable = false)
     LocalDateTime createdAt;
 
+    @CreatedBy
     @Column(name = "created_by")
-    Integer createdBy;
+    String createdBy;
 
     @Column(name = "updated_at", nullable = false)
     LocalDateTime updatedAt;
 
+    @LastModifiedBy
     @Column(name = "updated_by")
-    Integer updatedBy;
+    String updatedBy;
 
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
