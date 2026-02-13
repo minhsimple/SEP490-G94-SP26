@@ -3,6 +3,7 @@ package vn.edu.fpt.service;
 import vn.edu.fpt.dto.response.AuthResponse;
 import vn.edu.fpt.dto.request.authorization.LoginRequest;
 import vn.edu.fpt.dto.request.authorization.RegisterRequest;
+import vn.edu.fpt.dto.response.UserResponse;
 import vn.edu.fpt.entity.User;
 
 /**
@@ -40,7 +41,7 @@ public interface AuthService {
      * @param email the user's email
      * @return the User entity
      */
-    User getCurrentUser(String email);
+    UserResponse getCurrentUser(String email);
 
     /**
      * Logout user by revoking the refresh token.

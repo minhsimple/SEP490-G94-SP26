@@ -11,12 +11,14 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.response.AuthResponse;
 import vn.edu.fpt.dto.request.authorization.LoginRequest;
 import vn.edu.fpt.dto.request.authorization.RegisterRequest;
+import vn.edu.fpt.dto.response.UserResponse;
 import vn.edu.fpt.entity.RefreshToken;
 import vn.edu.fpt.entity.Role;
 import vn.edu.fpt.entity.User;
 import vn.edu.fpt.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
+import vn.edu.fpt.mapper.UserMapper;
 import vn.edu.fpt.respository.RefreshTokenRepository;
 import vn.edu.fpt.respository.RoleRepository;
 import vn.edu.fpt.respository.UserRepository;
@@ -39,6 +41,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
+    private final UserMapper userMapper;
 
     @Value("${jwt.refresh-expiration:604800000}")
     private Long refreshExpiration;
@@ -135,13 +138,13 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional(readOnly = true)
-    public User getCurrentUser(String email) {
+    public UserResponse getCurrentUser(String email) {
         User currentUser = userRepository.findByEmailAndIsActive(email, true)
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
         Role role = roleRepository
                 .findById(currentUser.getRole_id())
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
-        return findUserByEmail(email);
+        return userMapper.toResponse(findUserByEmail(email));
     }
 
     // ==================== Private Helper Methods ====================
