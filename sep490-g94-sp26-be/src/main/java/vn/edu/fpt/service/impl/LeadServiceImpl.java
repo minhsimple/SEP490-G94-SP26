@@ -1,22 +1,25 @@
 package vn.edu.fpt.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
 import org.springframework.data.domain.Page;
+import vn.edu.fpt.dto.request.lead.LeadAdditionalRequest;
 import vn.edu.fpt.dto.request.lead.LeadRequest;
 import vn.edu.fpt.dto.request.lead.LeadsFilterRequest;
 import vn.edu.fpt.dto.response.lead.LeadResponse;
-import vn.edu.fpt.entity.Lead;
-import vn.edu.fpt.entity.Location;
+import vn.edu.fpt.entity.*;
 import vn.edu.fpt.enums.LeadState;
 import vn.edu.fpt.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.LeadMapper;
-import vn.edu.fpt.respository.LeadRepository;
-import vn.edu.fpt.respository.LocationRepository;
+import vn.edu.fpt.respository.*;
+import vn.edu.fpt.service.CustomerService;
 import vn.edu.fpt.service.LeadService;
 import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
@@ -32,8 +35,11 @@ import java.util.stream.Collectors;
 public class LeadServiceImpl implements LeadService {
     private final LeadRepository leadRepository;
     private final LocationRepository locationRepository;
-    private final LeadMapper leadMapper;
+    private final LeadConversionRepository leadConversionRepository;
+    private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
 
+    private final LeadMapper leadMapper;
 
     @Override
     public LeadResponse createLead(LeadRequest request) {
@@ -204,6 +210,48 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
 
         leadRepository.save(lead);
         return leadMapper.toResponse(lead);
+    }
+
+    @Transactional
+    @Override
+    public void assignLeadToSales(UserDetails userDetails, Integer leadId, LeadAdditionalRequest additionalRequest) {
+        Lead lead = leadRepository.findByIdAndStatus(leadId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.LEAD_NOT_EXISTED));
+
+        if (lead.getLeadState() != LeadState.NEW) {
+            throw new AppException(ERROR_CODE.LEAD_NOT_IN_NEW_STATE);
+        }
+
+        userRepository.findByEmailAndStatus(userDetails.getUsername(), RecordStatus.active)
+                .ifPresentOrElse(user -> {
+                    if (!Objects.equals(lead.getLocationId(), user.getLocationId())) {
+                        throw new AppException(ERROR_CODE.LEAD_NOT_MATCH_LOCATION);
+                    }
+
+                    lead.setAssignedSalesId(user.getId());
+                    lead.setLeadState(LeadState.CONTACTING);
+
+                    Customer customer = getCustomer(additionalRequest, lead);
+                    Integer customerId = customerRepository.save(customer).getId();
+
+                    LeadConversion leadConversion = new LeadConversion(leadId, customerId);
+                    leadConversionRepository.save(leadConversion);
+                }, () -> {
+                    throw new AppException(ERROR_CODE.USER_NOT_EXISTED);
+                });
+    }
+
+    private static @NonNull Customer getCustomer(LeadAdditionalRequest additionalRequest, Lead lead) {
+        Customer customer = new Customer();
+        customer.setFullName(lead.getFullName());
+        customer.setPhone(lead.getPhone());
+        customer.setEmail(lead.getEmail());
+        customer.setLocationId(lead.getLocationId());
+        customer.setNotes(lead.getNotes());
+        customer.setCitizenIdNumber(additionalRequest.getCitizenIdNumber());
+        customer.setTaxCode(additionalRequest.getTaxCode());
+        customer.setAddress(additionalRequest.getAddress());
+        return customer;
     }
 
 
