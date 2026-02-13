@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
@@ -103,7 +104,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public SimplePage<CustomerResponse> getAllCustomers(Pageable pageable, CustomersFilterRequest filterRequest) {
+    public SimplePage<CustomerResponse> getAllCustomers(UserDetails userDetails, Pageable pageable, CustomersFilterRequest filterRequest) {
         Specification<Customer> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -157,6 +158,8 @@ public class CustomerServiceImpl implements CustomerService {
             }
 
             predicates.add(cb.equal(root.get("status"), RecordStatus.active));
+            predicates.add(cb.equal(root.get("createdBy"), userDetails.getUsername()));
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 

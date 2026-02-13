@@ -1,6 +1,7 @@
 package vn.edu.fpt.service;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.userdetails.UserDetails;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.customer.CustomerRequest;
 import vn.edu.fpt.dto.request.customer.CustomerUpdateRequest;
@@ -12,5 +13,5 @@ public interface CustomerService {
     CustomerResponse updateCustomer(Integer id, CustomerUpdateRequest customerUpdateRequest);
     CustomerResponse getCustomerById(Integer id);
     CustomerResponse changeStatusCustomer(Integer id);
-    SimplePage<CustomerResponse> getAllCustomers(Pageable pageable, CustomersFilterRequest filterRequest);
+    SimplePage<CustomerResponse> getAllCustomers(UserDetails userDetails, Pageable pageable, CustomersFilterRequest filterRequest);
 }

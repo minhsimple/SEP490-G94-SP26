@@ -10,6 +10,8 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.customer.CustomerRequest;
@@ -61,13 +63,14 @@ public class CustomerController {
     @Operation(summary = "Xem danh sách khách hàng")
     @GetMapping("/search")
     public ApiResponse<SimplePage<CustomerResponse>> getAllCustomers(
+            @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody CustomersFilterRequest filterRequest,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
                     direction = Sort.Direction.DESC)
             Pageable pageable) {
         return ApiResponse.<SimplePage<CustomerResponse>>builder()
-                .data(customerService.getAllCustomers(pageable, filterRequest))
+                .data(customerService.getAllCustomers(userDetails, pageable, filterRequest))
                 .build();
     }
 
