@@ -47,7 +47,7 @@ public class LocationController {
     }
 
     @Operation(summary = "Xem chi tiết địa điểm")
-    @PostMapping("/{id}")
+    @GetMapping("/{id}")
     public ApiResponse<LocationResponse> viewDetailLocation(@PathVariable Integer id) {
         LocationResponse response = locationService.getLocationById(id);
         return ApiResponse.<LocationResponse>builder()

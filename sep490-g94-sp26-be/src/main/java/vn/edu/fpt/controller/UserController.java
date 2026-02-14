@@ -61,7 +61,7 @@ public class UserController {
                 .data(response)
                 .build();
     }
-    @Operation(summary = "Cập nhật khách hàng tiềm năng mới")
+    @Operation(summary = "Cập nhật tài khoản người dùng")
     @PostMapping("/{id}/update")
     public ApiResponse<UserResponse> updateLead(@RequestBody @Valid UserRequest request,
                                                 @PathVariable Integer id) {
