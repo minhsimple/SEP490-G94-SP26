@@ -11,7 +11,11 @@ import java.util.Set;
 public interface UserRepository extends BaseRepository<User, Integer> {
     Optional<User> findByEmailAndStatus(String email, RecordStatus status);
 
+    Boolean existsByEmailAndStatus(String email, RecordStatus status);
+
     Optional<User> findByIdAndStatus(Integer id, RecordStatus status);
 
     Set<User> findAllByIdInAndIsActive(Set<Integer> ids, Boolean isActive);
+
+
 }

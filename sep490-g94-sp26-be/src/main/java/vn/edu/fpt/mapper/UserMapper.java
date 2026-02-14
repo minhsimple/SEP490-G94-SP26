@@ -1,6 +1,7 @@
 package vn.edu.fpt.mapper;
 
 import org.mapstruct.*;
+import vn.edu.fpt.dto.request.user.UserRequest;
 import vn.edu.fpt.dto.response.UserResponse;
 import vn.edu.fpt.entity.User;
 
@@ -14,5 +15,7 @@ public interface UserMapper {
 
     // Update entity (không update id & password)
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    void updateEntity(@MappingTarget User user, User updatedUser);
+    void updateEntity(@MappingTarget User user, UserRequest updatedUser);
+
+    User toEntity(UserRequest request);
 }
