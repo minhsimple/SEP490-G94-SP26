@@ -3,9 +3,6 @@ package vn.edu.fpt.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import vn.edu.fpt.enums.RecordStatus;
-
-import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "locations", schema = "wedding")

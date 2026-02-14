@@ -61,7 +61,12 @@ public enum ERROR_CODE {
      * Location Error
      */
     LOCATION_NOT_EXISTED(7001, "Địa điểm không tồn tại", HttpStatus.NOT_FOUND),
-    ;
+    LOCATION_EXISTED(7002, "Địa điểm đã tồn tại", HttpStatus.BAD_REQUEST),
+
+    /**
+     * Other Error
+     */
+    INVALID_REQUEST(10000,"Request không hợp lệ" , HttpStatus.BAD_REQUEST);
 
     ERROR_CODE(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

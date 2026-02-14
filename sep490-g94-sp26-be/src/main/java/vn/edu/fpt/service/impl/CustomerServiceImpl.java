@@ -40,11 +40,10 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public CustomerResponse createCustomer(CustomerRequest request) {
-        Location location = locationRepository.findByIdAndStatus(request.getLocationId(), RecordStatus.active);
+        Location location = locationRepository.findByIdAndStatus(request.getLocationId(), RecordStatus.active).orElseThrow(
+                    () -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED)
+        );
 
-        if (location == null) {
-            throw new AppException(ERROR_CODE.LOCATION_NOT_EXISTED);
-        }
 
         Customer customer = customerMapper.toEntity(request);
         Customer savedCustomer = customerRepository.save(customer);
@@ -62,15 +61,14 @@ public class CustomerServiceImpl implements CustomerService {
 
 
         if (customerUpdateRequest.getLocationId() != null) {
-            Location location = locationRepository.findByIdAndStatus(customerUpdateRequest.getLocationId(), RecordStatus.active);
-            if (location == null) {
-                throw new AppException(ERROR_CODE.LOCATION_NOT_EXISTED);
-            }
+            Location location = locationRepository.findByIdAndStatus(customerUpdateRequest.getLocationId(), RecordStatus.active).orElseThrow(
+                    () -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED)
+            );
         }
         customerMapper.updateEntity(customer, customerUpdateRequest);
 
         CustomerResponse customerResponse = customerMapper.toResponse(customer);
-        customerResponse.setLocationName(locationRepository.findByIdAndStatus(customerResponse.getLocationId(), RecordStatus.active).getName());
+        customerResponse.setLocationName(locationRepository.findByIdAndStatus(customerResponse.getLocationId(), RecordStatus.active).get().getName());
 
         return customerResponse;
     }
@@ -83,7 +81,7 @@ public class CustomerServiceImpl implements CustomerService {
         CustomerResponse response = customerMapper.toResponse(customer);
 
         response.setLocationName(locationRepository
-                .findByIdAndStatus(response.getLocationId(), RecordStatus.active).getName());
+                .findByIdAndStatus(response.getLocationId(), RecordStatus.active).get().getName());
 
         return response;
     }

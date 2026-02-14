@@ -68,38 +68,12 @@ public class LeadServiceImpl implements LeadService {
         LeadResponse response = leadMapper.toResponse(lead);
 
         if (lead.getLocationId() != null) {
-            response.setLocationName(locationRepository.findByIdAndStatus(lead.getLocationId(),
-                    RecordStatus.active).getName());
+            locationRepository.findByIdAndStatus(lead.getLocationId(), RecordStatus.active)
+                    .ifPresent(location -> response.setLocationName(location.getName()));
         }
 
         return response;
     }
-
-//    @Override
-//    public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadRequest filter) {
-////        Page<Lead> page = leadRepository.findAllByStatus(RecordStatus.active, pageable);
-//        Page<Lead> page = leadRepository.filterLeadsByStatus(
-//                filter.getFullName(),
-//                filter.getPhone(),
-//                filter.getEmail(),
-//                filter.getSource(),
-//                filter.getNotes(),
-//                filter.getAssignedSalesId(),
-//                filter.getLocationId(),
-//                filter.getState(),
-//                RecordStatus.active, pageable);
-//
-//        List<LeadResponse> responses = page.getContent()
-//                .stream()
-//                .map(leadMapper::toResponse)
-//                .toList();
-//
-//        return new SimplePage<>(
-//                responses,
-//                page.getTotalElements(),
-//                pageable
-//        );
-//    }
 
 @Override
 public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterRequest filter) {
@@ -179,7 +153,7 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
                     Location::getName
             ));
 
-    //Map sang reponse
+    //Map sang response
     List<LeadResponse> responses = leads.stream()
             .map(lead -> {
                 LeadResponse response = leadMapper.toResponse(lead);
