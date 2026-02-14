@@ -36,7 +36,7 @@ public class RoleController {
     }
 
     @Operation(summary = "Update role")
-    @PostMapping("/update")
+    @PutMapping("/update")
     public ApiResponse<RoleResponse> updateRole(@RequestParam Integer roleId,
                                                 @RequestBody @Valid RoleRequest request) {
         RoleResponse response = roleService.updateRole(roleId, request);
@@ -46,7 +46,7 @@ public class RoleController {
     }
 
     @Operation(summary = "Get role detail")
-    @PostMapping("/{id}")
+    @GetMapping("/{id}")
     public ApiResponse<RoleResponse> viewDetailRole(@PathVariable Integer id) {
         RoleResponse response = roleService.getRoleById(id);
         return ApiResponse.<RoleResponse>builder()
@@ -68,7 +68,7 @@ public class RoleController {
     }
 
     @Operation(summary = "Toggle role status (activate/deactivate)")
-    @PostMapping("/{id}/change-status")
+    @PatchMapping("/{id}/change-status")
     public ApiResponse<RoleResponse> changeRoleStatus(@PathVariable Integer id) {
         RoleResponse response = roleService.changeRoleStatus(id);
         return ApiResponse.<RoleResponse>builder()
