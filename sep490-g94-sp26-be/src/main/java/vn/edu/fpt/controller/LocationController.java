@@ -37,7 +37,7 @@ public class LocationController {
     }
 
     @Operation(summary = "Cập nhật địa điểm")
-    @PostMapping("/update")
+    @PutMapping("/update")
     public ApiResponse<LocationResponse> updateLocation(@RequestParam Integer locationId,
                                                         @RequestBody @Valid LocationRequest request) {
         LocationResponse response = locationService.updateLocation(locationId, request);
@@ -69,7 +69,7 @@ public class LocationController {
     }
 
     @Operation(summary = "Thay đổi status (bật/tắt) địa điểm")
-    @PostMapping("/{id}/change-status")
+    @PatchMapping("/{id}/change-status")
     public ApiResponse<LocationResponse> changeLocationStatus(@PathVariable Integer id) {
         LocationResponse response = locationService.changeLocationStatus(id);
         return ApiResponse.<LocationResponse>builder()

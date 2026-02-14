@@ -45,7 +45,7 @@ public class UserController {
     }
 
     @Operation(summary = "Thay đổi status (bật tắt) tai khoan nguoi dung ")
-    @PostMapping("/{id}/change-status")
+    @PatchMapping("/{id}/change-status")
     public ApiResponse<UserResponse> changeStatus(@PathVariable Integer id) {
         UserResponse response = userService.changeStatus(id);
         return ApiResponse.<UserResponse>builder()
@@ -62,7 +62,7 @@ public class UserController {
                 .build();
     }
     @Operation(summary = "Cập nhật tài khoản người dùng")
-    @PostMapping("/{id}/update")
+    @PutMapping("/{id}/update")
     public ApiResponse<UserResponse> updateLead(@RequestBody @Valid UserRequest request,
                                                 @PathVariable Integer id) {
         UserResponse response = userService.updateUser(id,request);

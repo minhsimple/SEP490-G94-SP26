@@ -40,7 +40,7 @@ public class LeadController {
                 .build();
     }
     @Operation(summary = "Cập nhật khách hàng tiềm năng mới")
-    @PostMapping("/update")
+    @PutMapping("/update")
     public ApiResponse<LeadResponse> updateLead(@RequestBody @Valid LeadRequest request,
                                                 @RequestParam Integer leadId) {
         LeadResponse response = leadService.updateLead(leadId,request);
@@ -49,7 +49,7 @@ public class LeadController {
                 .build();
     }
     @Operation(summary = "Xem chi tiết thông tin khách hàng tiềm năng ")
-    @PostMapping("/{id}")
+    @GetMapping("/{id}")
     public ApiResponse<LeadResponse> viewDetailLead(@PathVariable Integer id) {
         LeadResponse response = leadService.getLeadById(id);
         return ApiResponse.<LeadResponse>builder()
@@ -69,7 +69,7 @@ public class LeadController {
                 .build();
     }
     @Operation(summary = "Thay đổi status (bật tắt) khách hàng tiềm năng ")
-    @PostMapping("/{id}/change-status")
+    @PatchMapping("/{id}/change-status")
     public ApiResponse<LeadResponse> changeStatusLead(@PathVariable Integer id) {
         LeadResponse response = leadService.changeStatusLead(id);
         return ApiResponse.<LeadResponse>builder()
