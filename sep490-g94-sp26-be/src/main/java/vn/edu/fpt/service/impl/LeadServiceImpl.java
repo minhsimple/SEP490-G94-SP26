@@ -68,8 +68,8 @@ public class LeadServiceImpl implements LeadService {
         LeadResponse response = leadMapper.toResponse(lead);
 
         if (lead.getLocationId() != null) {
-            response.setLocationName(locationRepository.findByIdAndStatus(lead.getLocationId(),
-                    RecordStatus.active).getName());
+            locationRepository.findByIdAndStatus(lead.getLocationId(), RecordStatus.active)
+                    .ifPresent(location -> response.setLocationName(location.getName()));
         }
 
         return response;

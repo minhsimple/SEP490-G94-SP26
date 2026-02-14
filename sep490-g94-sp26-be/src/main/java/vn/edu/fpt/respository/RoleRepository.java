@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface RoleRepository extends JpaRepository<Role, Integer> {
+public interface RoleRepository extends BaseRepository<Role, Integer> {
     @Override
     Optional<Role> findById(Integer id);
 
@@ -25,6 +25,5 @@ public interface RoleRepository extends JpaRepository<Role, Integer> {
 
     Optional<Role> findRoleByCode(String code);
 
-    RoleResponse changeRoleStatus(Integer id);
 
 }
