@@ -32,9 +32,9 @@ public class UserController {
     UserService userService;
 
     @Operation(summary = "Xem danh sách tai khoan nguoi dung ")
-    @PostMapping("/search")
+    @GetMapping("/search")
     public ApiResponse<SimplePage<UserResponse>> getAll(
-            @RequestBody @Valid UserFilterRequest filter,
+            @Valid UserFilterRequest filter,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
                     direction = Sort.Direction.DESC

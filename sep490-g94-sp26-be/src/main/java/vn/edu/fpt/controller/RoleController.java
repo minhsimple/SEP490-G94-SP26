@@ -55,9 +55,9 @@ public class RoleController {
     }
 
     @Operation(summary = "Search roles")
-    @PostMapping("/search")
+    @GetMapping("/search")
     public ApiResponse<SimplePage<RoleResponse>> getAllRoles(
-            @RequestBody @Valid RoleRequest filter,
+            @Valid RoleRequest filter,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
                     direction = Sort.Direction.DESC

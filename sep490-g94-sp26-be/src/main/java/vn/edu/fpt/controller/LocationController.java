@@ -56,9 +56,9 @@ public class LocationController {
     }
 
     @Operation(summary = "Xem danh sách địa điểm")
-    @PostMapping("/search")
+    @GetMapping("/search")
     public ApiResponse<SimplePage<LocationResponse>> getAllLocation(
-            @RequestBody @Valid LocationRequest filter,
+            @Valid LocationRequest filter,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
                     direction = Sort.Direction.DESC

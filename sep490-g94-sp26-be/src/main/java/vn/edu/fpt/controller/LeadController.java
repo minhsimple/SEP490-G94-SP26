@@ -57,9 +57,9 @@ public class LeadController {
                 .build();
     }
     @Operation(summary = "Xem danh sách khách hàng tiềm năng ")
-    @PostMapping("/search")
+    @GetMapping("/search")
     public ApiResponse<SimplePage<LeadResponse>> getAll(
-            @RequestBody @Valid LeadsFilterRequest filter,
+            @Valid LeadsFilterRequest filter,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
                     direction = Sort.Direction.DESC
