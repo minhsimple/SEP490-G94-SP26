@@ -64,7 +64,7 @@ public class CustomerController {
     @GetMapping("/search")
     public ApiResponse<SimplePage<CustomerResponse>> getAllCustomers(
             @AuthenticationPrincipal UserDetails userDetails,
-            @Valid @RequestBody CustomersFilterRequest filterRequest,
+            @Valid CustomersFilterRequest filterRequest,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
                     direction = Sort.Direction.DESC)

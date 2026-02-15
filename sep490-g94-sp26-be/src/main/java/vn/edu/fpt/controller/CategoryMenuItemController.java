@@ -65,7 +65,7 @@ public class CategoryMenuItemController {
     @Operation(summary = "Xem danh sách danh mục món ăn")
     @GetMapping("/search")
     public ApiResponse<SimplePage<CategoryMenuItemResponse>> getAllCategoryMenuItems(
-            @Valid @RequestBody CategoryMenuItemFilterRequest filterRequest,
+            @Valid CategoryMenuItemFilterRequest filterRequest,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
             sort = Constants.SORT.SORT_BY,
             direction = Sort.Direction.DESC)
