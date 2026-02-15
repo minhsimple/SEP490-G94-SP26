@@ -64,6 +64,12 @@ public enum ERROR_CODE {
     LOCATION_EXISTED(7002, "Địa điểm đã tồn tại", HttpStatus.BAD_REQUEST),
 
     /**
+     * Category Menu Item Error
+     */
+    CATEGORY_MENU_ITEM_NOT_EXISTED(8001, "Danh mục món ăn không tồn tại", HttpStatus.NOT_FOUND),
+    CATEGORY_MENU_ITEM_EXISTED(8002, "Danh mục món ăn đã tồn tại", HttpStatus.BAD_REQUEST),
+
+    /**
      * Other Error
      */
     INVALID_REQUEST(10000,"Request không hợp lệ" , HttpStatus.BAD_REQUEST);
