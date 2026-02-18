@@ -25,8 +25,4 @@ public interface MenuItemMapper {
     @Mapping(target = "location", source = "location")
     @Mapping(target = "categoryMenuItem", source = "categoryMenuItem")
     MenuItemResponse toResponse(MenuItem menuItem, Location location, CategoryMenuItem categoryMenuItem);
-
-    MenuItemResponse.Location toLocationResponse(Location location);
-
-    MenuItemResponse.CategoryMenuItem toCategoryMenuItemResponse(CategoryMenuItem categoryMenuItem);
 }
