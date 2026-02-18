@@ -31,6 +31,9 @@ public class MenuItem extends BaseEntity {
     @Column(name = "category_menu_items_id", nullable = false)
     Integer categoryMenuItemsId;
 
+    @Column(name = "location_id", nullable = false)
+    Integer locationId;
+
     @Column(name = "unit_price", nullable = false, precision = 12, scale = 2)
     BigDecimal unitPrice = BigDecimal.ZERO;
 
