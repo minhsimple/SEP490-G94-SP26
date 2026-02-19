@@ -76,9 +76,14 @@ public enum ERROR_CODE {
         MENU_ITEM_EXISTED(9002, "Món ăn đã tồn tại", HttpStatus.BAD_REQUEST),
 
     /**
+     * Set Menu Error
+     */
+    SET_MENU_LOCATION_NOT_MATCH_MENU_ITEM(10001, "Set menu có món ăn không thuộc chi nhánh", HttpStatus.BAD_REQUEST),
+
+    /**
      * Other Error
      */
-    INVALID_REQUEST(10000,"Request không hợp lệ" , HttpStatus.BAD_REQUEST);
+    INVALID_REQUEST(20000,"Request không hợp lệ" , HttpStatus.BAD_REQUEST);
 
     ERROR_CODE(int code, String message, HttpStatusCode statusCode) {
         this.code = code;
