@@ -30,6 +30,9 @@ public class SetMenuItem extends BaseEntity {
     @Column(name = "course_order", nullable = false)
     Integer courseOrder = 1;
 
+    @Column(name = "quantity", nullable = false)
+    Integer quantity;
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
