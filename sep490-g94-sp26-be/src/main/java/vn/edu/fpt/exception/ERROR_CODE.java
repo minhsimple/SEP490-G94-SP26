@@ -79,6 +79,9 @@ public enum ERROR_CODE {
      * Set Menu Error
      */
     SET_MENU_LOCATION_NOT_MATCH_MENU_ITEM(10001, "Set menu có món ăn không thuộc chi nhánh", HttpStatus.BAD_REQUEST),
+    SET_MENU_NOT_EXISTED(10002, "Set menu không tồn tại", HttpStatus.NOT_FOUND),
+    SET_MENU_EXISTED(10003, "Set menu đã tồn tại", HttpStatus.BAD_REQUEST),
+
 
     /**
      * Other Error

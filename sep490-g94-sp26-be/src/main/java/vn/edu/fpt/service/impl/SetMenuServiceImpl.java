@@ -1,9 +1,15 @@
 package vn.edu.fpt.service.impl;
 
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import vn.edu.fpt.dto.SimplePage;
+import vn.edu.fpt.dto.request.setmenu.SetMenuFilterRequest;
 import vn.edu.fpt.dto.request.setmenu.SetMenuRequest;
 import vn.edu.fpt.dto.response.setmenu.SetMenuResponse;
 import vn.edu.fpt.entity.*;
@@ -12,12 +18,10 @@ import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.SetMenuService;
+import vn.edu.fpt.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -63,6 +67,92 @@ public class SetMenuServiceImpl implements SetMenuService {
         setMenuItems = setMenuItemRepository.saveAll(setMenuItems);
 
         return mapToSetMenuResponse(setMenu, location, setMenuItems);
+    }
+
+    @Override
+    public SetMenuResponse getSetMenuById(Integer id) {
+        SetMenu setMenu = setMenuRepository.findSetMenuByIdAndStatus(id, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
+        Location location = locationRepository.findById(setMenu.getLocationId())
+                .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
+        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuId(setMenu.getId());
+
+        return mapToSetMenuResponse(setMenu, location, setMenuItemList);
+    }
+
+    @Override
+    public SimplePage<SetMenuResponse> getAllSetMenu(Pageable pageable, SetMenuFilterRequest filterRequest) {
+        Specification<SetMenu> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if(!StringUtils.isNullOrEmptyOrBlank(filterRequest.getCode())) {
+                predicates.add(cb.like(
+                  cb.lower(root.get("code")), "%" + filterRequest.getCode().toLowerCase() + "%"
+                ));
+            }
+            if(!StringUtils.isNullOrEmptyOrBlank(filterRequest.getName())) {
+                predicates.add(cb.like(
+                        cb.lower(root.get("name")), "%" + filterRequest.getName().toLowerCase() + "%"
+                ));
+            }
+            if(!StringUtils.isNullOrEmptyOrBlank(filterRequest.getDescription())) {
+                predicates.add(cb.like(
+                        cb.lower(root.get("description")), "%" + filterRequest.getDescription().toLowerCase() + "%"
+                ));
+            }
+            if(filterRequest.getLocationId() != null) {
+                predicates.add(cb.equal(
+                        root.get("locationId"),
+                        filterRequest.getLocationId()
+                ));
+            }
+            if(filterRequest.getUpperBoundSetPrice() != null && filterRequest.getLowerBoundSetPrice() != null) {
+                predicates.add(
+                        cb.between(root.get("setPrice"), filterRequest.getLowerBoundSetPrice(), filterRequest.getUpperBoundSetPrice())
+                );
+            } else if(filterRequest.getUpperBoundSetPrice() != null) {
+                predicates.add(
+                        cb.lessThanOrEqualTo(root.get("setPrice"), filterRequest.getUpperBoundSetPrice())
+                );
+            } else if(filterRequest.getLowerBoundSetPrice() != null) {
+                predicates.add(
+                        cb.greaterThanOrEqualTo(root.get("setPrice"), filterRequest.getLowerBoundSetPrice())
+                );
+            }
+            predicates.add(cb.equal(root.get("status"), RecordStatus.active));
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<SetMenu> setMenuPage = setMenuRepository.findAll(spec, pageable);
+        List<SetMenu> setMenuList = setMenuPage.getContent();
+
+        Map<Integer, Location> locationMap = locationRepository.findAllById(setMenuList.stream()
+                        .map(SetMenu::getLocationId)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(Location::getId, location -> location));
+
+        Map<Integer, List<SetMenuItem>> setMenuItemsMap = setMenuItemRepository.findAllBySetMenuIdIn(setMenuList.stream()
+                        .map(SetMenu::getId)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.groupingBy(SetMenuItem::getSetMenuId));
+
+        List<SetMenuResponse> setMenuResponseList = setMenuList.stream()
+                .map(setMenu -> {
+                    Location location = locationMap.get(setMenu.getLocationId());
+                    List<SetMenuItem> setMenuItemList = setMenuItemsMap.getOrDefault(setMenu.getId(), Collections.emptyList());
+                    return mapToSetMenuResponse(setMenu, location, setMenuItemList);
+                })
+                .toList();
+
+
+        return new SimplePage<>(
+                setMenuResponseList,
+                setMenuPage.getTotalElements(),
+                pageable
+        );
     }
 
     private SetMenuResponse mapToSetMenuResponse(SetMenu setMenu, Location location, List<SetMenuItem> setMenuItemList) {
@@ -142,7 +232,7 @@ public class SetMenuServiceImpl implements SetMenuService {
         for(MenuItem menuItem : menuItemList) {
             if(!Objects.equals(menuItem.getLocationId(), setMenuRequest.getLocationId())) {
                 throw new AppException(ERROR_CODE.SET_MENU_LOCATION_NOT_MATCH_MENU_ITEM,
-                        "Menu item " + menuItem.getName() + " does not belong to location " + setMenuRequest.getLocationId());
+                        " Menu item " + menuItem.getName() + " does not belong to location " + setMenuRequest.getLocationId());
             }
         }
     }
