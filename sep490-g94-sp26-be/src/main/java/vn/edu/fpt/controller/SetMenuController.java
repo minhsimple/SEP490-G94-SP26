@@ -57,4 +57,13 @@ public class SetMenuController {
                 .data(setMenuService.getAllSetMenu(pageable, filterRequest))
                 .build();
     }
+
+    @Operation(summary = "Thay đổi trạng thái set menu")
+    @PutMapping("/{setMenuId}/change-status")
+    public ApiResponse<SetMenuResponse> changeStatusSetMenu(@PathVariable Integer setMenuId) {
+        SetMenuResponse setMenuResponse = setMenuService.changeStatusSetMenu(setMenuId);
+        return ApiResponse.<SetMenuResponse>builder()
+                .data(setMenuResponse)
+                .build();
+    }
 }

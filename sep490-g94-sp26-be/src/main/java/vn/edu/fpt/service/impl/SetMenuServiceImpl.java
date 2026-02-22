@@ -39,7 +39,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .findByIdAndStatus(setMenuRequest.getLocationId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
 
-        if(!CollectionUtils.isEmpty(setMenuRequest.getMenuItems())) {
+        if (!CollectionUtils.isEmpty(setMenuRequest.getMenuItems())) {
             validateMenuItems(setMenuRequest);
         }
 
@@ -85,36 +85,36 @@ public class SetMenuServiceImpl implements SetMenuService {
         Specification<SetMenu> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            if(!StringUtils.isNullOrEmptyOrBlank(filterRequest.getCode())) {
+            if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getCode())) {
                 predicates.add(cb.like(
-                  cb.lower(root.get("code")), "%" + filterRequest.getCode().toLowerCase() + "%"
+                        cb.lower(root.get("code")), "%" + filterRequest.getCode().toLowerCase() + "%"
                 ));
             }
-            if(!StringUtils.isNullOrEmptyOrBlank(filterRequest.getName())) {
+            if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getName())) {
                 predicates.add(cb.like(
                         cb.lower(root.get("name")), "%" + filterRequest.getName().toLowerCase() + "%"
                 ));
             }
-            if(!StringUtils.isNullOrEmptyOrBlank(filterRequest.getDescription())) {
+            if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getDescription())) {
                 predicates.add(cb.like(
                         cb.lower(root.get("description")), "%" + filterRequest.getDescription().toLowerCase() + "%"
                 ));
             }
-            if(filterRequest.getLocationId() != null) {
+            if (filterRequest.getLocationId() != null) {
                 predicates.add(cb.equal(
                         root.get("locationId"),
                         filterRequest.getLocationId()
                 ));
             }
-            if(filterRequest.getUpperBoundSetPrice() != null && filterRequest.getLowerBoundSetPrice() != null) {
+            if (filterRequest.getUpperBoundSetPrice() != null && filterRequest.getLowerBoundSetPrice() != null) {
                 predicates.add(
                         cb.between(root.get("setPrice"), filterRequest.getLowerBoundSetPrice(), filterRequest.getUpperBoundSetPrice())
                 );
-            } else if(filterRequest.getUpperBoundSetPrice() != null) {
+            } else if (filterRequest.getUpperBoundSetPrice() != null) {
                 predicates.add(
                         cb.lessThanOrEqualTo(root.get("setPrice"), filterRequest.getUpperBoundSetPrice())
                 );
-            } else if(filterRequest.getLowerBoundSetPrice() != null) {
+            } else if (filterRequest.getLowerBoundSetPrice() != null) {
                 predicates.add(
                         cb.greaterThanOrEqualTo(root.get("setPrice"), filterRequest.getLowerBoundSetPrice())
                 );
@@ -155,6 +155,25 @@ public class SetMenuServiceImpl implements SetMenuService {
         );
     }
 
+    @Transactional
+    @Override
+    public SetMenuResponse changeStatusSetMenu(Integer id) {
+        SetMenu setMenu = setMenuRepository.findById(id)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
+
+        if (setMenu.getStatus() == RecordStatus.active) {
+            setMenu.setStatus(RecordStatus.inactive);
+        } else {
+            setMenu.setStatus(RecordStatus.active);
+        }
+
+        Location location = locationRepository.findById(setMenu.getLocationId())
+                .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
+        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuId(setMenu.getId());
+
+        return mapToSetMenuResponse(setMenu, location, setMenuItemList);
+    }
+
     private SetMenuResponse mapToSetMenuResponse(SetMenu setMenu, Location location, List<SetMenuItem> setMenuItemList) {
         SetMenuResponse setMenuResponse = new SetMenuResponse();
         setMenuResponse.setId(setMenu.getId());
@@ -169,7 +188,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .collect(Collectors.toSet());
 
         List<MenuItem> menuItemList = menuItemRepository.findAllByIdInAndStatus(menuItemIds, RecordStatus.active);
-        Set<Integer>  categoryMenuItemIds = menuItemList.stream()
+        Set<Integer> categoryMenuItemIds = menuItemList.stream()
                 .map(MenuItem::getCategoryMenuItemsId)
                 .collect(Collectors.toSet());
 
@@ -183,7 +202,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                             .filter(item -> Objects.equals(item.getMenuItemId(), menuItem.getId()))
                             .findFirst()
                             .orElse(null);
-                    if(setMenuItem == null) {
+                    if (setMenuItem == null) {
                         return null;
                     }
                     return new SetMenuResponse.MenuItem(
@@ -229,8 +248,8 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .map(SetMenuRequest.MenuItem::getId)
                 .collect(Collectors.toSet());
         List<MenuItem> menuItemList = menuItemRepository.findAllByIdInAndStatus(menuItemIds, RecordStatus.active);
-        for(MenuItem menuItem : menuItemList) {
-            if(!Objects.equals(menuItem.getLocationId(), setMenuRequest.getLocationId())) {
+        for (MenuItem menuItem : menuItemList) {
+            if (!Objects.equals(menuItem.getLocationId(), setMenuRequest.getLocationId())) {
                 throw new AppException(ERROR_CODE.SET_MENU_LOCATION_NOT_MATCH_MENU_ITEM,
                         " Menu item " + menuItem.getName() + " does not belong to location " + setMenuRequest.getLocationId());
             }
