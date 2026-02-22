@@ -10,4 +10,5 @@ public interface SetMenuService {
     SetMenuResponse createNewSetMenu(SetMenuRequest setMenuRequest);
     SetMenuResponse getSetMenuById(Integer id);
     SimplePage<SetMenuResponse> getAllSetMenu(Pageable pageable, SetMenuFilterRequest filterRequest);
+    SetMenuResponse changeStatusSetMenu(Integer id);
 }
