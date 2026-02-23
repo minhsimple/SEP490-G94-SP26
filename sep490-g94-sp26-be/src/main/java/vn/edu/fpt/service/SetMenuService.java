@@ -11,4 +11,5 @@ public interface SetMenuService {
     SetMenuResponse getSetMenuById(Integer id);
     SimplePage<SetMenuResponse> getAllSetMenu(Pageable pageable, SetMenuFilterRequest filterRequest);
     SetMenuResponse changeStatusSetMenu(Integer id);
+    SetMenuResponse removeMenuItemFromSetMenu(Integer setMenuId, Integer menuItemId);
 }

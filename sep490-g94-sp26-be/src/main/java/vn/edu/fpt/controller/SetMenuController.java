@@ -66,4 +66,14 @@ public class SetMenuController {
                 .data(setMenuResponse)
                 .build();
     }
+
+    @Operation(summary = "Xóa món ăn khỏi set menu")
+    @DeleteMapping("/{setMenuId}/menu-item/{menuItemId}")
+    public ApiResponse<SetMenuResponse> removeMenuItemFromSetMenu(@PathVariable Integer setMenuId,
+                                                                  @PathVariable Integer menuItemId) {
+        SetMenuResponse setMenuResponse = setMenuService.removeMenuItemFromSetMenu(setMenuId, menuItemId);
+        return ApiResponse.<SetMenuResponse>builder()
+                .data(setMenuResponse)
+                .build();
+    }
 }

@@ -73,7 +73,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
         Location location = locationRepository.findById(setMenu.getLocationId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
-        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuId(setMenu.getId());
+        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
 
         return mapToSetMenuResponse(setMenu, location, setMenuItemList);
     }
@@ -131,9 +131,9 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .stream()
                 .collect(Collectors.toMap(Location::getId, location -> location));
 
-        Map<Integer, List<SetMenuItem>> setMenuItemsMap = setMenuItemRepository.findAllBySetMenuIdIn(setMenuList.stream()
+        Map<Integer, List<SetMenuItem>> setMenuItemsMap = setMenuItemRepository.findAllBySetMenuIdInAndStatus(setMenuList.stream()
                         .map(SetMenu::getId)
-                        .collect(Collectors.toSet()))
+                        .collect(Collectors.toSet()), RecordStatus.active)
                 .stream()
                 .collect(Collectors.groupingBy(SetMenuItem::getSetMenuId));
 
@@ -167,7 +167,24 @@ public class SetMenuServiceImpl implements SetMenuService {
 
         Location location = locationRepository.findById(setMenu.getLocationId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
-        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuId(setMenu.getId());
+        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
+
+        return mapToSetMenuResponse(setMenu, location, setMenuItemList);
+    }
+
+    @Transactional
+    @Override
+    public SetMenuResponse removeMenuItemFromSetMenu(Integer setMenuId, Integer menuItemId) {
+        SetMenuItem setMenuItem = setMenuItemRepository.findByIdAndStatus(new SetMenuItem.SetMenuItemId(setMenuId, menuItemId), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_ITEM_NOT_EXISTED));
+
+        setMenuItem.setStatus(RecordStatus.inactive);
+
+        SetMenu setMenu = setMenuRepository.findSetMenuByIdAndStatus(setMenuId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
+        Location location = locationRepository.findById(setMenu.getLocationId())
+                .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
+        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
 
         return mapToSetMenuResponse(setMenu, location, setMenuItemList);
     }

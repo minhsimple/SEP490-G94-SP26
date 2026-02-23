@@ -82,11 +82,15 @@ public enum ERROR_CODE {
     SET_MENU_NOT_EXISTED(10002, "Set menu không tồn tại", HttpStatus.NOT_FOUND),
     SET_MENU_EXISTED(10003, "Set menu đã tồn tại", HttpStatus.BAD_REQUEST),
 
+    /**
+     * Set Menu Item Error
+     */
+    SET_MENU_ITEM_NOT_EXISTED(20001, "Món ăn trong set menu không tồn tại", HttpStatus.NOT_FOUND),
 
     /**
      * Other Error
      */
-    INVALID_REQUEST(20000,"Request không hợp lệ" , HttpStatus.BAD_REQUEST);
+    INVALID_REQUEST(30000,"Request không hợp lệ" , HttpStatus.BAD_REQUEST);
 
     ERROR_CODE(int code, String message, HttpStatusCode statusCode) {
         this.code = code;
