@@ -84,6 +84,15 @@ public enum ERROR_CODE {
 
 
     /**
+     * Service Error
+     */
+    SERVICE_NOT_EXISTED(11001, "Dịch vụ không tồn tại", HttpStatus.NOT_FOUND),
+    SERVICE_EXISTED(11002, "Dịch vụ đã tồn tại", HttpStatus.BAD_REQUEST),
+    SERVICE_PACKAGE_NOT_FOUND(11003,"Gói dịch vụ không tồn tai" , HttpStatus.BAD_REQUEST),
+
+
+
+    /**
      * Other Error
      */
     INVALID_REQUEST(20000,"Request không hợp lệ" , HttpStatus.BAD_REQUEST);
