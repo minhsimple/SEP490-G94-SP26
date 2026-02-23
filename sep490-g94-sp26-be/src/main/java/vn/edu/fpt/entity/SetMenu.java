@@ -31,8 +31,5 @@ public class SetMenu extends BaseEntity {
 
     @Column(name = "location_id", nullable = false)
     Integer locationId;
-
-    @Column(name = "set_price", nullable = false, precision = 12, scale = 2)
-    BigDecimal setPrice = BigDecimal.ZERO;
 }
 
