@@ -48,8 +48,6 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .name(setMenuRequest.getName())
                 .description(setMenuRequest.getDescription())
                 .locationId(setMenuRequest.getLocationId())
-                .setPrice(!CollectionUtils.isEmpty(setMenuRequest.getMenuItems()) ?
-                        calculateSetPrice(setMenuRequest.getMenuItems()) : BigDecimal.ZERO)
                 .build();
 
         Integer setMenuId = setMenuRepository.save(setMenu).getId();
@@ -75,7 +73,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
         Location location = locationRepository.findById(setMenu.getLocationId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
-        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuId(setMenu.getId());
+        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
 
         return mapToSetMenuResponse(setMenu, location, setMenuItemList);
     }
@@ -133,9 +131,9 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .stream()
                 .collect(Collectors.toMap(Location::getId, location -> location));
 
-        Map<Integer, List<SetMenuItem>> setMenuItemsMap = setMenuItemRepository.findAllBySetMenuIdIn(setMenuList.stream()
+        Map<Integer, List<SetMenuItem>> setMenuItemsMap = setMenuItemRepository.findAllBySetMenuIdInAndStatus(setMenuList.stream()
                         .map(SetMenu::getId)
-                        .collect(Collectors.toSet()))
+                        .collect(Collectors.toSet()), RecordStatus.active)
                 .stream()
                 .collect(Collectors.groupingBy(SetMenuItem::getSetMenuId));
 
@@ -169,7 +167,24 @@ public class SetMenuServiceImpl implements SetMenuService {
 
         Location location = locationRepository.findById(setMenu.getLocationId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
-        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuId(setMenu.getId());
+        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
+
+        return mapToSetMenuResponse(setMenu, location, setMenuItemList);
+    }
+
+    @Transactional
+    @Override
+    public SetMenuResponse removeMenuItemFromSetMenu(Integer setMenuId, Integer menuItemId) {
+        SetMenuItem setMenuItem = setMenuItemRepository.findByIdAndStatus(new SetMenuItem.SetMenuItemId(setMenuId, menuItemId), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_ITEM_NOT_EXISTED));
+
+        setMenuItem.setStatus(RecordStatus.inactive);
+
+        SetMenu setMenu = setMenuRepository.findSetMenuByIdAndStatus(setMenuId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
+        Location location = locationRepository.findById(setMenu.getLocationId())
+                .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
+        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
 
         return mapToSetMenuResponse(setMenu, location, setMenuItemList);
     }
@@ -180,7 +195,6 @@ public class SetMenuServiceImpl implements SetMenuService {
         setMenuResponse.setCode(setMenu.getCode());
         setMenuResponse.setName(setMenu.getName());
         setMenuResponse.setDescription(setMenu.getDescription());
-        setMenuResponse.setSetPrice(setMenu.getSetPrice());
         setMenuResponse.setLocation(new SetMenuResponse.Location(location.getId(), location.getName()));
 
         Set<Integer> menuItemIds = setMenuItemList.stream()
@@ -191,6 +205,8 @@ public class SetMenuServiceImpl implements SetMenuService {
         Set<Integer> categoryMenuItemIds = menuItemList.stream()
                 .map(MenuItem::getCategoryMenuItemsId)
                 .collect(Collectors.toSet());
+
+        setMenuResponse.setSetPrice(calculateSetPrice(setMenuItemList, menuItemList));
 
         Map<Integer, String> categoryMenuItemMap = categoryMenuItemRepository.findAllById(categoryMenuItemIds)
                 .stream()
@@ -225,21 +241,18 @@ public class SetMenuServiceImpl implements SetMenuService {
         return setMenuResponse;
     }
 
-    private BigDecimal calculateSetPrice(List<SetMenuRequest.MenuItem> menuItems) {
-        Set<Integer> menuItemIds = menuItems.stream()
-                .map(SetMenuRequest.MenuItem::getId)
-                .collect(Collectors.toSet());
-        List<MenuItem> menuItemList = menuItemRepository.findAllByIdInAndStatus(menuItemIds, RecordStatus.active);
-        return menuItemList.stream()
-                .map(menuItem -> {
-                    Integer quantity = menuItems.stream()
-                            .filter(item -> Objects.equals(item.getId(), menuItem.getId()))
-                            .findFirst()
-                            .map(SetMenuRequest.MenuItem::getQuantity)
-                            .orElse(0);
-                    return menuItem.getUnitPrice().multiply(BigDecimal.valueOf(quantity));
-                })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    private BigDecimal calculateSetPrice(List<SetMenuItem> setMenuItemList, List<MenuItem> menuItemList) {
+        Map<Integer, MenuItem> menuItemMap = menuItemList.stream()
+                .collect(Collectors.toMap(MenuItem::getId, menuItem -> menuItem));
+
+        BigDecimal setPrice = BigDecimal.ZERO;
+        for (SetMenuItem setMenuItem : setMenuItemList) {
+            MenuItem menuItem = menuItemMap.get(setMenuItem.getMenuItemId());
+            if (menuItem != null) {
+                setPrice = setPrice.add(menuItem.getUnitPrice().multiply(BigDecimal.valueOf(setMenuItem.getQuantity())));
+            }
+        }
+        return setPrice;
     }
 
     private void validateMenuItems(SetMenuRequest setMenuRequest) {
