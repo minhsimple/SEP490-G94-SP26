@@ -88,6 +88,20 @@ public enum ERROR_CODE {
     SET_MENU_ITEM_NOT_EXISTED(20001, "Món ăn trong set menu không tồn tại", HttpStatus.NOT_FOUND),
 
     /**
+     * Service Error
+     */
+    SERVICE_NOT_EXISTED(11001, "Dịch vụ không tồn tại", HttpStatus.NOT_FOUND),
+    SERVICE_EXISTED(11002, "Dịch vụ đã tồn tại", HttpStatus.BAD_REQUEST),
+    SERVICE_PACKAGE_NOT_FOUND(11003,"Gói dịch vụ không tồn tai" , HttpStatus.BAD_REQUEST),
+
+    /**
+     * Hall Error
+     */
+    HALL_NOT_EXISTED(12001, "Hội trường không tồn tại", HttpStatus.NOT_FOUND),
+    HALL_EXISTED(12002, "Hội trường đã tồn tại", HttpStatus.BAD_REQUEST),
+
+
+    /**
      * Other Error
      */
     INVALID_REQUEST(30000,"Request không hợp lệ" , HttpStatus.BAD_REQUEST);

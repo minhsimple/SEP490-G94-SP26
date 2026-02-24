@@ -18,4 +18,8 @@ public interface LocationRepository extends BaseRepository<Location, Integer> {
 
     Boolean existsByCodeAndStatus(String code, RecordStatus status);
 
+    Boolean existsByCodeAndStatusAndIdNot(String code, RecordStatus status, Integer id);
+
+    Boolean existsByIdAndStatus(Integer id, RecordStatus status);
+
 }

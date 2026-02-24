@@ -11,4 +11,8 @@ public class AppValidationException extends RuntimeException {
     public AppValidationException(Map<String, String> fieldErrors) {
         this.fieldErrors = fieldErrors;
     }
+
+    public Map<String, String> getFieldErrors() {
+        return fieldErrors;
+    }
 }
