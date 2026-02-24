@@ -94,6 +94,11 @@ public enum ERROR_CODE {
     SERVICE_EXISTED(11002, "Dịch vụ đã tồn tại", HttpStatus.BAD_REQUEST),
     SERVICE_PACKAGE_NOT_FOUND(11003,"Gói dịch vụ không tồn tai" , HttpStatus.BAD_REQUEST),
 
+    /**
+     * Hall Error
+     */
+    HALL_NOT_EXISTED(12001, "Hội trường không tồn tại", HttpStatus.NOT_FOUND),
+    HALL_EXISTED(12002, "Hội trường đã tồn tại", HttpStatus.BAD_REQUEST),
 
 
     /**

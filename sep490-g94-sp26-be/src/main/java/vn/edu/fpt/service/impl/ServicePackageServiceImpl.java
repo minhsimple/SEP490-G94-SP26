@@ -1,10 +1,14 @@
 package vn.edu.fpt.service.impl;
 
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
+import vn.edu.fpt.dto.request.servicepackage.ServicePackageFilterRequest;
 import vn.edu.fpt.dto.request.servicepackage.ServicePackageRequest;
 import vn.edu.fpt.dto.response.servicepackage.ServicePackageResponse;
 import vn.edu.fpt.entity.Location;
@@ -14,19 +18,16 @@ import vn.edu.fpt.entity.Services;
 import vn.edu.fpt.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
-//import vn.edu.fpt.mapper.ServicePackageMapper;
 import vn.edu.fpt.mapper.ServicePackageMapper;
 import vn.edu.fpt.respository.LocationRepository;
 import vn.edu.fpt.respository.PackageServiceRepository;
 import vn.edu.fpt.respository.ServiceItemRepository;
 import vn.edu.fpt.respository.ServicePackageRepository;
 import vn.edu.fpt.service.ServicePackageService;
+import vn.edu.fpt.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,24 +37,19 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final ServiceItemRepository serviceItemRepository;
     private final PackageServiceRepository packageServiceRepository;
     private final LocationRepository locationRepository;
-    ServicePackageMapper servicePackageMapper;
+    private final ServicePackageMapper servicePackageMapper;
 
     @Transactional
     @Override
     public ServicePackageResponse createServicePackage(ServicePackageRequest request) {
-
-
         if (servicePackageRepository.existsByCodeAndStatus(request.getCode(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.SERVICE_EXISTED);
         }
-        Location location = locationRepository.findById(request.getLocationId())
+
+        locationRepository.findById(request.getLocationId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
 
-        List<Integer> serviceIds = request.getServiceList().stream()
-                .map(ServicePackageRequest.ServiceItemRequest::getServiceId)
-                .toList();
-
-        if(!validateServiceIds( request)){
+        if (!isValidServiceIds(request)) {
             throw new AppException(ERROR_CODE.SERVICE_NOT_EXISTED);
         }
         // tạo gói dịch vụ
@@ -91,7 +87,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     }
 
     // Helper method to validate service IDs
-    public boolean validateServiceIds(ServicePackageRequest request) {
+    private boolean isValidServiceIds(ServicePackageRequest request) {
         List<Integer> serviceIds = request.getServiceList().stream()
                 .map(ServicePackageRequest.ServiceItemRequest::getServiceId)
                 .toList();
@@ -136,7 +132,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 servicePackageId)) {
             throw new AppException(ERROR_CODE.SERVICE_EXISTED);
         }
-        if(validateServiceIds(request)){
+
+        if (!isValidServiceIds(request)) {
             throw new AppException(ERROR_CODE.SERVICE_NOT_EXISTED);
         }
 
@@ -174,7 +171,17 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     public ServicePackageResponse getServicePackageDetail(Integer servicePackageId) {
-        return null;
+        ServicePackage servicePackage = servicePackageRepository
+                .findByIdAndStatus(servicePackageId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND));
+
+        Location location = locationRepository.findById(servicePackage.getLocationId())
+                .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
+
+        List<PackageService> packageServices = packageServiceRepository
+                .findByPackageIdAndStatus(servicePackageId, RecordStatus.active);
+
+        return mapToServicePackageResponse(servicePackage, location, packageServices);
     }
 
     @Override
@@ -195,7 +202,97 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     }
 
     @Override
-    public SimplePage<ServicePackageResponse> searchServicePackage(Pageable pageable) {
-        return null;
+    public SimplePage<ServicePackageResponse> searchServicePackage(Pageable pageable, ServicePackageFilterRequest filterRequest) {
+        Specification<ServicePackage> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getCode())) {
+                predicates.add(cb.like(
+                        cb.lower(root.get("code")), "%" + filterRequest.getCode().toLowerCase() + "%"
+                ));
+            }
+            if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getName())) {
+                predicates.add(cb.like(
+                        cb.lower(root.get("name")), "%" + filterRequest.getName().toLowerCase() + "%"
+                ));
+            }
+            if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getDescription())) {
+                predicates.add(cb.like(
+                        cb.lower(root.get("description")), "%" + filterRequest.getDescription().toLowerCase() + "%"
+                ));
+            }
+            if (filterRequest.getLocationId() != null) {
+                predicates.add(cb.equal(
+                        root.get("locationId"),
+                        filterRequest.getLocationId()
+                ));
+            }
+            if (filterRequest.getUpperBoundBasePrice() != null && filterRequest.getLowerBoundBasePrice() != null) {
+                predicates.add(
+                        cb.between(root.get("basePrice"), filterRequest.getLowerBoundBasePrice(), filterRequest.getUpperBoundBasePrice())
+                );
+            } else if (filterRequest.getUpperBoundBasePrice() != null) {
+                predicates.add(
+                        cb.lessThanOrEqualTo(root.get("basePrice"), filterRequest.getUpperBoundBasePrice())
+                );
+            } else if (filterRequest.getLowerBoundBasePrice() != null) {
+                predicates.add(
+                        cb.greaterThanOrEqualTo(root.get("basePrice"), filterRequest.getLowerBoundBasePrice())
+                );
+            }
+            predicates.add(cb.equal(root.get("status"), RecordStatus.active));
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<ServicePackage> servicePackagePage = servicePackageRepository.findAll(spec, pageable);
+        List<ServicePackage> servicePackageList = servicePackagePage.getContent();
+
+        // Map locations
+        Map<Integer, Location> locationMap = locationRepository.findAllById(servicePackageList.stream()
+                        .map(ServicePackage::getLocationId)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(Location::getId, location -> location));
+
+        // Build all package services for all packages
+        Map<Integer, List<PackageService>> allPackageServicesMap = new HashMap<>();
+        for (ServicePackage servicePackage : servicePackageList) {
+            List<PackageService> services = packageServiceRepository
+                    .findByPackageIdAndStatus(servicePackage.getId(), RecordStatus.active);
+            allPackageServicesMap.put(servicePackage.getId(), services);
+        }
+
+        List<ServicePackageResponse> servicePackageResponseList = servicePackageList.stream()
+                .map(servicePackage -> {
+                    Location location = locationMap.get(servicePackage.getLocationId());
+                    List<PackageService> packageServiceList = allPackageServicesMap
+                            .getOrDefault(servicePackage.getId(), Collections.emptyList());
+                    return mapToServicePackageResponse(servicePackage, location, packageServiceList);
+                })
+                .toList();
+
+        return new SimplePage<>(
+                servicePackageResponseList,
+                servicePackagePage.getTotalElements(),
+                pageable
+        );
+    }
+
+    private ServicePackageResponse mapToServicePackageResponse(
+            ServicePackage servicePackage,
+            Location location,
+            List<PackageService> packageServices) {
+
+        // Create response
+        return ServicePackageResponse.builder()
+                .id(servicePackage.getId())
+                .code(servicePackage.getCode())
+                .name(servicePackage.getName())
+                .description(servicePackage.getDescription())
+                .locationId(location.getId())
+                .basePrice(servicePackage.getBasePrice())
+                .ServiceResponseList(packageServices)
+                .build();
     }
 }

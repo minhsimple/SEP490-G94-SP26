@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
+import vn.edu.fpt.dto.request.servicepackage.ServicePackageFilterRequest;
 import vn.edu.fpt.dto.request.servicepackage.ServicePackageRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.servicepackage.ServicePackageResponse;
@@ -68,12 +69,13 @@ public class ServicePackageController {
     @Operation(summary = "Tìm kiếm / phân trang gói dịch vụ")
     @GetMapping("/search")
     public ApiResponse<SimplePage<ServicePackageResponse>> searchServicePackage(
+            @Valid ServicePackageFilterRequest filterRequest,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
                     direction = Sort.Direction.DESC)
             Pageable pageable) {
         return ApiResponse.<SimplePage<ServicePackageResponse>>builder()
-                .data(servicePackageService.searchServicePackage(pageable))
+                .data(servicePackageService.searchServicePackage(pageable, filterRequest))
                 .build();
     }
 }

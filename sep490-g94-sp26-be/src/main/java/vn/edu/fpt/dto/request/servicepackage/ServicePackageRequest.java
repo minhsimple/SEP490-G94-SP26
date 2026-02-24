@@ -31,7 +31,7 @@ public class ServicePackageRequest {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public class ServiceItemRequest {
+    public static class ServiceItemRequest {
 
         @NotNull(message = "ID dịch vụ không được để trống")
         Integer serviceId;

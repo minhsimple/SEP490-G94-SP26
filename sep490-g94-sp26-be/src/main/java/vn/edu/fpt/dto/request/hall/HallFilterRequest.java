@@ -1,22 +1,20 @@
-package vn.edu.fpt.dto.request.servicepackage;
+package vn.edu.fpt.dto.request.hall;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ServicePackageFilterRequest {
+public class HallFilterRequest {
     private String code;
     private String name;
-    private String description;
     private Integer locationId;
-    private BigDecimal lowerBoundBasePrice;
-    private BigDecimal upperBoundBasePrice;
+    private Integer minCapacity;
+    private Integer maxCapacity;
+    private String notes;
 }
 
