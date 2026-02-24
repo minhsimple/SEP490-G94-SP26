@@ -45,6 +45,13 @@ public class LocationServiceImpl implements LocationService {
     public LocationResponse updateLocation(Integer id, LocationRequest request) {
         Location location = locationRepository.findByIdAndStatus(id, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
+        if (locationRepository.existsByCodeAndStatusAndIdNot(
+                request.getCode(),
+                RecordStatus.active,
+                id
+        )) {
+            throw new AppException(ERROR_CODE.LOCATION_EXISTED);
+        }
 
         locationMapper.updateEntity(location, request);
         Location saved = locationRepository.save(location);

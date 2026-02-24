@@ -14,6 +14,7 @@ import vn.edu.fpt.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.ServiceMapper;
+import vn.edu.fpt.respository.LocationRepository;
 import vn.edu.fpt.respository.ServicePackageRepository;
 import vn.edu.fpt.respository.ServiceItemRepository;
 import vn.edu.fpt.service.ServiceItemService;
@@ -30,11 +31,17 @@ public class ServiceItemServiceImpl implements ServiceItemService {
     private final ServiceItemRepository serviceItemRepository;
     private final ServicePackageRepository servicePackageRepository;
     private final ServiceMapper serviceMapper; // Add this dependency
+    private final LocationRepository locationRepository;
 
     @Override
     public ServiceResponse createService(ServiceRequest request) {
-        if (serviceItemRepository.existsByCodeAndStatus(request.getCode(), RecordStatus.active)) {
+        if (serviceItemRepository.existsByCodeAndStatusAndLocationId(request.getCode(),
+                RecordStatus.active,
+                request.getLocationId())) {
             throw new AppException(ERROR_CODE.SERVICE_EXISTED);
+        }
+        if(!locationRepository.existsByIdAndStatus(request.getLocationId(), RecordStatus.active)){
+            throw new AppException(ERROR_CODE.LOCATION_NOT_EXISTED);
         }
 
         Services service = serviceMapper.toEntity(request);
@@ -46,6 +53,10 @@ public class ServiceItemServiceImpl implements ServiceItemService {
     public ServiceResponse updateService(Integer serviceId, ServiceRequest serviceRequest) {
         Services service = serviceItemRepository.findByIdAndStatus(serviceId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_NOT_EXISTED));
+
+        if(!locationRepository.existsByIdAndStatus(serviceRequest.getLocationId(), RecordStatus.active)){
+            throw new AppException(ERROR_CODE.LOCATION_NOT_EXISTED);
+        }
 
         serviceMapper.updateEntity(service, serviceRequest);
         Services saved = serviceItemRepository.save(service);

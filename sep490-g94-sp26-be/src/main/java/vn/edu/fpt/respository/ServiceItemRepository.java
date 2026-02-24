@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ServiceItemRepository extends BaseRepository<Services,Integer> {
-    boolean existsByCodeAndStatus(String code, RecordStatus status);
+    boolean existsByCodeAndStatusAndLocationId(String code, RecordStatus status, Integer locationId);
 
     Optional<Services> findByIdAndStatus(Integer id, RecordStatus status);
 
