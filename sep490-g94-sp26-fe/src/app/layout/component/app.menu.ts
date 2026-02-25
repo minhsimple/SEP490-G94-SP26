@@ -64,6 +64,16 @@ export class AppMenu {
                         icon: 'pi pi-fw pi-users',
                         routerLink: ['/pages/users']
                     },
+                    {
+                        label: 'Quản lý leads',
+                        icon: 'pi pi-fw pi-users',
+                        routerLink: ['/pages/leads']
+                    },
+                    {
+                        label: 'Quản lý danh khách hàng',
+                        icon: 'pi pi-fw pi-users',
+                        routerLink: ['/pages/customers']
+                    },
                     // {
                     //     label: 'Empty',
                     //     icon: 'pi pi-fw pi-circle-off',
