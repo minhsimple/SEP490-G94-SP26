@@ -45,32 +45,32 @@ interface Column {
     template: `
         <div class="card">
             <p-toast />
-            
+
             <p-toolbar styleClass="mb-6">
                 <ng-template #start>
-                    <p-button 
-                        label="Thêm người dùng mới" 
-                        icon="pi pi-plus" 
-                        severity="primary" 
-                        class="mr-2" 
-                        (onClick)="openNew()" 
+                    <p-button
+                        label="Thêm người dùng mới"
+                        icon="pi pi-plus"
+                        severity="primary"
+                        class="mr-2"
+                        (onClick)="openNew()"
                     />
-                    <p-button 
-                        severity="danger" 
-                        label="Xóa" 
-                        icon="pi pi-trash" 
-                        outlined 
-                        (onClick)="deleteSelectedUsers()" 
-                        [disabled]="!selectedUsers || !selectedUsers.length" 
+                    <p-button
+                        severity="danger"
+                        label="Xóa"
+                        icon="pi pi-trash"
+                        outlined
+                        (onClick)="deleteSelectedUsers()"
+                        [disabled]="!selectedUsers || !selectedUsers.length"
                     />
                 </ng-template>
 
                 <ng-template #end>
-                    <p-button 
-                        label="Xuất Excel" 
-                        icon="pi pi-file-excel" 
-                        severity="success" 
-                        (onClick)="exportCSV()" 
+                    <p-button
+                        label="Xuất Excel"
+                        icon="pi pi-file-excel"
+                        severity="success"
+                        (onClick)="exportCSV()"
                     />
                 </ng-template>
             </p-toolbar>
@@ -78,9 +78,12 @@ interface Column {
             <p-table
                 #dt
                 [value]="users()"
-                [rows]="10"
+                [rows]="pageSize"
                 [columns]="cols"
                 [paginator]="true"
+                [totalRecords]="totalRecords"
+                [lazy]="true"
+                (onLazyLoad)="onLazyLoad($event)"
                 [globalFilterFields]="['fullName', 'email', 'phone', 'role', 'status']"
                 [tableStyle]="{ 'min-width': '75rem' }"
                 [(selection)]="selectedUsers"
@@ -89,17 +92,18 @@ interface Column {
                 currentPageReportTemplate="Hiển thị {first} đến {last} trong tổng số {totalRecords} người dùng"
                 [showCurrentPageReport]="true"
                 [rowsPerPageOptions]="[10, 20, 30]"
+                [loading]="loading"
             >
                 <ng-template #caption>
                     <div class="flex items-center justify-between">
                         <h2 class="m-0 text-2xl font-bold">Danh sách người dùng</h2>
                         <p-iconfield>
                             <p-inputicon styleClass="pi pi-search" />
-                            <input 
-                                pInputText 
-                                type="text" 
-                                (input)="onGlobalFilter(dt, $event)" 
-                                placeholder="Tìm kiếm..." 
+                            <input
+                                pInputText
+                                type="text"
+                                (input)="onGlobalFilter(dt, $event)"
+                                placeholder="Tìm kiếm..."
                             />
                         </p-iconfield>
                     </div>
@@ -111,38 +115,30 @@ interface Column {
                             <p-tableHeaderCheckbox />
                         </th>
                         <th pSortableColumn="fullName" style="min-width:14rem">
-                            Họ và tên
-                            <p-sortIcon field="fullName" />
+                            Họ và tên <p-sortIcon field="fullName" />
                         </th>
                         <th pSortableColumn="email" style="min-width:16rem">
-                            Email
-                            <p-sortIcon field="email" />
+                            Email <p-sortIcon field="email" />
                         </th>
                         <th pSortableColumn="phone" style="min-width:12rem">
-                            Số điện thoại
-                            <p-sortIcon field="phone" />
+                            Số điện thoại <p-sortIcon field="phone" />
                         </th>
                         <th pSortableColumn="role" style="min-width:10rem">
-                            Vai trò
-                            <p-sortIcon field="role" />
+                            Vai trò <p-sortIcon field="role" />
                         </th>
                         <th pSortableColumn="status" style="min-width:10rem">
-                            Trạng thái
-                            <p-sortIcon field="status" />
+                            Trạng thái <p-sortIcon field="status" />
                         </th>
                         <th pSortableColumn="createdDate" style="min-width:10rem">
-                            Ngày tạo
-                            <p-sortIcon field="createdDate" />
+                            Ngày tạo <p-sortIcon field="createdDate" />
                         </th>
-                        <th style="min-width:10rem">Thao tác</th>
+                        <th style="min-width:12rem">Thao tác</th>
                     </tr>
                 </ng-template>
 
                 <ng-template #body let-user>
                     <tr>
-                        <td>
-                            <p-tableCheckbox [value]="user" />
-                        </td>
+                        <td><p-tableCheckbox [value]="user" /></td>
                         <td>
                             <div class="flex items-center gap-3">
                                 <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-semibold">
@@ -152,41 +148,45 @@ interface Column {
                             </div>
                         </td>
                         <td>
-                            <i class="pi pi-envelope mr-2 text-gray-400"></i>
-                            {{ user.email }}
+                            <i class="pi pi-envelope mr-2 text-gray-400"></i>{{ user.email }}
                         </td>
                         <td>
-                            <i class="pi pi-phone mr-2 text-gray-400"></i>
-                            {{ user.phone || '-' }}
+                            <i class="pi pi-phone mr-2 text-gray-400"></i>{{ user.phone || '-' }}
                         </td>
                         <td>
-                            <p-tag 
-                                [value]="user.role" 
-                                [icon]="getRoleIcon(user.role)"
-                            />
+                            <p-tag [value]="user.role" [icon]="getRoleIcon(user.role)" />
                         </td>
                         <td>
-                            <p-tag 
-                                [value]="getStatusLabel(user.status)" 
+                            <p-tag
+                                [value]="getStatusLabel(user.status)"
+                                [severity]="getStatusSeverity(user.status)"
                             />
                         </td>
                         <td>{{ user.createdDate }}</td>
                         <td>
                             <div class="flex gap-2">
-                                <p-button 
-                                    icon="pi pi-pencil" 
-                                    [rounded]="true" 
-                                    [outlined]="true" 
+                                <p-button
+                                    icon="pi pi-pencil"
+                                    [rounded]="true"
+                                    [outlined]="true"
                                     severity="info"
                                     (click)="editUser(user)"
                                     pTooltip="Chỉnh sửa"
                                     tooltipPosition="top"
                                 />
-                                <p-button 
-                                    icon="pi pi-trash" 
-                                    severity="danger" 
-                                    [rounded]="true" 
-                                    [outlined]="true" 
+                                <p-button
+                                    [icon]="user.status === 'ACTIVE' ? 'pi pi-ban' : 'pi pi-check-circle'"
+                                    [severity]="user.status === 'ACTIVE' ? 'warn' : 'success'"
+                                    [rounded]="true"
+                                    [outlined]="true"
+                                    (click)="toggleStatus(user)"
+                                    tooltipPosition="top"
+                                />
+                                <p-button
+                                    icon="pi pi-trash"
+                                    severity="danger"
+                                    [rounded]="true"
+                                    [outlined]="true"
                                     (click)="deleteUser(user)"
                                     pTooltip="Xóa"
                                     tooltipPosition="top"
@@ -198,130 +198,54 @@ interface Column {
             </p-table>
 
             <!-- Dialog thêm/sửa người dùng -->
-            <p-dialog 
-                [(visible)]="userDialog" 
-                [style]="{ width: '500px' }" 
-                [header]="user?.id ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'" 
+            <p-dialog
+                [(visible)]="userDialog"
+                [style]="{ width: '500px' }"
+                [header]="user?.id ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'"
                 [modal]="true"
                 styleClass="p-fluid"
             >
                 <ng-template #content>
                     <div class="flex flex-col gap-6">
-                        <!-- Họ và tên -->
                         <div>
-                            <label for="fullName" class="block font-bold mb-3">
-                                Họ và tên <span class="text-red-500">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                pInputText 
-                                id="fullName" 
-                                [(ngModel)]="user.fullName" 
-                                required 
-                                autofocus 
-                                fluid 
-                                placeholder="Nguyễn Văn A"
-                            />
-                            <small class="text-red-500" *ngIf="submitted && !user.fullName">
-                                Họ và tên là bắt buộc.
-                            </small>
+                            <label class="block font-bold mb-3">Họ và tên <span class="text-red-500">*</span></label>
+                            <input type="text" pInputText [(ngModel)]="user.fullName" required autofocus fluid placeholder="Nguyễn Văn A" />
+                            <small class="text-red-500" *ngIf="submitted && !user.fullName">Họ và tên là bắt buộc.</small>
                         </div>
 
-                        <!-- Email -->
                         <div>
-                            <label for="email" class="block font-bold mb-3">
-                                Email <span class="text-red-500">*</span>
-                            </label>
-                            <input 
-                                type="email" 
-                                pInputText 
-                                id="email" 
-                                [(ngModel)]="user.email" 
-                                required 
-                                fluid 
-                                placeholder="email@example.com"
-                            />
-                            <small class="text-red-500" *ngIf="submitted && !user.email">
-                                Email là bắt buộc.
-                            </small>
+                            <label class="block font-bold mb-3">Email <span class="text-red-500">*</span></label>
+                            <input type="email" pInputText [(ngModel)]="user.email" required fluid placeholder="email@example.com" />
+                            <small class="text-red-500" *ngIf="submitted && !user.email">Email là bắt buộc.</small>
                         </div>
 
-                        <!-- Số điện thoại -->
                         <div>
-                            <label for="phone" class="block font-bold mb-3">Số điện thoại</label>
-                            <input 
-                                type="text" 
-                                pInputText 
-                                id="phone" 
-                                [(ngModel)]="user.phone" 
-                                fluid 
-                                placeholder="0901234567"
-                            />
+                            <label class="block font-bold mb-3">Số điện thoại</label>
+                            <input type="text" pInputText [(ngModel)]="user.phone" fluid placeholder="0901234567" />
                         </div>
 
-                        <!-- Vai trò -->
                         <div>
-                            <label for="role" class="block font-bold mb-3">
-                                Vai trò <span class="text-red-500">*</span>
-                            </label>
-                            <p-select 
-                                [(ngModel)]="user.role" 
-                                inputId="role" 
-                                [options]="roles" 
-                                optionLabel="label" 
-                                optionValue="value" 
-                                placeholder="Chọn vai trò" 
-                                fluid 
-                            />
-                            <small class="text-red-500" *ngIf="submitted && !user.role">
-                                Vai trò là bắt buộc.
-                            </small>
+                            <label class="block font-bold mb-3">Vai trò (Role ID) <span class="text-red-500">*</span></label>
+                            <input type="number" pInputText [(ngModel)]="user.roleId" fluid placeholder="Nhập Role ID" />
+                            <small class="text-red-500" *ngIf="submitted && !user.roleId">Vai trò là bắt buộc.</small>
                         </div>
 
-                        <!-- Mật khẩu (chỉ hiển thị khi tạo mới) -->
+                        <div>
+                            <label class="block font-bold mb-3">Location ID</label>
+                            <input type="number" pInputText [(ngModel)]="user.locationId" fluid placeholder="Nhập Location ID" />
+                        </div>
+
                         <div *ngIf="!user.id">
-                            <label for="password" class="block font-bold mb-3">
-                                Mật khẩu <span class="text-red-500">*</span>
-                            </label>
-                            <p-password 
-                                [(ngModel)]="user.password" 
-                                [toggleMask]="true" 
-                                fluid
-                                placeholder="Nhập mật khẩu"
-                            />
-                            <small class="text-red-500" *ngIf="submitted && !user.id && !user.password">
-                                Mật khẩu là bắt buộc.
-                            </small>
-                        </div>
-
-                        <!-- Trạng thái -->
-                        <div>
-                            <label for="status" class="block font-bold mb-3">Trạng thái</label>
-                            <p-select 
-                                [(ngModel)]="user.status" 
-                                inputId="status" 
-                                [options]="statuses" 
-                                optionLabel="label" 
-                                optionValue="value" 
-                                placeholder="Chọn trạng thái" 
-                                fluid 
-                            />
+                            <label class="block font-bold mb-3">Mật khẩu <span class="text-red-500">*</span></label>
+                            <p-password [(ngModel)]="user.password" [toggleMask]="true" fluid placeholder="Nhập mật khẩu" />
+                            <small class="text-red-500" *ngIf="submitted && !user.id && !user.password">Mật khẩu là bắt buộc.</small>
                         </div>
                     </div>
                 </ng-template>
 
                 <ng-template #footer>
-                    <p-button 
-                        label="Hủy" 
-                        icon="pi pi-times" 
-                        text 
-                        (click)="hideDialog()" 
-                    />
-                    <p-button 
-                        label="Lưu" 
-                        icon="pi pi-check" 
-                        (click)="saveUser()" 
-                    />
+                    <p-button label="Hủy" icon="pi pi-times" text (click)="hideDialog()" />
+                    <p-button label="Lưu" icon="pi pi-check" [loading]="saving" (click)="saveUser()" />
                 </ng-template>
             </p-dialog>
 
@@ -330,56 +254,32 @@ interface Column {
     `,
     styles: [`
         :host ::ng-deep {
-            .p-toolbar {
-                border-radius: 8px;
-                padding: 1rem;
-            }
-
-            .p-datatable {
-                border-radius: 8px;
-                overflow: hidden;
-            }
-
-            .p-datatable .p-datatable-header {
-                background: #f8f9fa;
-                padding: 1.5rem;
-                border-bottom: 1px solid #dee2e6;
-            }
-
-            .p-datatable-thead > tr > th {
-                background: #f8f9fa;
-                font-weight: 600;
-                padding: 1rem;
-            }
-
-            .p-datatable-tbody > tr {
-                transition: all 0.2s;
-            }
-
-            .p-datatable-tbody > tr:hover {
-                background: #f8f9fa;
-            }
-
-            .p-dialog .p-dialog-header {
-                padding: 1.5rem;
-            }
-
-            .p-dialog .p-dialog-content {
-                padding: 0 1.5rem 1.5rem 1.5rem;
-            }
+            .p-toolbar { border-radius: 8px; padding: 1rem; }
+            .p-datatable { border-radius: 8px; overflow: hidden; }
+            .p-datatable .p-datatable-header { background: #f8f9fa; padding: 1.5rem; border-bottom: 1px solid #dee2e6; }
+            .p-datatable-thead > tr > th { background: #f8f9fa; font-weight: 600; padding: 1rem; }
+            .p-datatable-tbody > tr { transition: all 0.2s; }
+            .p-datatable-tbody > tr:hover { background: #f8f9fa; }
+            .p-dialog .p-dialog-header { padding: 1.5rem; }
+            .p-dialog .p-dialog-content { padding: 0 1.5rem 1.5rem 1.5rem; }
         }
     `],
     providers: [MessageService, UserService, ConfirmationService]
 })
 export class Users implements OnInit {
-    userDialog: boolean = false;
+    userDialog = false;
     users = signal<User[]>([]);
     user!: User;
     selectedUsers!: User[] | null;
-    submitted: boolean = false;
+    submitted = false;
+    saving = false;
+    loading = false;
+    totalRecords = 0;
+    pageSize = 20;
+    currentPage = 0;
+    cols!: Column[];
     statuses!: any[];
     roles!: any[];
-    cols!: Column[];
 
     @ViewChild('dt') dt!: Table;
 
@@ -390,14 +290,32 @@ export class Users implements OnInit {
     ) {}
 
     ngOnInit() {
-        this.loadUsers();
         this.initializeDropdowns();
+        // this.loadUsers();
     }
 
-    loadUsers() {
-        this.userService.getUsers().then((data) => {
-            this.users.set(data);
+    loadUsers(page = 0, size = this.pageSize) {
+        this.loading = true;
+        this.userService.searchUsers({ page, size }).subscribe({
+            next: (res) => {
+                if (res.code === 200) {
+                    this.users.set(res.data.content);
+                    this.totalRecords = res.data.totalElements;
+                }
+                this.loading = false;
+            },
+            error: () => {
+                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách người dùng', life: 3000 });
+                this.loading = false;
+            }
         });
+    }
+
+    onLazyLoad(event: any) {
+        const page = event.first / event.rows;
+        this.pageSize = event.rows;
+        this.currentPage = page;
+        this.loadUsers(page, event.rows);
     }
 
     initializeDropdowns() {
@@ -405,13 +323,11 @@ export class Users implements OnInit {
             { label: 'Hoạt động', value: 'ACTIVE' },
             { label: 'Không hoạt động', value: 'INACTIVE' }
         ];
-
         this.roles = [
             { label: 'Quản trị viên', value: 'Quản trị viên' },
             { label: 'Kinh doanh', value: 'Kinh doanh' },
             { label: 'Nhân viên', value: 'Nhân viên' }
         ];
-
         this.cols = [
             { field: 'fullName', header: 'Họ và tên' },
             { field: 'email', header: 'Email' },
@@ -427,9 +343,7 @@ export class Users implements OnInit {
     }
 
     openNew() {
-        this.user = {
-            status: 'ACTIVE'
-        };
+        this.user = { status: 'ACTIVE' };
         this.submitted = false;
         this.userDialog = true;
     }
@@ -439,22 +353,101 @@ export class Users implements OnInit {
         this.userDialog = true;
     }
 
-    deleteUser(user: User) {
+    saveUser() {
+        this.submitted = true;
+
+        if (!this.user.fullName?.trim() || !this.user.email?.trim() || !this.user.roleId) return;
+        if (!this.user.id && !this.user.password) {
+            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Vui lòng nhập mật khẩu', life: 3000 });
+            return;
+        }
+
+        this.saving = true;
+
+        if (this.user.id) {
+            // Cập nhật
+            this.userService.updateUser(this.user.id, {
+                email: this.user.email,
+                fullName: this.user.fullName,
+                phone: this.user.phone,
+                roleId: this.user.roleId,
+                locationId: this.user.locationId,
+                password: this.user.password
+            }).subscribe({
+                next: (res) => {
+                    if (res.code === 200) {
+                        this.loadUsers(this.currentPage, this.pageSize);
+                        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật người dùng', life: 3000 });
+                        this.hideDialog();
+                    }
+                    this.saving = false;
+                },
+                error: (err) => {
+                    this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: err.error?.message || 'Cập nhật thất bại', life: 3000 });
+                    this.saving = false;
+                }
+            });
+        } else {
+            // Tạo mới
+            this.userService.createUser({
+                email: this.user.email!,
+                fullName: this.user.fullName!,
+                phone: this.user.phone,
+                roleId: this.user.roleId!,
+                locationId: this.user.locationId,
+                password: this.user.password!
+            }).subscribe({
+                next: (res) => {
+                    if (res.code === 200) {
+                        this.loadUsers(this.currentPage, this.pageSize);
+                        this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã tạo người dùng mới', life: 3000 });
+                        this.hideDialog();
+                    }
+                    this.saving = false;
+                },
+                error: (err) => {
+                    this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: err.error?.message || 'Tạo người dùng thất bại', life: 3000 });
+                    this.saving = false;
+                }
+            });
+        }
+    }
+
+    toggleStatus(user: User) {
+        const action = user.status === 'ACTIVE' ? 'vô hiệu hóa' : 'kích hoạt';
         this.confirmationService.confirm({
-            message: 'Bạn có chắc chắn muốn xóa người dùng ' + user.fullName + '?',
+            message: `Bạn có chắc muốn ${action} người dùng ${user.fullName}?`,
             header: 'Xác nhận',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Có',
             rejectLabel: 'Không',
             accept: () => {
-                this.users.set(this.users().filter((val) => val.id !== user.id));
-                this.user = {};
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Thành công',
-                    detail: 'Đã xóa người dùng',
-                    life: 3000
+                this.userService.changeStatus(user.id).subscribe({
+                    next: (res) => {
+                        if (res.code === 200) {
+                            this.loadUsers(this.currentPage, this.pageSize);
+                            this.messageService.add({ severity: 'success', summary: 'Thành công', detail: `Đã ${action} người dùng`, life: 3000 });
+                        }
+                    },
+                    error: (err) => {
+                        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: err.error?.message || 'Thao tác thất bại', life: 3000 });
+                    }
                 });
+            }
+        });
+    }
+
+    deleteUser(user: User) {
+        this.confirmationService.confirm({
+            message: `Bạn có chắc chắn muốn xóa người dùng ${user.fullName}?`,
+            header: 'Xác nhận',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Có',
+            rejectLabel: 'Không',
+            accept: () => {
+                // Nếu có API xóa thì gọi ở đây, hiện tại xóa local
+                this.users.set(this.users().filter(v => v.id !== user.id));
+                this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa người dùng', life: 3000 });
             }
         });
     }
@@ -467,14 +460,9 @@ export class Users implements OnInit {
             acceptLabel: 'Có',
             rejectLabel: 'Không',
             accept: () => {
-                this.users.set(this.users().filter((val) => !this.selectedUsers?.includes(val)));
+                this.users.set(this.users().filter(v => !this.selectedUsers?.includes(v)));
                 this.selectedUsers = null;
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Thành công',
-                    detail: 'Đã xóa người dùng',
-                    life: 3000
-                });
+                this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa người dùng', life: 3000 });
             }
         });
     }
@@ -484,109 +472,29 @@ export class Users implements OnInit {
         this.submitted = false;
     }
 
-    saveUser() {
-        this.submitted = true;
+    exportCSV() { this.dt.exportCSV(); }
 
-        if (this.user.fullName?.trim() && this.user.email?.trim() && this.user.role) {
-            if (!this.user.id && !this.user.password) {
-                this.messageService.add({
-                    severity: 'error',
-                    summary: 'Lỗi',
-                    detail: 'Vui lòng nhập mật khẩu',
-                    life: 3000
-                });
-                return;
-            }
-
-            let _users = [...this.users()];
-
-            if (this.user.id) {
-                // Cập nhật người dùng
-                const index = this.findIndexById(this.user.id);
-                _users[index] = this.user;
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Thành công',
-                    detail: 'Đã cập nhật người dùng',
-                    life: 3000
-                });
-            } else {
-                // Tạo mới người dùng
-                this.user.id = this.createId();
-                this.user.createdDate = new Date().toLocaleDateString('en-GB');
-                _users.push(this.user);
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Thành công',
-                    detail: 'Đã tạo người dùng mới',
-                    life: 3000
-                });
-            }
-
-            this.users.set(_users);
-            this.userDialog = false;
-            this.user = {};
-        }
-    }
-
-    findIndexById(id: string): number {
-        return this.users().findIndex(user => user.id === id);
-    }
-
-    createId(): string {
-        let id = '';
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        for (let i = 0; i < 8; i++) {
-            id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
-    }
-
-    exportCSV() {
-        this.dt.exportCSV();
-    }
-
-    // Utility methods
-    getInitials(fullName: string | undefined): string {
+    getInitials(fullName?: string): string {
         if (!fullName) return '?';
         const names = fullName.split(' ');
-        if (names.length >= 2) {
-            return (names[0][0] + names[names.length - 1][0]).toUpperCase();
-        }
-        return fullName.substring(0, 2).toUpperCase();
+        return names.length >= 2
+            ? (names[0][0] + names[names.length - 1][0]).toUpperCase()
+            : fullName.substring(0, 2).toUpperCase();
     }
 
-    getStatusLabel(status: string | undefined): string {
+    getStatusLabel(status?: string): string {
         return status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động';
     }
 
-    getStatusSeverity(status: string | undefined): string {
+    getStatusSeverity(status?: string): any {
         return status === 'ACTIVE' ? 'success' : 'danger';
     }
 
-    getRoleSeverity(role: string | undefined): string {
+    getRoleIcon(role?: string): string {
         switch (role) {
-            case 'Quản trị viên':
-                return 'danger';
-            case 'Kinh doanh':
-                return 'info';
-            case 'Nhân viên':
-                return 'warn';
-            default:
-                return 'secondary';
-        }
-    }
-
-    getRoleIcon(role: string | undefined): string {
-        switch (role) {
-            case 'Quản trị viên':
-                return 'pi pi-shield';
-            case 'Kinh doanh':
-                return 'pi pi-briefcase';
-            case 'Nhân viên':
-                return 'pi pi-user';
-            default:
-                return 'pi pi-user';
+            case 'Quản trị viên': return 'pi pi-shield';
+            case 'Kinh doanh': return 'pi pi-briefcase';
+            default: return 'pi pi-user';
         }
     }
 }

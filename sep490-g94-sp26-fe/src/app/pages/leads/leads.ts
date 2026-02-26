@@ -395,9 +395,9 @@ export class Leads implements OnInit {
     }
 
     loadUsers() {
-        this.userService.getUsers().then((data) => {
-            this.users.set(data);
-        });
+        // this.userService.getUsers().then((data) => {
+        //     this.users.set(data);
+        // });
     }
 
     initializeDropdowns() {

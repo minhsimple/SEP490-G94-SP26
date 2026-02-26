@@ -59,7 +59,17 @@ export class AppMenu {
                     //     icon: 'pi pi-fw pi-pencil',
                     //     routerLink: ['/pages/crud']
                     // },
-                         {
+                          {
+                        label: 'Quản lý vai trò',
+                        icon: 'pi pi-fw pi-users',
+                        routerLink: ['/pages/role']
+                    },
+                    {
+                        label: 'Quản lý chi nhánh',
+                        icon: 'pi pi-fw pi-users',
+                        routerLink: ['/pages/location']
+                    },
+                    {
                         label: 'Quản lý người dùng',
                         icon: 'pi pi-fw pi-users',
                         routerLink: ['/pages/users']

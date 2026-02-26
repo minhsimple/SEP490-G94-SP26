@@ -1,67 +1,108 @@
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
 export interface User {
-    id?: string;
-    fullName?: string;
+    id?: any;
     email?: string;
+    fullName?: string;
     phone?: string;
     role?: string;
+    roleId?: number;
+    locationId?: number;
     status?: string;
-    createdDate?: string;
     password?: string;
+    createdDate?: string;
+}
+
+export interface UserSearchParams {
+    email?: string;
+    fullName?: string;
+    phone?: string;
+    roleId?: number;
+    locationId?: number;
+    page?: number;
+    size?: number;
+    sort?: string;
+}
+
+export interface ApiResponse<T> {
+    code: number;
+    message: string;
+    data: T;
+}
+
+export interface PageResponse<T> {
+    content: T[];
+    totalElements: number;
+    totalPages: number;
+    size: number;
+    number: number;
 }
 
 @Injectable({
     providedIn: 'root'
 })
 export class UserService {
-    getUsers() {
-        return Promise.resolve<User[]>([
-            {
-                id: '1',
-                fullName: 'Test User',
-                email: 'test@gmail.com',
-                phone: '0901234567',
-                role: 'Quản trị viên',
-                status: 'ACTIVE',
-                createdDate: '04/02/2026'
-            },
-            {
-                id: '2',
-                fullName: 'Toàn',
-                email: 'toantit74@gmail.com',
-                phone: '0987654321',
-                role: 'Quản trị viên',
-                status: 'ACTIVE',
-                createdDate: '04/02/2026'
-            },
-            {
-                id: '3',
-                fullName: 'Nguyễn Văn A',
-                email: 'nguyenvana@gmail.com',
-                phone: '0912345678',
-                role: 'Kinh doanh',
-                status: 'INACTIVE',
-                createdDate: '03/02/2026'
-            },
-            {
-                id: '4',
-                fullName: 'Trần Thị B',
-                email: 'tranthib@gmail.com',
-                phone: '0923456789',
-                role: 'Nhân viên',
-                status: 'ACTIVE',
-                createdDate: '02/02/2026'
-            },
-            {
-                id: '5',
-                fullName: 'Lê Văn C',
-                email: 'levanc@gmail.com',
-                phone: '0934567890',
-                role: 'Kinh doanh',
-                status: 'ACTIVE',
-                createdDate: '01/02/2026'
-            }
-        ]);
+    private baseUrl = 'http://localhost:8080/api/v1/user';
+
+    constructor(private http: HttpClient) {}
+
+    private getHeaders(): HttpHeaders {
+        const token = localStorage.getItem('accessToken');
+        return new HttpHeaders({
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        });
+    }
+
+    searchUsers(params: UserSearchParams = {}): Observable<ApiResponse<PageResponse<User>>> {
+        let httpParams = new HttpParams()
+            .set('page', params.page ?? 0)
+            .set('size', params.size ?? 20)
+            .set('sort', params.sort ?? 'updatedAt,DESC');
+
+        if (params.email) httpParams = httpParams.set('email', params.email);
+        if (params.fullName) httpParams = httpParams.set('fullName', params.fullName);
+        if (params.phone) httpParams = httpParams.set('phone', params.phone);
+        if (params.roleId) httpParams = httpParams.set('roleId', params.roleId);
+        if (params.locationId) httpParams = httpParams.set('locationId', params.locationId);
+
+        return this.http.get<ApiResponse<PageResponse<User>>>(`${this.baseUrl}/search`, {
+            headers: this.getHeaders(),
+            params: httpParams
+        });
+    }
+
+    createUser(user: {
+        email: string;
+        fullName: string;
+        phone?: string;
+        roleId: number;
+        locationId?: number;
+        password: string;
+    }): Observable<ApiResponse<User>> {
+        return this.http.post<ApiResponse<User>>(`${this.baseUrl}/create`, user, {
+            headers: this.getHeaders()
+        });
+    }
+
+    updateUser(id: any, user: {
+        email?: string;
+        fullName?: string;
+        phone?: string;
+        roleId?: number;
+        locationId?: number;
+        password?: string;
+    }): Observable<ApiResponse<User>> {
+        return this.http.put<ApiResponse<User>>(`${this.baseUrl}/${id}/update`, user, {
+            headers: this.getHeaders()
+        });
+    }
+
+    changeStatus(id: any): Observable<ApiResponse<User>> {
+        return this.http.patch<ApiResponse<User>>(`${this.baseUrl}/${id}/change-status`, {}, {
+            headers: this.getHeaders()
+        });
     }
 }
