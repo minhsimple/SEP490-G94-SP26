@@ -41,7 +41,7 @@ public class MenuItemController {
     @PutMapping("/update")
     public ApiResponse<MenuItemResponse> updateMenuItem(
             @RequestParam Integer menuItemId,
-            @Valid @RequestBody MenuItemRequest menuItemRequest
+             @RequestBody MenuItemRequest menuItemRequest
     ) {
         MenuItemResponse menuItemResponse = menuItemService.updateMenuItem(menuItemId, menuItemRequest);
         return ApiResponse.<MenuItemResponse>builder()

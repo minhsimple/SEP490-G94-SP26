@@ -39,7 +39,7 @@ public class LocationController {
     @Operation(summary = "Cập nhật địa điểm")
     @PutMapping("/update")
     public ApiResponse<LocationResponse> updateLocation(@RequestParam Integer locationId,
-                                                        @RequestBody @Valid LocationRequest request) {
+                                                        @RequestBody  LocationRequest request) {
         LocationResponse response = locationService.updateLocation(locationId, request);
         return ApiResponse.<LocationResponse>builder()
                 .data(response)

@@ -46,7 +46,7 @@ public class ServiceController {
     @PutMapping("/update")
     public ApiResponse<ServiceResponse> updateService(
             @RequestParam Integer serviceId,
-            @Valid @RequestBody ServiceRequest serviceRequest
+            @RequestBody ServiceRequest serviceRequest
     ) {
         ServiceResponse serviceResponse = serviceItemService.updateService(serviceId, serviceRequest);
         return ApiResponse.<ServiceResponse>builder()

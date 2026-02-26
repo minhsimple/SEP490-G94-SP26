@@ -43,7 +43,7 @@ public class CategoryMenuItemController {
     @PutMapping("/update")
     public ApiResponse<CategoryMenuItemResponse> updateCategoryMenuItem(
             @RequestParam Integer id,
-            @Valid @RequestBody CategoryMenuItemRequest categoryMenuItemRequest
+             @RequestBody CategoryMenuItemRequest categoryMenuItemRequest
     ) {
         CategoryMenuItemResponse categoryMenuItemResponse = categoryMenuItemService
                 .updateCategoryMenuItem(id, categoryMenuItemRequest);

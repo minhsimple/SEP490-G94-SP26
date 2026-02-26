@@ -41,7 +41,7 @@ public class LeadController {
     }
     @Operation(summary = "Cập nhật khách hàng tiềm năng mới")
     @PutMapping("/update")
-    public ApiResponse<LeadResponse> updateLead(@RequestBody @Valid LeadRequest request,
+    public ApiResponse<LeadResponse> updateLead(@RequestBody  LeadRequest request,
                                                 @RequestParam Integer leadId) {
         LeadResponse response = leadService.updateLead(leadId,request);
         return ApiResponse.<LeadResponse>builder()

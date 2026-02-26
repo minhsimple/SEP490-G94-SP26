@@ -40,7 +40,7 @@ public class ServicePackageController {
     @PutMapping("/update")
     public ApiResponse<ServicePackageResponse> updateServicePackage(
             @RequestParam Integer servicePackageId,
-            @Valid @RequestBody ServicePackageRequest request
+            @RequestBody ServicePackageRequest request
     ) {
         ServicePackageResponse response = servicePackageService.updateServicePackage(servicePackageId, request);
         return ApiResponse.<ServicePackageResponse>builder()

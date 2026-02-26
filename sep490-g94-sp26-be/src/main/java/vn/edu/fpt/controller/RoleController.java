@@ -38,7 +38,7 @@ public class RoleController {
     @Operation(summary = "Update role")
     @PutMapping("/update")
     public ApiResponse<RoleResponse> updateRole(@RequestParam Integer roleId,
-                                                @RequestBody @Valid RoleRequest request) {
+                                                @RequestBody  RoleRequest request) {
         RoleResponse response = roleService.updateRole(roleId, request);
         return ApiResponse.<RoleResponse>builder()
                 .data(response)

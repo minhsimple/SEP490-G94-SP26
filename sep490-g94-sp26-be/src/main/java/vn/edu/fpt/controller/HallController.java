@@ -41,7 +41,7 @@ public class HallController {
     @PutMapping("/update")
     public ApiResponse<HallResponse> updateHall(
             @RequestParam Integer hallId,
-            @RequestBody @Valid HallRequest request) {
+            @RequestBody  HallRequest request) {
         HallResponse response = hallService.updateHall(hallId, request);
         return ApiResponse.<HallResponse>builder()
                 .data(response)

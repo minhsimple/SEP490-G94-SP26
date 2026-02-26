@@ -63,7 +63,7 @@ public class UserController {
     }
     @Operation(summary = "Cập nhật tài khoản người dùng")
     @PutMapping("/{id}/update")
-    public ApiResponse<UserResponse> updateLead(@RequestBody @Valid UserRequest request,
+    public ApiResponse<UserResponse> updateUser(@RequestBody UserRequest request,
                                                 @PathVariable Integer id) {
         UserResponse response = userService.updateUser(id,request);
         return ApiResponse.<UserResponse>builder()

@@ -44,7 +44,7 @@ public class CustomerController {
     @Operation(summary = "Cập nhật khách hàng")
     @PutMapping("/update")
     public ApiResponse<CustomerResponse> updateCustomer(@RequestParam Integer customerId,
-                                                        @Valid @RequestBody CustomerUpdateRequest updateRequest) {
+                                                         @RequestBody CustomerUpdateRequest updateRequest) {
         CustomerResponse customerResponse = customerService.updateCustomer(customerId, updateRequest);
         return ApiResponse.<CustomerResponse>builder()
                 .data(customerResponse)
