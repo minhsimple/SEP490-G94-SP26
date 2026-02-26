@@ -38,6 +38,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final PackageServiceRepository packageServiceRepository;
     private final LocationRepository locationRepository;
     private final ServicePackageMapper servicePackageMapper;
+    AuthServiceImpl authService;
 
     @Transactional
     @Override
@@ -199,6 +200,16 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         servicePackageRepository.save(servicePackage);
 
         return servicePackageMapper.toResponse(servicePackage);
+    }
+
+    public ServicePackageResponse removeMenuItemFromSetMenu(Integer serviceId) {
+        PackageService packageService = packageServiceRepository.findByServiceIdAndStatus(serviceId,RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND));
+
+        packageService.setStatus(RecordStatus.inactive);
+        packageServiceRepository.save(packageService);
+
+        return getServicePackageDetail(packageService.getPackageId());
     }
 
     @Override

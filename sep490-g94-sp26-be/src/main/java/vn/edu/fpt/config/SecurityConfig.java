@@ -1,5 +1,6 @@
 package vn.edu.fpt.config;
 
+import org.springframework.security.config.Customizer;
 import vn.edu.fpt.security.JwtAuthenticationEntryPoint;
 import vn.edu.fpt.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
