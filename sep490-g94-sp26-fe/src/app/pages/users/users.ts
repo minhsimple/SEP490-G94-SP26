@@ -16,6 +16,8 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { PasswordModule } from 'primeng/password';
 import { User, UserService } from '../service/users.service';
+import { RoleService } from '../service/role.service';
+import { LocationService } from '../service/location.service';
 
 interface Column {
     field: string;
@@ -55,14 +57,14 @@ interface Column {
                         class="mr-2"
                         (onClick)="openNew()"
                     />
-                    <p-button
+                    <!-- <p-button
                         severity="danger"
                         label="Xóa"
                         icon="pi pi-trash"
                         outlined
                         (onClick)="deleteSelectedUsers()"
                         [disabled]="!selectedUsers || !selectedUsers.length"
-                    />
+                    /> -->
                 </ng-template>
 
                 <ng-template #end>
@@ -225,14 +227,31 @@ interface Column {
                         </div>
 
                         <div>
-                            <label class="block font-bold mb-3">Vai trò (Role ID) <span class="text-red-500">*</span></label>
-                            <input type="number" pInputText [(ngModel)]="user.roleId" fluid placeholder="Nhập Role ID" />
+                            <label class="block font-bold mb-3">Vai trò <span class="text-red-500">*</span></label>
+                            <p-select
+                                [options]="roleOptions"
+                                [(ngModel)]="user.roleId"
+                                optionLabel="label"
+                                optionValue="value"
+                                placeholder="-- Chọn vai trò --"
+                                [loading]="loadingRoles"
+                                fluid
+                            />
                             <small class="text-red-500" *ngIf="submitted && !user.roleId">Vai trò là bắt buộc.</small>
                         </div>
 
                         <div>
-                            <label class="block font-bold mb-3">Location ID</label>
-                            <input type="number" pInputText [(ngModel)]="user.locationId" fluid placeholder="Nhập Location ID" />
+                            <label class="block font-bold mb-3">Chi nhánh</label>
+                            <p-select
+                                [options]="locationOptions"
+                                [(ngModel)]="user.locationId"
+                                optionLabel="label"
+                                optionValue="value"
+                                placeholder="-- Chọn chi nhánh --"
+                                [loading]="loadingLocations"
+                                [showClear]="true"
+                                fluid
+                            />
                         </div>
 
                         <div *ngIf="!user.id">
@@ -264,7 +283,7 @@ interface Column {
             .p-dialog .p-dialog-content { padding: 0 1.5rem 1.5rem 1.5rem; }
         }
     `],
-    providers: [MessageService, UserService, ConfirmationService]
+    providers: [MessageService, UserService, RoleService, LocationService, ConfirmationService]
 })
 export class Users implements OnInit {
     userDialog = false;
@@ -274,24 +293,76 @@ export class Users implements OnInit {
     submitted = false;
     saving = false;
     loading = false;
+    loadingRoles = false;
+    loadingLocations = false;
     totalRecords = 0;
     pageSize = 20;
     currentPage = 0;
     cols!: Column[];
-    statuses!: any[];
-    roles!: any[];
+
+    // Dropdown options
+    roleOptions: { label: string; value: number }[] = [];
+    locationOptions: { label: string; value: number }[] = [];
 
     @ViewChild('dt') dt!: Table;
 
     constructor(
         private userService: UserService,
+        private roleService: RoleService,
+        private locationService: LocationService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService
     ) {}
 
     ngOnInit() {
-        this.initializeDropdowns();
-        // this.loadUsers();
+        this.cols = [
+            { field: 'fullName', header: 'Họ và tên' },
+            { field: 'email', header: 'Email' },
+            { field: 'phone', header: 'Số điện thoại' },
+            { field: 'role', header: 'Vai trò' },
+            { field: 'status', header: 'Trạng thái' },
+            { field: 'createdDate', header: 'Ngày tạo' }
+        ];
+        this.loadRoleOptions();
+        this.loadLocationOptions();
+    }
+
+    loadRoleOptions() {
+        this.loadingRoles = true;
+        this.roleService.searchRoles({ page: 0, size: 100 }).subscribe({
+            next: (res) => {
+                if (res.code === 200) {
+                    this.roleOptions = res.data.content.map(r => ({
+                        label: r.name ?? '',
+                        value: r.id
+                    }));
+                }
+                this.loadingRoles = false;
+            },
+            error: () => {
+                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách vai trò', life: 3000 });
+                this.loadingRoles = false;
+            }
+        });
+    }
+
+    loadLocationOptions() {
+        this.loadingLocations = true;
+        this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
+            next: (res) => {
+                if (res.code === 200) {
+                    this.locationOptions = res.data.content.map(l => ({
+                        label: l.name ?? '',
+                        value: l.id
+                    }));
+                }
+                this.loadingLocations = false;
+            },
+            error: () => {
+                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách chi nhánh', life: 3000 });
+                this.loadingLocations = false;
+            }
+        });
     }
 
     loadUsers(page = 0, size = this.pageSize) {
@@ -316,26 +387,6 @@ export class Users implements OnInit {
         this.pageSize = event.rows;
         this.currentPage = page;
         this.loadUsers(page, event.rows);
-    }
-
-    initializeDropdowns() {
-        this.statuses = [
-            { label: 'Hoạt động', value: 'ACTIVE' },
-            { label: 'Không hoạt động', value: 'INACTIVE' }
-        ];
-        this.roles = [
-            { label: 'Quản trị viên', value: 'Quản trị viên' },
-            { label: 'Kinh doanh', value: 'Kinh doanh' },
-            { label: 'Nhân viên', value: 'Nhân viên' }
-        ];
-        this.cols = [
-            { field: 'fullName', header: 'Họ và tên' },
-            { field: 'email', header: 'Email' },
-            { field: 'phone', header: 'Số điện thoại' },
-            { field: 'role', header: 'Vai trò' },
-            { field: 'status', header: 'Trạng thái' },
-            { field: 'createdDate', header: 'Ngày tạo' }
-        ];
     }
 
     onGlobalFilter(table: Table, event: Event) {
@@ -365,7 +416,6 @@ export class Users implements OnInit {
         this.saving = true;
 
         if (this.user.id) {
-            // Cập nhật
             this.userService.updateUser(this.user.id, {
                 email: this.user.email,
                 fullName: this.user.fullName,
@@ -388,7 +438,6 @@ export class Users implements OnInit {
                 }
             });
         } else {
-            // Tạo mới
             this.userService.createUser({
                 email: this.user.email!,
                 fullName: this.user.fullName!,
@@ -445,7 +494,6 @@ export class Users implements OnInit {
             acceptLabel: 'Có',
             rejectLabel: 'Không',
             accept: () => {
-                // Nếu có API xóa thì gọi ở đây, hiện tại xóa local
                 this.users.set(this.users().filter(v => v.id !== user.id));
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa người dùng', life: 3000 });
             }

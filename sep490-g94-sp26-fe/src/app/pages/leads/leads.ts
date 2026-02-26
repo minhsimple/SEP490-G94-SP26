@@ -55,14 +55,14 @@ interface Column {
                         class="mr-2" 
                         (onClick)="openNew()" 
                     />
-                    <p-button 
+                    <!-- <p-button 
                         severity="danger" 
                         label="Xóa" 
                         icon="pi pi-trash" 
                         outlined 
                         (onClick)="deleteSelectedUsers()" 
                         [disabled]="!selectedUsers || !selectedUsers.length" 
-                    />
+                    /> -->
                 </ng-template>
 
                 <ng-template #end>

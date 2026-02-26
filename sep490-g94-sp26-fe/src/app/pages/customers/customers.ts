@@ -55,14 +55,14 @@ interface Column {
                         class="mr-2" 
                         (onClick)="openNew()" 
                     />
-                    <p-button 
+                    <!-- <p-button 
                         severity="danger" 
                         label="Xóa" 
                         icon="pi pi-trash" 
                         outlined 
                         (onClick)="deleteSelectedUsers()" 
                         [disabled]="!selectedUsers || !selectedUsers.length" 
-                    />
+                    /> -->
                 </ng-template>
 
                 <ng-template #end>
@@ -403,7 +403,7 @@ export class Customers implements OnInit {
     initializeDropdowns() {
         this.statuses = [
             { label: 'Hoạt động', value: 'ACTIVE' },
-            { label: 'Không hoạt động', value: 'INACTIVE' }
+            { label: 'Hoạt động', value: 'INACTIVE' }
         ];
 
         this.roles = [

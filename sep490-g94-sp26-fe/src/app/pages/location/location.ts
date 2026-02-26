@@ -14,9 +14,12 @@ import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TextareaModule } from 'primeng/textarea';
-import { HttpClient } from '@angular/common/http';
+import { Location, LocationService } from '../service/location.service';
 
-const BASE_URL = 'http://localhost:8080/api/v1/location';
+interface Column {
+    field: string;
+    header: string;
+}
 
 @Component({
     selector: 'app-location',
@@ -50,14 +53,14 @@ const BASE_URL = 'http://localhost:8080/api/v1/location';
                         class="mr-2"
                         (onClick)="openNew()"
                     />
-                    <p-button
+                    <!-- <p-button
                         severity="danger"
                         label="Xóa"
                         icon="pi pi-trash"
                         outlined
                         (onClick)="deleteSelectedLocations()"
                         [disabled]="!selectedLocations || !selectedLocations.length"
-                    />
+                    /> -->
                 </ng-template>
 
                 <ng-template #end>
@@ -250,25 +253,25 @@ const BASE_URL = 'http://localhost:8080/api/v1/location';
             .p-dialog .p-dialog-content { padding: 0 1.5rem 1.5rem 1.5rem; }
         }
     `],
-    providers: [MessageService, ConfirmationService]
+    providers: [MessageService, LocationService, ConfirmationService]
 })
 export class LocationComponent implements OnInit {
     locationDialog = false;
-    locations = signal<any[]>([]);
-    location: any = {};
-    selectedLocations: any[] | null = null;
+    locations = signal<Location[]>([]);
+    location!: Location;
+    selectedLocations!: Location[] | null;
     submitted = false;
     saving = false;
     loading = false;
     totalRecords = 0;
     pageSize = 20;
     currentPage = 0;
-    cols: any[] = [];
+    cols!: Column[];
 
     @ViewChild('dt') dt!: Table;
 
     constructor(
-        private http: HttpClient,
+        private locationService: LocationService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService
     ) {}
@@ -286,9 +289,7 @@ export class LocationComponent implements OnInit {
 
     loadLocations(page = 0, size = this.pageSize) {
         this.loading = true;
-        this.http.get<any>(`${BASE_URL}/search`, {
-            params: { page, size, sort: 'updatedAt,DESC' }
-        }).subscribe({
+        this.locationService.searchLocations({ page, size }).subscribe({
             next: (res) => {
                 if (res.code === 200) {
                     this.locations.set(res.data.content);
@@ -320,7 +321,7 @@ export class LocationComponent implements OnInit {
         this.locationDialog = true;
     }
 
-    editLocation(loc: any) {
+    editLocation(loc: Location) {
         this.location = { ...loc };
         this.locationDialog = true;
     }
@@ -339,9 +340,8 @@ export class LocationComponent implements OnInit {
         };
 
         if (this.location.id) {
-            this.http.put<any>(`${BASE_URL}/update`, payload, {
-                params: { locationId: this.location.id }
-            }).subscribe({
+            // Cập nhật
+            this.locationService.updateLocation(this.location.id, payload).subscribe({
                 next: (res) => {
                     if (res.code === 200) {
                         this.loadLocations(this.currentPage, this.pageSize);
@@ -356,7 +356,13 @@ export class LocationComponent implements OnInit {
                 }
             });
         } else {
-            this.http.post<any>(`${BASE_URL}/create`, payload).subscribe({
+            // Tạo mới
+            this.locationService.createLocation({
+                code: this.location.code!,
+                name: this.location.name!,
+                address: this.location.address,
+                notes: this.location.notes
+            }).subscribe({
                 next: (res) => {
                     if (res.code === 200) {
                         this.loadLocations(this.currentPage, this.pageSize);
@@ -373,7 +379,7 @@ export class LocationComponent implements OnInit {
         }
     }
 
-    toggleStatus(loc: any) {
+    toggleStatus(loc: Location) {
         const action = loc.status === 'ACTIVE' ? 'vô hiệu hóa' : 'kích hoạt';
         this.confirmationService.confirm({
             message: `Bạn có chắc muốn ${action} chi nhánh ${loc.name}?`,
@@ -382,7 +388,7 @@ export class LocationComponent implements OnInit {
             acceptLabel: 'Có',
             rejectLabel: 'Không',
             accept: () => {
-                this.http.patch<any>(`${BASE_URL}/${loc.id}/change-status`, {}).subscribe({
+                this.locationService.changeStatus(loc.id).subscribe({
                     next: (res) => {
                         if (res.code === 200) {
                             this.loadLocations(this.currentPage, this.pageSize);
@@ -397,7 +403,7 @@ export class LocationComponent implements OnInit {
         });
     }
 
-    deleteLocation(loc: any) {
+    deleteLocation(loc: Location) {
         this.confirmationService.confirm({
             message: `Bạn có chắc chắn muốn xóa chi nhánh ${loc.name}?`,
             header: 'Xác nhận',
@@ -405,7 +411,7 @@ export class LocationComponent implements OnInit {
             acceptLabel: 'Có',
             rejectLabel: 'Không',
             accept: () => {
-                this.locations.set(this.locations().filter((v: any) => v.id !== loc.id));
+                this.locations.set(this.locations().filter(v => v.id !== loc.id));
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa chi nhánh', life: 3000 });
             }
         });
@@ -419,7 +425,7 @@ export class LocationComponent implements OnInit {
             acceptLabel: 'Có',
             rejectLabel: 'Không',
             accept: () => {
-                this.locations.set(this.locations().filter((v: any) => !this.selectedLocations?.includes(v)));
+                this.locations.set(this.locations().filter(v => !this.selectedLocations?.includes(v)));
                 this.selectedLocations = null;
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa chi nhánh', life: 3000 });
             }
@@ -434,7 +440,7 @@ export class LocationComponent implements OnInit {
     exportCSV() { this.dt.exportCSV(); }
 
     getStatusLabel(status?: string): string {
-        return status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động';
+        return status === 'ACTIVE' ? 'Hoạt động' : 'Hoạt động';
     }
 
     getStatusSeverity(status?: string): any {

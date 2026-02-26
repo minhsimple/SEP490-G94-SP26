@@ -1,16 +1,19 @@
-import { Component, inject } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { StyleClassModule } from 'primeng/styleclass';
 import { AppConfigurator } from './app.configurator';
 import { LayoutService } from '../service/layout.service';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Router } from '@angular/router';
 
 @Component({
     selector: 'app-topbar',
     standalone: true,
     imports: [RouterModule, CommonModule, StyleClassModule, AppConfigurator],
-    template: ` <div class="layout-topbar">
+    template: `
+    <div class="layout-topbar">
         <div class="layout-topbar-logo-container">
             <button class="layout-menu-button layout-topbar-action" (click)="layoutService.onMenuToggle()">
                 <i class="pi pi-bars"></i>
@@ -72,24 +75,225 @@ import { LayoutService } from '../service/layout.service';
                         <i class="pi pi-inbox"></i>
                         <span>Messages</span>
                     </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
-                    </button>
+
+                    <!-- Profile dropdown -->
+                    <div class="profile-wrapper">
+                        <button type="button" class="layout-topbar-action" (click)="toggleProfileMenu($event)">
+                            <i class="pi pi-user"></i>
+                            <span>Profile</span>
+                        </button>
+
+                        <div class="profile-dropdown" [class.open]="profileMenuOpen()">
+                            <div class="dropdown-header">
+                                <div class="avatar">
+                                    <i class="pi pi-user"></i>
+                                </div>
+                                <div class="user-info">
+                                    <span class="user-name">{{ userName }}</span>
+                                    <span class="user-email">{{ userEmail }}</span>
+                                </div>
+                            </div>
+
+                            <div class="dropdown-divider"></div>
+
+                            <ul class="dropdown-list">
+                                <li class="dropdown-item" (click)="goToProfile()">
+                                    <i class="pi pi-id-card"></i>
+                                    <span>Thông tin cá nhân</span>
+                                </li>
+                                <li class="dropdown-item" (click)="goToChangePassword()">
+                                    <i class="pi pi-lock"></i>
+                                    <span>Đổi mật khẩu</span>
+                                </li>
+                                <div class="dropdown-divider"></div>
+                                <li class="dropdown-item danger" (click)="logout()">
+                                    <i class="pi pi-sign-out"></i>
+                                    <span>Đăng xuất</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
-    </div>`
+    </div>`,
+    styles: [`
+        .profile-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .profile-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 220px;
+            background: var(--surface-overlay, #ffffff);
+            border: 1px solid var(--surface-border, #dee2e6);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            z-index: 1000;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(-8px) scale(0.97);
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+
+            &.open {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                pointer-events: all;
+            }
+        }
+
+        .dropdown-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1rem 0.75rem;
+        }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--primary-100, #e0e7ff);
+            color: var(--primary-color, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-email {
+            font-size: 0.75rem;
+            color: var(--text-color-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--surface-border, #dee2e6);
+            margin: 0.25rem 0;
+        }
+
+        .dropdown-list {
+            list-style: none;
+            margin: 0;
+            padding: 0.25rem 0;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.625rem 1rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-color);
+            transition: background 0.15s;
+            user-select: none;
+
+            i {
+                font-size: 0.875rem;
+                color: var(--text-color-secondary);
+                width: 16px;
+                text-align: center;
+            }
+
+            &:hover {
+                background: var(--surface-hover, #f8f9fa);
+                i { color: var(--primary-color, #6366f1); }
+            }
+
+            &.danger {
+                color: var(--red-500, #ef4444);
+                i { color: var(--red-400, #f87171); }
+
+                &:hover {
+                    background: var(--red-50, #fef2f2);
+                    i { color: var(--red-500, #ef4444); }
+                }
+            }
+        }
+    `]
 })
 export class AppTopbar {
     items!: MenuItem[];
+    profileMenuOpen = signal(false);
+
+    userName = localStorage.getItem('userName') || 'Người dùng';
+    userEmail = localStorage.getItem('userEmail') || '';
 
     layoutService = inject(LayoutService);
+
+    constructor(
+        private http: HttpClient,
+        private router: Router
+    ) {}
 
     toggleDarkMode() {
         this.layoutService.layoutConfig.update((state) => ({
             ...state,
             darkTheme: !state.darkTheme
         }));
+    }
+
+    toggleProfileMenu(event: Event) {
+        event.stopPropagation();
+        this.profileMenuOpen.update(v => !v);
+    }
+
+    @HostListener('document:click')
+    onDocumentClick() {
+        this.profileMenuOpen.set(false);
+    }
+
+    goToProfile() {
+        this.profileMenuOpen.set(false);
+        this.router.navigate(['/profile']);
+    }
+
+    goToChangePassword() {
+        this.profileMenuOpen.set(false);
+        this.router.navigate(['/change-password']);
+    }
+
+    logout() {
+        this.profileMenuOpen.set(false);
+        const token = localStorage.getItem('accessToken');
+        const headers = new HttpHeaders({ 'Authorization': `Bearer ${token}` });
+
+        this.http.post('http://localhost:8080/api/v1/auth/logout', null, { headers }).subscribe({
+            next: () => this.clearAndRedirect(),
+            error: () => this.clearAndRedirect()
+        });
+    }
+
+    private clearAndRedirect() {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('userEmail');
+        this.router.navigate(['/auth/login']);
     }
 }

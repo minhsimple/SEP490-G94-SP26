@@ -33,15 +33,15 @@ export class AppMenu {
                 path: '/pages',
                 items: [
                     {
-                        label: 'Auth',
-                        icon: 'pi pi-fw pi-user',
-                        path: '/auth',
-                        items: [
-                            {
-                                label: 'Login',
-                                icon: 'pi pi-fw pi-sign-in',
-                                routerLink: ['/auth/login']
-                            },
+                        // label: 'Auth',
+                        // icon: 'pi pi-fw pi-user',
+                        // path: '/auth',
+                        // items: [
+                        //     {
+                        //         label: 'Login',
+                        //         icon: 'pi pi-fw pi-sign-in',
+                        //         routerLink: ['/auth/login']
+                        //     },
                             // {
                             //     label: 'Error',
                             //     icon: 'pi pi-fw pi-times-circle',
@@ -52,7 +52,7 @@ export class AppMenu {
                             //     icon: 'pi pi-fw pi-lock',
                             //     routerLink: ['/auth/access']
                             // }
-                        ]
+                        // ]
                     },
                     // {
                     //     label: 'Crud',
@@ -83,6 +83,11 @@ export class AppMenu {
                         label: 'Quản lý danh khách hàng',
                         icon: 'pi pi-fw pi-users',
                         routerLink: ['/pages/customers']
+                    },
+                    {
+                        label: 'Quản lý sảnh hội trường ',
+                        icon: 'pi pi-fw pi-users',
+                        routerLink: ['/pages/hall']
                     },
                     // {
                     //     label: 'Empty',

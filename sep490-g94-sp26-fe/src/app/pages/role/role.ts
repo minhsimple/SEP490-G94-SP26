@@ -13,9 +13,12 @@ import { TagModule } from 'primeng/tag';
 import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { HttpClient } from '@angular/common/http';
+import { Role, RoleService } from '../service/role.service';
 
-const BASE_URL = 'http://localhost:8080/api/v1/role';
+interface Column {
+    field: string;
+    header: string;
+}
 
 @Component({
     selector: 'app-role',
@@ -48,14 +51,14 @@ const BASE_URL = 'http://localhost:8080/api/v1/role';
                         class="mr-2"
                         (onClick)="openNew()"
                     />
-                    <p-button
+                    <!-- <p-button
                         severity="danger"
                         label="Xóa"
                         icon="pi pi-trash"
                         outlined
                         (onClick)="deleteSelectedRoles()"
                         [disabled]="!selectedRoles || !selectedRoles.length"
-                    />
+                    /> -->
                 </ng-template>
 
                 <ng-template #end>
@@ -223,25 +226,25 @@ const BASE_URL = 'http://localhost:8080/api/v1/role';
             .p-dialog .p-dialog-content { padding: 0 1.5rem 1.5rem 1.5rem; }
         }
     `],
-    providers: [MessageService, ConfirmationService]
+    providers: [MessageService, RoleService, ConfirmationService]
 })
 export class RoleComponent implements OnInit {
     roleDialog = false;
-    roles = signal<any[]>([]);
-    role: any = {};
-    selectedRoles: any[] | null = null;
+    roles = signal<Role[]>([]);
+    role!: Role;
+    selectedRoles!: Role[] | null;
     submitted = false;
     saving = false;
     loading = false;
     totalRecords = 0;
     pageSize = 20;
     currentPage = 0;
-    cols: any[] = [];
+    cols!: Column[];
 
     @ViewChild('dt') dt!: Table;
 
     constructor(
-        private http: HttpClient,
+        private roleService: RoleService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService
     ) {}
@@ -257,9 +260,7 @@ export class RoleComponent implements OnInit {
 
     loadRoles(page = 0, size = this.pageSize) {
         this.loading = true;
-        this.http.get<any>(`${BASE_URL}/search`, {
-            params: { page, size, sort: 'updatedAt,DESC' }
-        }).subscribe({
+        this.roleService.searchRoles({ page, size }).subscribe({
             next: (res) => {
                 if (res.code === 200) {
                     this.roles.set(res.data.content);
@@ -291,7 +292,7 @@ export class RoleComponent implements OnInit {
         this.roleDialog = true;
     }
 
-    editRole(r: any) {
+    editRole(r: Role) {
         this.role = { ...r };
         this.roleDialog = true;
     }
@@ -302,14 +303,12 @@ export class RoleComponent implements OnInit {
         if (!this.role.code?.trim() || !this.role.name?.trim()) return;
 
         this.saving = true;
-        const payload = {
-            code: this.role.code,
-            name: this.role.name
-        };
 
         if (this.role.id) {
-            this.http.put<any>(`${BASE_URL}/update`, payload, {
-                params: { roleId: this.role.id }
+            // Cập nhật
+            this.roleService.updateRole(this.role.id, {
+                code: this.role.code,
+                name: this.role.name
             }).subscribe({
                 next: (res) => {
                     if (res.code === 200) {
@@ -325,7 +324,11 @@ export class RoleComponent implements OnInit {
                 }
             });
         } else {
-            this.http.post<any>(`${BASE_URL}/create`, payload).subscribe({
+            // Tạo mới
+            this.roleService.createRole({
+                code: this.role.code!,
+                name: this.role.name!
+            }).subscribe({
                 next: (res) => {
                     if (res.code === 200) {
                         this.loadRoles(this.currentPage, this.pageSize);
@@ -342,7 +345,7 @@ export class RoleComponent implements OnInit {
         }
     }
 
-    toggleStatus(r: any) {
+    toggleStatus(r: Role) {
         const action = r.status === 'ACTIVE' ? 'vô hiệu hóa' : 'kích hoạt';
         this.confirmationService.confirm({
             message: `Bạn có chắc muốn ${action} vai trò ${r.name}?`,
@@ -351,7 +354,7 @@ export class RoleComponent implements OnInit {
             acceptLabel: 'Có',
             rejectLabel: 'Không',
             accept: () => {
-                this.http.patch<any>(`${BASE_URL}/${r.id}/change-status`, {}).subscribe({
+                this.roleService.changeStatus(r.id).subscribe({
                     next: (res) => {
                         if (res.code === 200) {
                             this.loadRoles(this.currentPage, this.pageSize);
@@ -366,7 +369,7 @@ export class RoleComponent implements OnInit {
         });
     }
 
-    deleteRole(r: any) {
+    deleteRole(r: Role) {
         this.confirmationService.confirm({
             message: `Bạn có chắc chắn muốn xóa vai trò ${r.name}?`,
             header: 'Xác nhận',
@@ -374,7 +377,7 @@ export class RoleComponent implements OnInit {
             acceptLabel: 'Có',
             rejectLabel: 'Không',
             accept: () => {
-                this.roles.set(this.roles().filter((v: any) => v.id !== r.id));
+                this.roles.set(this.roles().filter(v => v.id !== r.id));
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa vai trò', life: 3000 });
             }
         });
@@ -388,7 +391,7 @@ export class RoleComponent implements OnInit {
             acceptLabel: 'Có',
             rejectLabel: 'Không',
             accept: () => {
-                this.roles.set(this.roles().filter((v: any) => !this.selectedRoles?.includes(v)));
+                this.roles.set(this.roles().filter(v => !this.selectedRoles?.includes(v)));
                 this.selectedRoles = null;
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xóa các vai trò', life: 3000 });
             }
@@ -403,7 +406,7 @@ export class RoleComponent implements OnInit {
     exportCSV() { this.dt.exportCSV(); }
 
     getStatusLabel(status?: string): string {
-        return status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động';
+        return status === 'ACTIVE' ? 'Hoạt động' : 'Hoạt động';
     }
 
     getStatusSeverity(status?: string): any {
