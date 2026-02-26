@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, message, Popconfirm, Tooltip,
+    Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, message, Popconfirm, Tooltip, Upload, Image,
 } from 'antd';
 import {
-    PlusOutlined, EditOutlined, SwapOutlined, SearchOutlined, ReloadOutlined, EyeOutlined,
+    PlusOutlined, EditOutlined, SwapOutlined, SearchOutlined, ReloadOutlined, EyeOutlined, UploadOutlined, DeleteOutlined,
 } from '@ant-design/icons';
 import hallApi from '../api/hallApi';
 import locationApi from '../api/locationApi';
@@ -23,6 +23,9 @@ export default function Halls() {
     const [locations, setLocations] = useState([]);
     const [filterLocation, setFilterLocation] = useState(null);
     const [filterCapacity, setFilterCapacity] = useState(null);
+    const [fileList, setFileList] = useState([]);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewImage, setPreviewImage] = useState('');
     const [form] = Form.useForm();
 
     const fetchLocations = async () => {
@@ -55,10 +58,26 @@ export default function Halls() {
         setFilterCapacity(null);
         fetchData(0, pagination.pageSize, '', null, null);
     };
-    const handleAdd = () => { setEditing(null); form.resetFields(); setModalOpen(true); };
+    const handleAdd = () => { 
+        setEditing(null); 
+        form.resetFields(); 
+        setFileList([]);
+        setModalOpen(true); 
+    };
     const handleEdit = (record) => {
         setEditing(record);
         form.setFieldsValue({ ...record, locationId: record.locationId || record.location?.id });
+        // Load existing images
+        if (record.images && record.images.length > 0) {
+            setFileList(record.images.map((img, idx) => ({
+                uid: idx,
+                name: `image-${idx}.jpg`,
+                status: 'done',
+                url: img,
+            })));
+        } else {
+            setFileList([]);
+        }
         setModalOpen(true);
     };
 
@@ -70,9 +89,12 @@ export default function Halls() {
     const handleSubmit = async () => {
         try {
             const values = await form.validateFields();
+            // Add images to payload
+            values.images = fileList.map(file => file.url || file.response?.url || file.thumbUrl).filter(Boolean);
             if (editing) { await hallApi.update(editing.id, values); message.success('Cập nhật thành công'); }
             else { await hallApi.create(values); message.success('Tạo mới thành công'); }
             setModalOpen(false);
+            setFileList([]);
             fetchData(pagination.current - 1, pagination.pageSize, searchText, filterLocation, filterCapacity);
         } catch (error) { if (error.response?.data?.message) message.error(error.response.data.message); }
     };
@@ -82,8 +104,42 @@ export default function Halls() {
         catch { message.error('Thay đổi trạng thái thất bại'); }
     };
 
+    const handleUploadChange = ({ fileList: newFileList }) => setFileList(newFileList);
+    
+    const handlePreview = async (file) => {
+        setPreviewImage(file.url || file.thumbUrl);
+        setPreviewOpen(true);
+    };
+
+    const beforeUpload = (file) => {
+        const isImage = file.type.startsWith('image/');
+        if (!isImage) {
+            message.error('Chỉ được upload file ảnh!');
+            return Upload.LIST_IGNORE;
+        }
+        const isLt5M = file.size / 1024 / 1024 < 5;
+        if (!isLt5M) {
+            message.error('Ảnh phải nhỏ hơn 5MB!');
+            return Upload.LIST_IGNORE;
+        }
+        // Convert to base64 for preview
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            file.url = reader.result;
+            setFileList(prev => [...prev, { ...file, uid: file.uid, status: 'done' }]);
+        };
+        return false; // Prevent auto upload
+    };
+
     const columns = [
         { title: 'ID', dataIndex: 'id', width: 70, sorter: (a, b) => a.id - b.id },
+        { 
+            title: 'Ảnh', dataIndex: 'images', width: 80,
+            render: (images) => images && images.length > 0 ? (
+                <Image src={images[0]} alt="hall" width={50} height={50} style={{ objectFit: 'cover', borderRadius: 4 }} />
+            ) : <div style={{ width: 50, height: 50, background: '#f0f0f0', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>No img</div>
+        },
         { title: 'Mã', dataIndex: 'code', width: 120 },
         { title: 'Tên hội trường', dataIndex: 'name', ellipsis: true },
         { title: 'Sức chứa', dataIndex: 'capacity', width: 100, render: (v) => v ? `${v} khách` : '—' },
@@ -125,7 +181,7 @@ export default function Halls() {
                     <Select.Option value={100}>≤ 100 khách</Select.Option>
                     <Select.Option value={200}>≤ 200 khách</Select.Option>
                     <Select.Option value={500}>≤ 500 khách</Select.Option>
-                    <Select.Option value={1000}>> 500 khách</Select.Option>
+                    <Select.Option value={1000}> 500 khách</Select.Option>
                 </Select>
                 <Button icon={<SearchOutlined />} onClick={handleSearch} style={{ borderRadius: 8 }}>Tìm</Button>
                 <Button icon={<ReloadOutlined />} onClick={handleReset} style={{ borderRadius: 8 }}>Làm mới</Button>
@@ -153,21 +209,61 @@ export default function Halls() {
                         <InputNumber min={1} placeholder="VD: 200" style={{ width: '100%' }} />
                     </Form.Item>
                     <Form.Item name="notes" label="Ghi chú"><TextArea rows={3} placeholder="Nhập ghi chú" /></Form.Item>
+                    <Form.Item label="Ảnh hội trường">
+                        <Upload
+                            listType="picture-card"
+                            fileList={fileList}
+                            beforeUpload={beforeUpload}
+                            onPreview={handlePreview}
+                            onChange={handleUploadChange}
+                            onRemove={(file) => {
+                                setFileList(prev => prev.filter(f => f.uid !== file.uid));
+                            }}
+                            accept="image/*"
+                            multiple
+                        >
+                            {fileList.length >= 8 ? null : (
+                                <div>
+                                    <PlusOutlined />
+                                    <div style={{ marginTop: 8 }}>Upload</div>
+                                </div>
+                            )}
+                        </Upload>
+                        <div style={{ color: '#999', fontSize: 12, marginTop: 8 }}>Tối đa 8 ảnh, mỗi ảnh &lt; 5MB</div>
+                    </Form.Item>
                 </Form>
             </Modal>
 
             <Modal title="Chi tiết hội trường" open={detailModal} onCancel={() => setDetailModal(false)}
-                footer={<Button onClick={() => setDetailModal(false)}>Đóng</Button>} width={520}>
+                footer={<Button onClick={() => setDetailModal(false)}>Đóng</Button>} width={680}>
                 {detailData && (
-                    <div style={{ lineHeight: 2.2 }}>
-                        <p><strong>ID:</strong> {detailData.id}</p>
-                        <p><strong>Mã:</strong> {detailData.code}</p>
-                        <p><strong>Tên:</strong> {detailData.name}</p>
-                        <p><strong>Sức chứa:</strong> {detailData.capacity} khách</p>
-                        <p><strong>Chi nhánh:</strong> {detailData.location?.name || '—'}</p>
-                        <p><strong>Ghi chú:</strong> {detailData.notes || '—'}</p>
+                    <div>
+                        {detailData.images && detailData.images.length > 0 && (
+                            <div style={{ marginBottom: 20 }}>
+                                <strong style={{ display: 'block', marginBottom: 12 }}>📷 Gallery ảnh:</strong>
+                                <Image.PreviewGroup>
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        {detailData.images.map((img, idx) => (
+                                            <Image key={idx} src={img} alt={`hall-${idx}`} width={120} height={120} style={{ objectFit: 'cover', borderRadius: 8 }} />
+                                        ))}
+                                    </div>
+                                </Image.PreviewGroup>
+                            </div>
+                        )}
+                        <div style={{ lineHeight: 2.2 }}>
+                            <p><strong>ID:</strong> {detailData.id}</p>
+                            <p><strong>Mã:</strong> {detailData.code}</p>
+                            <p><strong>Tên:</strong> {detailData.name}</p>
+                            <p><strong>Sức chứa:</strong> {detailData.capacity} khách</p>
+                            <p><strong>Chi nhánh:</strong> {detailData.location?.name || '—'}</p>
+                            <p><strong>Ghi chú:</strong> {detailData.notes || '—'}</p>
+                        </div>
                     </div>
                 )}
+            </Modal>
+
+            <Modal open={previewOpen} footer={null} onCancel={() => setPreviewOpen(false)} width={800}>
+                <img alt="preview" style={{ width: '100%' }} src={previewImage} />
             </Modal>
         </div>
     );
