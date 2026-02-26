@@ -33,6 +33,27 @@ const hallApi = {
     deleteReview(hallId, reviewId) {
         return axiosClient.delete(`/api/v1/hall/${hallId}/reviews/${reviewId}`);
     },
+
+    // Booking APIs - Update endpoints when backend is ready
+    getBookings(hallId, params = {}) {
+        return axiosClient.get(`/api/v1/hall/${hallId}/bookings`, { params });
+    },
+
+    addBooking(hallId, data) {
+        return axiosClient.post(`/api/v1/hall/${hallId}/bookings`, data);
+    },
+
+    updateBooking(hallId, bookingId, data) {
+        return axiosClient.put(`/api/v1/hall/${hallId}/bookings/${bookingId}`, data);
+    },
+
+    confirmBooking(hallId, bookingId) {
+        return axiosClient.patch(`/api/v1/hall/${hallId}/bookings/${bookingId}/confirm`);
+    },
+
+    cancelBooking(hallId, bookingId) {
+        return axiosClient.patch(`/api/v1/hall/${hallId}/bookings/${bookingId}/cancel`);
+    },
 };
 
 export default hallApi;

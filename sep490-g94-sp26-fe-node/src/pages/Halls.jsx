@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, message, Popconfirm, Tooltip, Upload, Image, Rate, Card, Divider, Avatar,
+    Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, message, Popconfirm, Tooltip, Upload, Image, Rate, Card, Divider, Avatar, Calendar, Badge, DatePicker, TimePicker,
 } from 'antd';
 import {
-    PlusOutlined, EditOutlined, SwapOutlined, SearchOutlined, ReloadOutlined, EyeOutlined, UploadOutlined, DeleteOutlined, DownloadOutlined, StarOutlined, CommentOutlined, UserOutlined,
+    PlusOutlined, EditOutlined, SwapOutlined, SearchOutlined, ReloadOutlined, EyeOutlined, UploadOutlined, DeleteOutlined, DownloadOutlined, StarOutlined, CommentOutlined, UserOutlined, CalendarOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import hallApi from '../api/hallApi';
@@ -30,8 +30,16 @@ export default function Halls() {
     const [reviewModal, setReviewModal] = useState(false);
     const [reviews, setReviews] = useState([]);
     const [selectedHallForReview, setSelectedHallForReview] = useState(null);
+    const [calendarModal, setCalendarModal] = useState(false);
+    const [selectedHallForBooking, setSelectedHallForBooking] = useState(null);
+    const [bookings, setBookings] = useState([]);
+    const [selectedDate, setSelectedDate] = useState(null);
+    const [bookingDetailModal, setBookingDetailModal] = useState(false);
+    const [selectedBookings, setSelectedBookings] = useState([]);
+    const [addBookingModal, setAddBookingModal] = useState(false);
     const [form] = Form.useForm();
     const [reviewForm] = Form.useForm();
+    const [bookingForm] = Form.useForm();
 
     const fetchLocations = async () => {
         try { const res = await locationApi.getAll({ size: 100 }); setLocations(res.data.data?.content || []); }
@@ -123,6 +131,79 @@ export default function Halls() {
             setReviews([newReview, ...reviews]);
             message.success('Đánh giá của bạn đã được gửi!');
             reviewForm.resetFields();
+        } catch (error) {
+            message.error('Vui lòng điền đầy đủ thông tin!');
+        }
+    };
+
+    const handleViewCalendar = (record) => {
+        setSelectedHallForBooking(record);
+        // Mock bookings - replace with API: hallApi.getBookings(record.id)
+        const mockBookings = [
+            { id: 1, date: '2026-02-28', customerName: 'Công ty ABC', eventType: 'Hội nghị', status: 'confirmed', time: '08:00-12:00' },
+            { id: 2, date: '2026-03-01', customerName: 'Nguyễn Văn A', eventType: 'Tiệc cưới', status: 'confirmed', time: '18:00-22:00' },
+            { id: 3, date: '2026-03-05', customerName: 'Công ty XYZ', eventType: 'Sự kiện', status: 'pending', time: '14:00-18:00' },
+            { id: 4, date: '2026-03-08', customerName: 'Trần Thị B', eventType: 'Sinh nhật', status: 'confirmed', time: '19:00-23:00' },
+            { id: 5, date: '2026-03-15', customerName: 'Lê Văn C', eventType: 'Hội thảo', status: 'cancelled', time: '09:00-17:00' },
+        ];
+        setBookings(mockBookings);
+        setCalendarModal(true);
+    };
+
+    const getListData = (value) => {
+        const dateStr = value.format('YYYY-MM-DD');
+        return bookings.filter(booking => booking.date === dateStr);
+    };
+
+    const dateCellRender = (value) => {
+        const listData = getListData(value);
+        return (
+            <div style={{ minHeight: 80 }}>
+                {listData.map((item) => {
+                    let color = 'blue';
+                    if (item.status === 'confirmed') color = 'green';
+                    if (item.status === 'pending') color = 'orange';
+                    if (item.status === 'cancelled') color = 'red';
+                    return (
+                        <div key={item.id} style={{ marginBottom: 4 }}>
+                            <Badge color={color} text={<span style={{ fontSize: 11 }}>{item.time} - {item.customerName}</span>} />
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    const onSelectDate = (value) => {
+        const dateStr = value.format('YYYY-MM-DD');
+        const dayBookings = bookings.filter(booking => booking.date === dateStr);
+        if (dayBookings.length > 0) {
+            setSelectedDate(dateStr);
+            setSelectedBookings(dayBookings);
+            setBookingDetailModal(true);
+        } else {
+            setSelectedDate(dateStr);
+            bookingForm.setFieldsValue({ bookingDate: value });
+            setAddBookingModal(true);
+        }
+    };
+
+    const handleAddBooking = async () => {
+        try {
+            const values = await bookingForm.validateFields();
+            // Mock API call - replace with: hallApi.addBooking(selectedHallForBooking.id, values)
+            const newBooking = {
+                id: Date.now(),
+                date: values.bookingDate.format('YYYY-MM-DD'),
+                customerName: values.customerName,
+                eventType: values.eventType,
+                status: 'pending',
+                time: `${values.startTime.format('HH:mm')}-${values.endTime.format('HH:mm')}`,
+            };
+            setBookings([...bookings, newBooking]);
+            message.success('Đã thêm booking mới!');
+            bookingForm.resetFields();
+            setAddBookingModal(false);
         } catch (error) {
             message.error('Vui lòng điền đầy đủ thông tin!');
         }
@@ -243,10 +324,11 @@ export default function Halls() {
             }
         },
         {
-            title: 'Hành động', width: 180,
+            title: 'Hành động', width: 210,
             render: (_, record) => (
                 <Space>
                     <Tooltip title="Xem chi tiết"><Button type="text" icon={<EyeOutlined />} onClick={() => handleViewDetail(record.id)} style={{ color: '#4facfe' }} /></Tooltip>
+                    <Tooltip title="Lịch đặt"><Button type="text" icon={<CalendarOutlined />} onClick={() => handleViewCalendar(record)} style={{ color: '#13c2c2' }} /></Tooltip>
                     <Tooltip title="Reviews"><Button type="text" icon={<CommentOutlined />} onClick={() => handleViewReviews(record)} style={{ color: '#ffa940' }} /></Tooltip>
                     <Tooltip title="Chỉnh sửa"><Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} style={{ color: '#667eea' }} /></Tooltip>
                     <Popconfirm title="Thay đổi trạng thái?" onConfirm={() => handleChangeStatus(record.id)}>
@@ -294,7 +376,7 @@ export default function Halls() {
 
             <Table columns={columns} dataSource={data} rowKey="id" loading={loading}
                 pagination={{ ...pagination, showSizeChanger: true, showTotal: (total) => `Tổng ${total} bản ghi` }}
-                onChange={handleTableChange} scroll={{ x: 1000 }} />
+                onChange={handleTableChange} scroll={{ x: 1100 }} />
 
             <Modal title={editing ? 'Chỉnh sửa hội trường' : 'Thêm hội trường mới'} open={modalOpen} onOk={handleSubmit}
                 onCancel={() => setModalOpen(false)} okText={editing ? 'Cập nhật' : 'Tạo mới'} cancelText="Hủy" width={520}>
@@ -435,6 +517,107 @@ export default function Halls() {
 
             <Modal open={previewOpen} footer={null} onCancel={() => setPreviewOpen(false)} width={800}>
                 <img alt="preview" style={{ width: '100%' }} src={previewImage} />
+            </Modal>
+
+            {/* Calendar Modal */}
+            <Modal 
+                title={<div><CalendarOutlined /> Lịch đặt sảnh - {selectedHallForBooking?.name}</div>} 
+                open={calendarModal} 
+                onCancel={() => setCalendarModal(false)} 
+                footer={null} 
+                width={900}
+            >
+                <div style={{ marginBottom: 16 }}>
+                    <Space>
+                        <Badge color="green" text="Đã xác nhận" />
+                        <Badge color="orange" text="Chờ xác nhận" />
+                        <Badge color="red" text="Đã hủy" />
+                    </Space>
+                </div>
+                <Calendar 
+                    cellRender={dateCellRender} 
+                    onSelect={onSelectDate}
+                    style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 16 }}
+                />
+                <div style={{ marginTop: 16, textAlign: 'center', color: '#999' }}>
+                    💡 Click vào ngày để xem chi tiết hoặc thêm booking mới
+                </div>
+            </Modal>
+
+            {/* Booking Detail Modal */}
+            <Modal
+                title={`📅 Chi tiết booking - ${selectedDate}`}
+                open={bookingDetailModal}
+                onCancel={() => setBookingDetailModal(false)}
+                footer={<Button onClick={() => setBookingDetailModal(false)}>Đóng</Button>}
+                width={600}
+            >
+                {selectedBookings.map(booking => {
+                    let statusColor = 'blue';
+                    let statusText = 'Đang xử lý';
+                    if (booking.status === 'confirmed') { statusColor = 'green'; statusText = 'Đã xác nhận'; }
+                    if (booking.status === 'pending') { statusColor = 'orange'; statusText = 'Chờ xác nhận'; }
+                    if (booking.status === 'cancelled') { statusColor = 'red'; statusText = 'Đã hủy'; }
+                    
+                    return (
+                        <Card key={booking.id} size="small" style={{ marginBottom: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div><strong>Khách hàng:</strong> {booking.customerName}</div>
+                                    <div><strong>Loại sự kiện:</strong> {booking.eventType}</div>
+                                    <div><strong>Thời gian:</strong> {booking.time}</div>
+                                    <div><strong>Trạng thái:</strong> <Tag color={statusColor}>{statusText}</Tag></div>
+                                </div>
+                                <Space direction="vertical">
+                                    {booking.status === 'pending' && (
+                                        <Button type="primary" size="small" onClick={() => message.success('Đã xác nhận booking!')}>Xác nhận</Button>
+                                    )}
+                                    {booking.status !== 'cancelled' && (
+                                        <Button danger size="small" onClick={() => message.info('Đã hủy booking!')}>Hủy</Button>
+                                    )}
+                                </Space>
+                            </div>
+                        </Card>
+                    );
+                })}
+            </Modal>
+
+            {/* Add Booking Modal */}
+            <Modal
+                title={`➕ Thêm booking mới - ${selectedDate}`}
+                open={addBookingModal}
+                onCancel={() => { setAddBookingModal(false); bookingForm.resetFields(); }}
+                onOk={handleAddBooking}
+                okText="Thêm booking"
+                cancelText="Hủy"
+                width={520}
+            >
+                <Form form={bookingForm} layout="vertical" style={{ marginTop: 16 }}>
+                    <Form.Item name="bookingDate" label="Ngày đặt" rules={[{ required: true, message: 'Vui lòng chọn ngày' }]}>
+                        <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                    </Form.Item>
+                    <Form.Item name="customerName" label="Tên khách hàng" rules={[{ required: true, message: 'Vui lòng nhập tên' }]}>
+                        <Input placeholder="Nhập tên khách hàng" />
+                    </Form.Item>
+                    <Form.Item name="eventType" label="Loại sự kiện" rules={[{ required: true, message: 'Vui lòng chọn loại sự kiện' }]}>
+                        <Select placeholder="Chọn loại sự kiện">
+                            <Select.Option value="Tiệc cưới">Tiệc cưới</Select.Option>
+                            <Select.Option value="Hội nghị">Hội nghị</Select.Option>
+                            <Select.Option value="Hội thảo">Hội thảo</Select.Option>
+                            <Select.Option value="Sinh nhật">Sinh nhật</Select.Option>
+                            <Select.Option value="Sự kiện">Sự kiện</Select.Option>
+                            <Select.Option value="Khác">Khác</Select.Option>
+                        </Select>
+                    </Form.Item>
+                    <Space style={{ width: '100%' }}>
+                        <Form.Item name="startTime" label="Giờ bắt đầu" rules={[{ required: true, message: 'Chọn giờ' }]} style={{ flex: 1 }}>
+                            <TimePicker format="HH:mm" style={{ width: '100%' }} />
+                        </Form.Item>
+                        <Form.Item name="endTime" label="Giờ kết thúc" rules={[{ required: true, message: 'Chọn giờ' }]} style={{ flex: 1 }}>
+                            <TimePicker format="HH:mm" style={{ width: '100%' }} />
+                        </Form.Item>
+                    </Space>
+                </Form>
             </Modal>
         </div>
     );
