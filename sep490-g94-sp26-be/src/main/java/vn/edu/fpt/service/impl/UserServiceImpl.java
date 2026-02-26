@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.user.UserFilterRequest;
@@ -29,6 +30,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponse createUser(UserRequest request) {
@@ -36,22 +38,30 @@ public class UserServiceImpl implements UserService {
             throw new AppException(ERROR_CODE.USER_EXISTED);
         }
         User user = userMapper.toEntity(request);
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         User savedUser = userRepository.save(user);
         return userMapper.toResponse(savedUser);
     }
 
     @Override
     public UserResponse updateUser(Integer id, UserRequest request) {
+
         User user = userRepository.findByIdAndStatus(id, RecordStatus.active)
-                .orElseThrow(() ->  new AppException(ERROR_CODE.USER_NOT_EXISTED));
+                .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
 
         userMapper.updateEntity(user, request);
+
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
+
         User savedUser = userRepository.save(user);
+
         return userMapper.toResponse(savedUser);
     }
 
 
-    @Override
+        @Override
     public SimplePage<UserResponse> getAllUsers(Pageable pageable, UserFilterRequest filter) {
         Specification<User> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
