@@ -1,0 +1,43 @@
+#spring:
+#  application:
+#    name: sep490-g94-sp26-be
+#
+#  docker:
+#    compose:
+#      enabled: false
+#
+#  # Database Configuration
+#  datasource:
+#    url: jdbc:postgresql://localhost:5432/wedding_services
+#    username: admin
+#    password: secret
+#    driver-class-name: org.postgresql.Driver
+#
+#  # JPA/Hibernate
+#  jpa:
+#    hibernate:
+#      ddl-auto: none
+#    show-sql: true
+#    properties:
+#      hibernate:
+#        format_sql: true
+#        dialect: org.hibernate.dialect.PostgreSQLDialect
+#        default_schema: wedding
+#
+## Server
+#server:
+#  port: 8080
+#
+## JWT Configuration
+#jwt:
+#  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+#  expiration: 86400000
+#  refresh-expiration: 604800000
+#
+## Swagger/OpenAPI
+#springdoc:
+#  api-docs:
+#    path: /v3/api-docs
+#  swagger-ui:
+#    path: /swagger-ui.html
+#

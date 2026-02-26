@@ -1,0 +1,43 @@
+//package vn.edu.fpt.entity;
+//
+//import jakarta.persistence.*;
+//import lombok.*;
+//import lombok.experimental.FieldDefaults;
+//import lombok.experimental.SuperBuilder;
+//
+//import java.util.UUID;
+//
+//@Entity
+//@Table(name = "beos", schema = "wedding")
+//@Getter
+//@Setter
+//@SuperBuilder
+//@NoArgsConstructor
+//@AllArgsConstructor
+//@FieldDefaults(level = AccessLevel.PRIVATE)
+//public class Beo extends BaseEntity {
+//
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.UUID)
+//    UUID id;
+//
+//    @Column(name = "event_id", unique = true, nullable = false)
+//    UUID eventId;
+//
+//    @Column(name = "expected_guests")
+//    Integer expectedGuests;
+//
+//    @Column(name = "expected_tables")
+//    Integer expectedTables;
+//
+//    @Column(name = "set_menu_id", nullable = false)
+//    UUID setMenuId;
+//
+//
+//    @Column(name = "quantity_sets", nullable = false)
+//    Integer quantitySets;
+//
+//    @Column(name = "special_requests")
+//    String specialRequests;
+//}
+//
