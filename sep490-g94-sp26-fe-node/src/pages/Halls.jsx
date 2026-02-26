@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, message, Popconfirm, Tooltip, Upload, Image,
+    Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, message, Popconfirm, Tooltip, Upload, Image, Rate, Card, Divider, Avatar,
 } from 'antd';
 import {
-    PlusOutlined, EditOutlined, SwapOutlined, SearchOutlined, ReloadOutlined, EyeOutlined, UploadOutlined, DeleteOutlined,
+    PlusOutlined, EditOutlined, SwapOutlined, SearchOutlined, ReloadOutlined, EyeOutlined, UploadOutlined, DeleteOutlined, DownloadOutlined, StarOutlined, CommentOutlined, UserOutlined,
 } from '@ant-design/icons';
+import * as XLSX from 'xlsx';
 import hallApi from '../api/hallApi';
 import locationApi from '../api/locationApi';
 
@@ -26,7 +27,11 @@ export default function Halls() {
     const [fileList, setFileList] = useState([]);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewImage, setPreviewImage] = useState('');
+    const [reviewModal, setReviewModal] = useState(false);
+    const [reviews, setReviews] = useState([]);
+    const [selectedHallForReview, setSelectedHallForReview] = useState(null);
     const [form] = Form.useForm();
+    const [reviewForm] = Form.useForm();
 
     const fetchLocations = async () => {
         try { const res = await locationApi.getAll({ size: 100 }); setLocations(res.data.data?.content || []); }
@@ -82,8 +87,45 @@ export default function Halls() {
     };
 
     const handleViewDetail = async (id) => {
-        try { const res = await hallApi.getDetail(id); setDetailData(res.data.data); setDetailModal(true); }
+        try { 
+            const res = await hallApi.getDetail(id); 
+            setDetailData(res.data.data); 
+            // Mock reviews data - replace with API call when backend ready
+            setReviews(res.data.data.reviews || []);
+            setDetailModal(true); 
+        }
         catch { message.error('Không thể tải chi tiết'); }
+    };
+
+    const handleViewReviews = (record) => {
+        setSelectedHallForReview(record);
+        // Mock reviews - replace with API call: hallApi.getReviews(record.id)
+        const mockReviews = [
+            { id: 1, userName: 'Nguyễn Văn A', rating: 5, comment: 'Hội trường rất đẹp, không gian thoáng mát', date: '2026-02-20' },
+            { id: 2, userName: 'Trần Thị B', rating: 4, comment: 'Dịch vụ tốt, nhân viên nhiệt tình', date: '2026-02-18' },
+            { id: 3, userName: 'Lê Văn C', rating: 5, comment: 'Âm thanh ánh sáng tuyệt vời, phù hợp tổ chức sự kiện lớn', date: '2026-02-15' },
+        ];
+        setReviews(mockReviews);
+        setReviewModal(true);
+    };
+
+    const handleAddReview = async () => {
+        try {
+            const values = await reviewForm.validateFields();
+            // Mock API call - replace with: hallApi.addReview(selectedHallForReview.id, values)
+            const newReview = {
+                id: Date.now(),
+                userName: 'Người dùng hiện tại',
+                rating: values.rating,
+                comment: values.comment,
+                date: new Date().toISOString().slice(0, 10),
+            };
+            setReviews([newReview, ...reviews]);
+            message.success('Đánh giá của bạn đã được gửi!');
+            reviewForm.resetFields();
+        } catch (error) {
+            message.error('Vui lòng điền đầy đủ thông tin!');
+        }
     };
 
     const handleSubmit = async () => {
@@ -132,6 +174,49 @@ export default function Halls() {
         return false; // Prevent auto upload
     };
 
+    const handleExport = () => {
+        try {
+            // Prepare data for export
+            const exportData = data.map((item, index) => ({
+                'STT': index + 1,
+                'ID': item.id,
+                'Mã': item.code,
+                'Tên hội trường': item.name,
+                'Sức chứa': item.capacity,
+                'Chi nhánh': item.location?.name || '',
+                'Ghi chú': item.notes || '',
+            }));
+
+            // Create worksheet
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            
+            // Set column widths
+            ws['!cols'] = [
+                { wch: 5 },  // STT
+                { wch: 8 },  // ID
+                { wch: 15 }, // Mã
+                { wch: 30 }, // Tên
+                { wch: 12 }, // Sức chứa
+                { wch: 25 }, // Chi nhánh
+                { wch: 30 }, // Ghi chú
+            ];
+
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Hội trường');
+
+            // Generate file name with timestamp
+            const fileName = `Danh_sach_hoi_truong_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            
+            // Export file
+            XLSX.writeFile(wb, fileName);
+            message.success('Xuất file Excel thành công!');
+        } catch (error) {
+            message.error('Xuất file thất bại!');
+            console.error(error);
+        }
+    };
+
     const columns = [
         { title: 'ID', dataIndex: 'id', width: 70, sorter: (a, b) => a.id - b.id },
         { 
@@ -144,11 +229,25 @@ export default function Halls() {
         { title: 'Tên hội trường', dataIndex: 'name', ellipsis: true },
         { title: 'Sức chứa', dataIndex: 'capacity', width: 100, render: (v) => v ? `${v} khách` : '—' },
         { title: 'Chi nhánh', dataIndex: ['location', 'name'], ellipsis: true, render: (v) => v || '—' },
+        { 
+            title: 'Đánh giá', dataIndex: 'rating', width: 140,
+            render: (rating, record) => {
+                const avgRating = rating || Math.random() * 2 + 3; // Mock data
+                const reviewCount = record.reviewCount || Math.floor(Math.random() * 50 + 5); // Mock
+                return (
+                    <div>
+                        <Rate disabled value={avgRating} style={{ fontSize: 14 }} />
+                        <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>({reviewCount} đánh giá)</div>
+                    </div>
+                );
+            }
+        },
         {
-            title: 'Hành động', width: 150,
+            title: 'Hành động', width: 180,
             render: (_, record) => (
                 <Space>
                     <Tooltip title="Xem chi tiết"><Button type="text" icon={<EyeOutlined />} onClick={() => handleViewDetail(record.id)} style={{ color: '#4facfe' }} /></Tooltip>
+                    <Tooltip title="Reviews"><Button type="text" icon={<CommentOutlined />} onClick={() => handleViewReviews(record)} style={{ color: '#ffa940' }} /></Tooltip>
                     <Tooltip title="Chỉnh sửa"><Button type="text" icon={<EditOutlined />} onClick={() => handleEdit(record)} style={{ color: '#667eea' }} /></Tooltip>
                     <Popconfirm title="Thay đổi trạng thái?" onConfirm={() => handleChangeStatus(record.id)}>
                         <Tooltip title="Bật/Tắt"><Button type="text" icon={<SwapOutlined />} style={{ color: '#f5576c' }} /></Tooltip>
@@ -162,10 +261,16 @@ export default function Halls() {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <Title level={3} style={{ margin: 0 }}>🏛️ Quản lý Hội trường</Title>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}
-                    style={{ background: 'linear-gradient(135deg, #fa709a, #fee140)', border: 'none', borderRadius: 8, height: 40, color: '#333' }}>
-                    Thêm mới
-                </Button>
+                <Space>
+                    <Button icon={<DownloadOutlined />} onClick={handleExport}
+                        style={{ borderRadius: 8, height: 40, borderColor: '#52c41a', color: '#52c41a' }}>
+                        Export Excel
+                    </Button>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}
+                        style={{ background: 'linear-gradient(135deg, #fa709a, #fee140)', border: 'none', borderRadius: 8, height: 40, color: '#333' }}>
+                        Thêm mới
+                    </Button>
+                </Space>
             </div>
 
             <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -189,7 +294,7 @@ export default function Halls() {
 
             <Table columns={columns} dataSource={data} rowKey="id" loading={loading}
                 pagination={{ ...pagination, showSizeChanger: true, showTotal: (total) => `Tổng ${total} bản ghi` }}
-                onChange={handleTableChange} scroll={{ x: 800 }} />
+                onChange={handleTableChange} scroll={{ x: 1000 }} />
 
             <Modal title={editing ? 'Chỉnh sửa hội trường' : 'Thêm hội trường mới'} open={modalOpen} onOk={handleSubmit}
                 onCancel={() => setModalOpen(false)} okText={editing ? 'Cập nhật' : 'Tạo mới'} cancelText="Hủy" width={520}>
@@ -258,8 +363,74 @@ export default function Halls() {
                             <p><strong>Chi nhánh:</strong> {detailData.location?.name || '—'}</p>
                             <p><strong>Ghi chú:</strong> {detailData.notes || '—'}</p>
                         </div>
+                        
+                        {reviews && reviews.length > 0 && (
+                            <div style={{ marginTop: 24 }}>
+                                <Divider />
+                                <strong style={{ fontSize: 16 }}>⭐ Đánh giá gần đây</strong>
+                                <div style={{ marginTop: 12, maxHeight: 200, overflowY: 'auto' }}>
+                                    {reviews.slice(0, 3).map(review => (
+                                        <div key={review.id} style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <strong>{review.userName}</strong>
+                                                <Rate disabled value={review.rating} style={{ fontSize: 12 }} />
+                                            </div>
+                                            <p style={{ margin: '4px 0', color: '#666' }}>{review.comment}</p>
+                                            <small style={{ color: '#999' }}>{review.date}</small>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
+            </Modal>
+
+            <Modal title={`💬 Reviews - ${selectedHallForReview?.name}`} open={reviewModal} 
+                onCancel={() => setReviewModal(false)} footer={null} width={680}>
+                <div>
+                    {/* Form thêm review */}
+                    <Card style={{ marginBottom: 16, background: '#fafafa' }}>
+                        <Typography.Title level={5}>✍️ Viết đánh giá của bạn</Typography.Title>
+                        <Form form={reviewForm} layout="vertical">
+                            <Form.Item name="rating" label="Đánh giá" rules={[{ required: true, message: 'Vui lòng chọn số sao' }]}>
+                                <Rate />
+                            </Form.Item>
+                            <Form.Item name="comment" label="Nhận xét" rules={[{ required: true, message: 'Vui lòng nhập nhận xét' }]}>
+                                <TextArea rows={3} placeholder="Chia sẻ trải nghiệm của bạn về hội trường này..." />
+                            </Form.Item>
+                            <Button type="primary" icon={<StarOutlined />} onClick={handleAddReview}>
+                                Gửi đánh giá
+                            </Button>
+                        </Form>
+                    </Card>
+
+                    {/* Danh sách reviews */}
+                    <div>
+                        <Typography.Title level={5}>📝 Tất cả đánh giá ({reviews.length})</Typography.Title>
+                        <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                            {reviews.length > 0 ? reviews.map(review => (
+                                <Card key={review.id} size="small" style={{ marginBottom: 12 }}>
+                                    <div style={{ display: 'flex', gap: 12 }}>
+                                        <Avatar icon={<UserOutlined />} style={{ background: '#1890ff' }} />
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <strong>{review.userName}</strong>
+                                                <small style={{ color: '#999' }}>{review.date}</small>
+                                            </div>
+                                            <Rate disabled value={review.rating} style={{ fontSize: 14, margin: '4px 0' }} />
+                                            <p style={{ margin: '8px 0 0', color: '#666' }}>{review.comment}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )) : (
+                                <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+                                    Chưa có đánh giá nào. Hãy là người đầu tiên!
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </Modal>
 
             <Modal open={previewOpen} footer={null} onCancel={() => setPreviewOpen(false)} width={800}>
