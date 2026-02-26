@@ -21,6 +21,8 @@ export default function Halls() {
     const [detailData, setDetailData] = useState(null);
     const [searchText, setSearchText] = useState('');
     const [locations, setLocations] = useState([]);
+    const [filterLocation, setFilterLocation] = useState(null);
+    const [filterCapacity, setFilterCapacity] = useState(null);
     const [form] = Form.useForm();
 
     const fetchLocations = async () => {
@@ -28,11 +30,13 @@ export default function Halls() {
         catch { /* ignore */ }
     };
 
-    const fetchData = useCallback(async (page = 0, size = 10, keyword = '') => {
+    const fetchData = useCallback(async (page = 0, size = 10, keyword = '', locId = null, capacity = null) => {
         setLoading(true);
         try {
             const params = { page, size };
             if (keyword) params.keyword = keyword;
+            if (locId) params.locationId = locId;
+            if (capacity) params.capacity = capacity;
             const res = await hallApi.getAll(params);
             const pageData = res.data.data;
             setData(pageData.content || []);
@@ -43,8 +47,14 @@ export default function Halls() {
 
     useEffect(() => { fetchData(); fetchLocations(); }, [fetchData]);
 
-    const handleTableChange = (pag) => fetchData(pag.current - 1, pag.pageSize, searchText);
-    const handleSearch = () => fetchData(0, pagination.pageSize, searchText);
+    const handleTableChange = (pag) => fetchData(pag.current - 1, pag.pageSize, searchText, filterLocation, filterCapacity);
+    const handleSearch = () => fetchData(0, pagination.pageSize, searchText, filterLocation, filterCapacity);
+    const handleReset = () => {
+        setSearchText('');
+        setFilterLocation(null);
+        setFilterCapacity(null);
+        fetchData(0, pagination.pageSize, '', null, null);
+    };
     const handleAdd = () => { setEditing(null); form.resetFields(); setModalOpen(true); };
     const handleEdit = (record) => {
         setEditing(record);
@@ -63,12 +73,12 @@ export default function Halls() {
             if (editing) { await hallApi.update(editing.id, values); message.success('Cập nhật thành công'); }
             else { await hallApi.create(values); message.success('Tạo mới thành công'); }
             setModalOpen(false);
-            fetchData(pagination.current - 1, pagination.pageSize, searchText);
+            fetchData(pagination.current - 1, pagination.pageSize, searchText, filterLocation, filterCapacity);
         } catch (error) { if (error.response?.data?.message) message.error(error.response.data.message); }
     };
 
     const handleChangeStatus = async (id) => {
-        try { await hallApi.changeStatus(id); message.success('Đã thay đổi trạng thái'); fetchData(pagination.current - 1, pagination.pageSize, searchText); }
+        try { await hallApi.changeStatus(id); message.success('Đã thay đổi trạng thái'); fetchData(pagination.current - 1, pagination.pageSize, searchText, filterLocation, filterCapacity); }
         catch { message.error('Thay đổi trạng thái thất bại'); }
     };
 
@@ -77,7 +87,7 @@ export default function Halls() {
         { title: 'Mã', dataIndex: 'code', width: 120 },
         { title: 'Tên hội trường', dataIndex: 'name', ellipsis: true },
         { title: 'Sức chứa', dataIndex: 'capacity', width: 100, render: (v) => v ? `${v} khách` : '—' },
-        { title: 'Chi nhánh', dataIndex: 'locationName', ellipsis: true, render: (v) => v || '—' },
+        { title: 'Chi nhánh', dataIndex: ['location', 'name'], ellipsis: true, render: (v) => v || '—' },
         {
             title: 'Hành động', width: 150,
             render: (_, record) => (
@@ -102,11 +112,23 @@ export default function Halls() {
                 </Button>
             </div>
 
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
                 <Input placeholder="Tìm kiếm..." value={searchText} onChange={(e) => setSearchText(e.target.value)} onPressEnter={handleSearch}
-                    prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} style={{ maxWidth: 360, borderRadius: 8 }} allowClear />
+                    prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} style={{ maxWidth: 300, borderRadius: 8 }} allowClear />
+                <Select placeholder="Lọc theo chi nhánh" value={filterLocation} onChange={setFilterLocation} 
+                    style={{ minWidth: 200, borderRadius: 8 }} allowClear>
+                    {locations.map((loc) => (<Select.Option key={loc.id} value={loc.id}>{loc.name}</Select.Option>))}
+                </Select>
+                <Select placeholder="Lọc theo sức chứa" value={filterCapacity} onChange={setFilterCapacity}
+                    style={{ minWidth: 180, borderRadius: 8 }} allowClear>
+                    <Select.Option value={50}>≤ 50 khách</Select.Option>
+                    <Select.Option value={100}>≤ 100 khách</Select.Option>
+                    <Select.Option value={200}>≤ 200 khách</Select.Option>
+                    <Select.Option value={500}>≤ 500 khách</Select.Option>
+                    <Select.Option value={1000}>> 500 khách</Select.Option>
+                </Select>
                 <Button icon={<SearchOutlined />} onClick={handleSearch} style={{ borderRadius: 8 }}>Tìm</Button>
-                <Button icon={<ReloadOutlined />} onClick={() => { setSearchText(''); fetchData(); }} style={{ borderRadius: 8 }}>Làm mới</Button>
+                <Button icon={<ReloadOutlined />} onClick={handleReset} style={{ borderRadius: 8 }}>Làm mới</Button>
             </div>
 
             <Table columns={columns} dataSource={data} rowKey="id" loading={loading}
