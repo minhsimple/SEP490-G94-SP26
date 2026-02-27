@@ -3,7 +3,7 @@ import {
     Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, message, Popconfirm, Tooltip, Upload, Image, Rate, Card, Divider, Avatar, Calendar, Badge, DatePicker, TimePicker,
 } from 'antd';
 import {
-    PlusOutlined, EditOutlined, SwapOutlined, SearchOutlined, ReloadOutlined, EyeOutlined, UploadOutlined, DeleteOutlined, DownloadOutlined, StarOutlined, CommentOutlined, UserOutlined, CalendarOutlined,
+    PlusOutlined, EditOutlined, SwapOutlined, SearchOutlined, ReloadOutlined, EyeOutlined, UploadOutlined, DeleteOutlined, DownloadOutlined, FileTextOutlined, PrinterOutlined, StarOutlined, CommentOutlined, UserOutlined, CalendarOutlined,
 } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import hallApi from '../api/hallApi';
@@ -298,6 +298,84 @@ export default function Halls() {
         }
     };
 
+    const handleExportCSV = () => {
+        try {
+            const exportData = data.map((item, index) => ({
+                'STT': index + 1,
+                'ID': item.id,
+                'Mã': item.code,
+                'Tên hội trường': item.name,
+                'Sức chứa': item.capacity,
+                'Chi nhánh': item.location?.name || '',
+                'Ghi chú': item.notes || '',
+            }));
+
+            const header = Object.keys(exportData[0] || { 'STT': '', 'ID': '', 'Mã': '', 'Tên hội trường': '', 'Sức chứa': '', 'Chi nhánh': '', 'Ghi chú': '' });
+            const rows = [header.join(',')].concat(exportData.map(row => header.map(h => {
+                let val = row[h] ?? '';
+                if (typeof val === 'string') val = val.replace(/"/g, '""');
+                if (val && (val.includes(',') || val.includes('"') || val.includes('\n'))) val = `"${val}"`;
+                return val;
+            }).join(',')));
+
+            const csv = rows.join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const fileName = `Danh_sach_hoi_truong_${new Date().toISOString().slice(0, 10)}.csv`;
+            if (navigator.msSaveBlob) { navigator.msSaveBlob(blob, fileName); } else {
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.href = url;
+                link.setAttribute('download', fileName);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+            message.success('Xuất file CSV thành công!');
+        } catch (e) {
+            message.error('Xuất CSV thất bại');
+            console.error(e);
+        }
+    };
+
+    const handlePrint = () => {
+        try {
+            const exportData = data.map((item, index) => ({
+                'STT': index + 1,
+                'ID': item.id,
+                'Mã': item.code,
+                'Tên hội trường': item.name,
+                'Sức chứa': item.capacity,
+                'Chi nhánh': item.location?.name || '',
+                'Ghi chú': item.notes || '',
+            }));
+
+            const header = Object.keys(exportData[0] || {});
+            const headerHtml = header.map(h => `<th style="padding:8px;border:1px solid #ddd;background:#f5f5f5">${h}</th>`).join('');
+            const rowsHtml = exportData.map(row => `<tr>${header.map(h => `<td style="padding:8px;border:1px solid #ddd">${row[h] ?? ''}</td>`).join('')}</tr>`).join('');
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>In danh sách hội trường</title>
+                    <style>table{border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif} th,td{text-align:left}</style>
+                </head>
+                <body>
+                    <h3>Danh sách hội trường</h3>
+                    <table border="0"> <thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        } catch (e) {
+            message.error('In danh sách thất bại');
+            console.error(e);
+        }
+    };
+
     const columns = [
         { title: 'ID', dataIndex: 'id', width: 70, sorter: (a, b) => a.id - b.id },
         { 
@@ -347,6 +425,14 @@ export default function Halls() {
                     <Button icon={<DownloadOutlined />} onClick={handleExport}
                         style={{ borderRadius: 8, height: 40, borderColor: '#52c41a', color: '#52c41a' }}>
                         Export Excel
+                    </Button>
+                    <Button icon={<FileTextOutlined />} onClick={handleExportCSV}
+                        style={{ borderRadius: 8, height: 40, borderColor: '#1890ff', color: '#1890ff' }}>
+                        Export CSV
+                    </Button>
+                    <Button icon={<PrinterOutlined />} onClick={handlePrint}
+                        style={{ borderRadius: 8, height: 40, borderColor: '#595959', color: '#595959' }}>
+                        In
                     </Button>
                     <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}
                         style={{ background: 'linear-gradient(135deg, #fa709a, #fee140)', border: 'none', borderRadius: 8, height: 40, color: '#333' }}>
