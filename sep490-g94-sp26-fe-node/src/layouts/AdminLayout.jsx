@@ -63,7 +63,8 @@ const allMenuItems = [
         label: 'Kinh doanh',
         roles: ['MANAGER', 'SALE'],
         children: [
-            { key: '/sales', icon: <ShopOutlined />, label: 'Sales', roles: ['MANAGER', 'SALE'] },
+            { key: '/sales/leads', icon: <ContactsOutlined />, label: 'Leads', roles: ['MANAGER', 'SALE'] },
+            { key: '/sales/customers', icon: <TeamOutlined />, label: 'Khách hàng', roles: ['MANAGER', 'SALE'] },
         ],
     },
 ];
@@ -112,7 +113,7 @@ export default function AdminLayout() {
     // Redirect sale to /sales on first load
     useEffect(() => {
         if (roleName && roleName.toUpperCase() === 'SALE' && location.pathname === '/') {
-            navigate('/sales');
+            navigate('/sales/leads');
         }
     }, [roleName, location.pathname, navigate]);
 

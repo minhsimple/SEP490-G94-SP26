@@ -12,7 +12,8 @@ import Customers from './pages/Customers';
 import Locations from './pages/Locations';
 import Halls from './pages/Halls';
 import Services from './pages/Services';
-import SalesDashboard from './pages/SalesDashboard';
+import SaleLeads from './pages/SaleLeads';
+import SaleCustomers from './pages/SaleCustomers';
 import LeadDetail from './pages/LeadDetail';
 import CustomerDetail from './pages/CustomerDetail';
 import './App.css';
@@ -58,7 +59,8 @@ export default function App() {
                 <Route path="locations" element={<Locations />} />
                 <Route path="halls" element={<Halls />} />
                 <Route path="services" element={<Services />} />
-                <Route path="sales" element={<SalesDashboard />} />
+                <Route path="sales/leads" element={<SaleLeads />} />
+                <Route path="sales/customers" element={<SaleCustomers />} />
                 <Route path="sales/lead/:id" element={<LeadDetail />} />
                 <Route path="sales/customer/:id" element={<CustomerDetail />} />
               </Route>
