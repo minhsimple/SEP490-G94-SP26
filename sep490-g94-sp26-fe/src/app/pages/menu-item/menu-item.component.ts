@@ -111,7 +111,7 @@ import { MenuItemService } from '../service/menu-item.service';
                                 </div>
                             </td>
                             <td class="text-600 text-sm">{{ item.categoryMenuItem?.name || '-' }}</td>
-                            <td class="text-600 text-sm">{{ item.location?.name || '-' }}</td>
+                            <td class="text-600 text-sm">{{ item.locationName || item.location?.name || '-' }}</td>
                             <td>
                                 <span class="font-semibold text-900">
                                     {{ item.unitPrice != null ? (+item.unitPrice | number:'1.0-0') + ' đ' : '-' }}

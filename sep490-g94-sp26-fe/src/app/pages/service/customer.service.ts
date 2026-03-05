@@ -12,6 +12,8 @@ export interface Customer {
     address?: string;
     notes?: string;
     locationId?: number;
+    locationName?: string;
+    location?: { id: number; name: string };
     status?: 'active' | 'inactive';
     password?: string;
     createdAt?: string;
