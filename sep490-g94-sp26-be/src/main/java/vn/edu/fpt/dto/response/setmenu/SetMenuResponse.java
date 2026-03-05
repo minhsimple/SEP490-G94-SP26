@@ -33,6 +33,7 @@ public class SetMenuResponse {
         String code;
         String name;
         BigDecimal unitPrice;
+        String unit;
         String description;
         Integer quantity;
     }
