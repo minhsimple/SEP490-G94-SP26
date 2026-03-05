@@ -37,6 +37,9 @@ public class MenuItem extends BaseEntity {
     @Column(name = "unit_price", nullable = false, precision = 12, scale = 2)
     BigDecimal unitPrice = BigDecimal.ZERO;
 
+    @Column(name = "unit")
+    String unit;
+
     String description;
 }
 

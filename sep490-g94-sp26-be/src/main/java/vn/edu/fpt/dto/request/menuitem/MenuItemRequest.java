@@ -30,5 +30,8 @@ public class MenuItemRequest {
     @NotNull(message = "Đơn giá không được để trống")
     BigDecimal unitPrice;
 
+    @NotBlank(message = "Đơn vị tính không được để trống")
+    String unit;
+
     String description;
 }

@@ -8,7 +8,10 @@ export interface MenuItem {
     name?: string;
     description?: string;
     unitPrice?: any;
+    unit?: string;
     categoryMenuItem?: { id: number; name: string };
+    locationId?: number;
+    locationName?: string;
     location?: { id: number; name: string };
     status?: string;
     createdAt?: string;
@@ -92,6 +95,7 @@ export class MenuItemService {
         categoryMenuItemsId: number;
         locationId: number;
         unitPrice: number;
+        unit?: string;
         description?: string;
     }): Observable<ApiResponse<MenuItem>> {
         return this.http.post<ApiResponse<MenuItem>>(`${this.baseUrl}/create`, payload, {
@@ -105,6 +109,7 @@ export class MenuItemService {
         categoryMenuItemsId?: number;
         locationId?: number;
         unitPrice?: number;
+        unit?: string;
         description?: string;
     }): Observable<ApiResponse<MenuItem>> {
         return this.http.put<ApiResponse<MenuItem>>(`${this.baseUrl}/update`, payload, {

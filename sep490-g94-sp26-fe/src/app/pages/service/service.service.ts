@@ -10,6 +10,8 @@ export interface Service {
     unit?: string;
     basePrice?: number;
     locationId?: number;
+    locationName?: string;
+    location?: { id: number; name: string };
     category?: string;
     status?: string;
     createdAt?: string;
