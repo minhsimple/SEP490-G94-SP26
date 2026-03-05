@@ -13,6 +13,7 @@ import { SetMenuComponent } from './set-menu/set-menu';
 import { SetMenuEditComponent } from './set-menu-edit/set-menu-edit';
 import { CategoryMenuItemComponent } from './category-menu-item/category-menu-item.component';
 import { MenuItemComponent } from './menu-item/menu-item.component';
+import { MenuItemDetailComponent } from './menu-item/menu-item-detail.component';
 
 export default [
     { path: 'crud', component: Crud },
@@ -30,6 +31,7 @@ export default [
     { path: 'set-menu/edit/:id', component: SetMenuEditComponent },
     { path: 'set-menu', component: SetMenuComponent },
     { path: 'category-menu-item', component: CategoryMenuItemComponent },
+    { path: 'menu-item/:id', component: MenuItemDetailComponent },
     { path: 'menu-item', component: MenuItemComponent },
     { path: '**', redirectTo: '/notfound' }
 ] as Routes;

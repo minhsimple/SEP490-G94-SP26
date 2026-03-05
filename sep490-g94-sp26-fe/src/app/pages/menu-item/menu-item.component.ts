@@ -1,4 +1,5 @@
 import { Component, OnInit, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
 import { CommonModule } from '@angular/common';
@@ -114,6 +115,9 @@ import { MenuItemService } from '../service/menu-item.service';
                             </td>
                             <td>
                                 <div class="flex gap-1">
+                                    <p-button icon="pi pi-eye" [rounded]="true" [text]="true"
+                                        severity="info" (click)="viewItem(item)"
+                                        pTooltip="Xem chi tiết" tooltipPosition="top" />
                                     <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="editItem(item)"
                                         pTooltip="Chỉnh sửa" tooltipPosition="top" />
@@ -289,6 +293,7 @@ export class MenuItemComponent implements OnInit {
 
     @ViewChild('dt') dt!: Table;
     private menuItemService = inject(MenuItemService);
+    private router = inject(Router);
 
     constructor(
         private messageService: MessageService,
@@ -370,6 +375,10 @@ export class MenuItemComponent implements OnInit {
                 this.itemDialog = true;
             }
         });
+    }
+
+    viewItem(item: any) {
+        this.router.navigate(['/pages/menu-item', item.id]);
     }
 
     hideDialog() {
