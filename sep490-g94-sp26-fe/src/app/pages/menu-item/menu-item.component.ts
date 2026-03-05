@@ -77,6 +77,7 @@ import { MenuItemService } from '../service/menu-item.service';
                             <th style="min-width:14rem">Danh mục</th>
                             <th style="min-width:14rem">Chi nhánh</th>
                             <th style="min-width:10rem">Đơn giá</th>
+                            <th style="min-width:8rem">Đơn vị</th>
                             <th style="min-width:10rem">Trạng thái</th>
                             <th style="min-width:8rem">Thao tác</th>
                         </tr>
@@ -98,12 +99,13 @@ import { MenuItemService } from '../service/menu-item.service';
                                 </div>
                             </td>
                             <td class="text-600 text-sm">{{ item.categoryMenuItem?.name || '-' }}</td>
-                            <td class="text-600 text-sm">{{ item.location?.name || '-' }}</td>
+                            <td class="text-600 text-sm">{{ item.locationName || item.location?.name || '-' }}</td>
                             <td>
                                 <span class="font-semibold text-900">
                                     {{ item.unitPrice != null ? (+item.unitPrice | number:'1.0-0') + ' đ' : '-' }}
                                 </span>
                             </td>
+                            <td class="text-600 text-sm">{{ item.unit || '-' }}</td>
                             <td>
                                 <span class="font-medium"
                                       [style.color]="item.status === 'inactive' ? '#ef4444' : '#22c55e'">
@@ -129,7 +131,7 @@ import { MenuItemService } from '../service/menu-item.service';
 
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="7" class="text-center py-8 text-500">
+                            <td colspan="8" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
                                 Không có món ăn nào
                             </td>
@@ -215,6 +217,16 @@ import { MenuItemService } from '../service/menu-item.service';
                             <small class="text-red-500" *ngIf="submitted && editingItem.unitPrice == null">Đơn giá là bắt buộc.</small>
                         </div>
 
+                        <!-- Đơn vị -->
+                        <div>
+                            <label class="block font-semibold mb-2 text-sm">Đơn vị <span class="text-red-500">*</span></label>
+                            <input type="text" pInputText [(ngModel)]="editingItem.unit" fluid
+                                placeholder="VD: phần, tô, dĩa, ly..."
+                                [class.ng-invalid]="submitted && !editingItem.unit"
+                                [class.ng-dirty]="submitted && !editingItem.unit" />
+                            <small class="text-red-500" *ngIf="submitted && !editingItem.unit">Đơn vị là bắt buộc.</small>
+                        </div>
+
                         <!-- Mô tả -->
                         <div>
                             <label class="block font-semibold mb-2 text-sm">Mô tả</label>
@@ -282,7 +294,7 @@ export class MenuItemComponent implements OnInit {
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private cdr: ChangeDetectorRef
-    ) {}
+    ) { }
 
     ngOnInit() {
         this.loadDropdowns();
@@ -371,6 +383,7 @@ export class MenuItemComponent implements OnInit {
         if (!this.editingItem.categoryMenuItemsId) return;
         if (!this.editingItem.locationId) return;
         if (this.editingItem.unitPrice == null) return;
+        if (!this.editingItem.unit?.trim()) return;
 
         this.saving = true;
         const payload: any = {
@@ -379,6 +392,7 @@ export class MenuItemComponent implements OnInit {
             categoryMenuItemsId: this.editingItem.categoryMenuItemsId,
             locationId: this.editingItem.locationId,
             unitPrice: this.editingItem.unitPrice,
+            unit: this.editingItem.unit.trim(),
             description: this.editingItem.description
         };
 

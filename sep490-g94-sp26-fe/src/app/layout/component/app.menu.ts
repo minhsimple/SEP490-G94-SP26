@@ -90,7 +90,7 @@ export class AppMenu {
                         routerLink: ['/pages/hall']
                     },
                     {
-                        label: 'Quản lý sảnh dịch vụ ',
+                        label: 'Quản lý dịch vụ',
                         icon: 'pi pi-fw pi-shopping-bag',
                         routerLink: ['/pages/service']
                     },
@@ -100,18 +100,26 @@ export class AppMenu {
                     //     routerLink: ['/pages/empty']
                     // }
                     {
-                        label: 'Quản lý set menu',
-                        icon: 'pi pi-fw pi-box',
-                        routerLink: ['/pages/set-menu']
-                    },
-                    {
-                        label: 'Quản lý danh mục món ăn',
-                        icon: 'pi pi-fw pi-list',
-                        routerLink: ['/pages/category-menu-item']
-                    },{
-                        label: 'Quản lý mục món ăn',
-                        icon: 'pi pi-fw pi-receipt',
-                        routerLink: ['/pages/menu-item']
+                        label: 'Thực đơn',
+                        icon: 'pi pi-fw pi-book',
+                        path: '/pages/menu',
+                        items: [
+                            {
+                                label: 'Món ăn',
+                                icon: 'pi pi-fw pi-receipt',
+                                routerLink: ['/pages/menu-item']
+                            },
+                            {
+                                label: 'Danh mục món ăn',
+                                icon: 'pi pi-fw pi-list',
+                                routerLink: ['/pages/category-menu-item']
+                            },
+                            {
+                                label: 'Set Menu',
+                                icon: 'pi pi-fw pi-box',
+                                routerLink: ['/pages/set-menu']
+                            }
+                        ]
                     }
                 ]
             },

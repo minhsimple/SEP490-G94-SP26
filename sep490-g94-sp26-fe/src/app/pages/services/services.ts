@@ -53,17 +53,29 @@ interface Column {
 
             <!-- Thanh tìm kiếm + nút thêm -->
             <div class="flex items-center justify-between mb-6">
-                <p-iconfield class="flex-1 mr-4" style="max-width: 420px;">
-                    <p-inputicon styleClass="pi pi-search" />
-                    <input
-                        pInputText
-                        type="text"
-                        [(ngModel)]="searchKeyword"
-                        (input)="onSearch()"
-                        placeholder="Tìm kiếm dịch vụ..."
-                        class="w-full"
+                <div class="flex items-center gap-3">
+                    <p-iconfield class="flex-1" style="max-width: 420px;">
+                        <p-inputicon styleClass="pi pi-search" />
+                        <input
+                            pInputText
+                            type="text"
+                            [(ngModel)]="searchKeyword"
+                            (input)="onSearch()"
+                            placeholder="Tìm kiếm dịch vụ..."
+                            class="w-full"
+                        />
+                    </p-iconfield>
+                    <p-select
+                        [options]="locationOptions"
+                        [(ngModel)]="selectedLocationId"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Lọc chi nhánh"
+                        (onChange)="onLocationChange($event)"
+                        [showClear]="true"
+                        style="width: 200px"
                     />
-                </p-iconfield>
+                </div>
 
                 <p-button
                     label="Thêm dịch vụ"
@@ -123,7 +135,7 @@ interface Column {
                                 </div>
                             </td>
               
-                            <td class="text-600">{{ getLocationName(service.locationId) || '-' }}</td>
+                            <td class="text-600">{{ service.locationName || service.location?.name || '-' }}</td>
                             <td class="font-semibold text-900">
                                 {{ formatPrice(service.basePrice) }}
                             </td>
@@ -427,6 +439,7 @@ export class ServicesComponent implements OnInit {
     currentPage = 0;
     searchKeyword = '';
     searchTimeout: any;
+    selectedLocationId: number | null = null;
 
     // Dialog states
     createDialog = false;
@@ -503,9 +516,11 @@ export class ServicesComponent implements OnInit {
     }
 
     // ── Services ───────────────────────────────────────────────────────────────
-    loadServices(page = 0, size = this.pageSize, name?: string) {
+    loadServices(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
         this.loading = true;
-        this.serviceService.searchServices({ page, size, name }).subscribe({
+        const params: any = { page, size, name };
+        if (locationId) params.locationId = locationId;
+        this.serviceService.searchServices(params).subscribe({
             next: (res) => {
                 if (res.data) {
                     this.services.set(res.data.content);
@@ -524,14 +539,22 @@ export class ServicesComponent implements OnInit {
         const page = event.first / event.rows;
         this.currentPage = page;
         this.pageSize = event.rows;
-        this.loadServices(page, event.rows, this.searchKeyword || undefined);
+        this.loadServices(page, event.rows, this.searchKeyword || undefined, this.selectedLocationId);
     }
 
     onSearch() {
         clearTimeout(this.searchTimeout);
         this.searchTimeout = setTimeout(() => {
-            this.loadServices(0, this.pageSize, this.searchKeyword || undefined);
+            this.loadServices(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
         }, 400);
+    }
+
+    onLocationChange(event: any) {
+        this.selectedLocationId = event.value;
+        this.loadServices(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
+        if (this.dt) {
+            this.dt.reset();
+        }
     }
 
     // ── Create ─────────────────────────────────────────────────────────────────
@@ -577,7 +600,7 @@ const payload = {
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã thêm dịch vụ mới', life: 3000 });
                 this.createDialog = false;
                 this.saving = false;
-                this.loadServices(this.currentPage, this.pageSize);
+                this.loadServices(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
             },
             error: () => {
                 this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể thêm dịch vụ', life: 3000 });
@@ -639,7 +662,7 @@ const payload = {
         this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật dịch vụ', life: 3000 });
         this.editDialog = false;
         this.saving = false;
-        this.loadServices(this.currentPage, this.pageSize);
+        this.loadServices(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

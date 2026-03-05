@@ -18,6 +18,7 @@ export interface SetMenu {
     description?: string;
     locationId?: number;
     locationName?: string;
+    location?: { id: number; name: string };
     status?: string;
     setPrice?: number;
     menuItems?: MenuItem[];

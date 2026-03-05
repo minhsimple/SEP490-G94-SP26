@@ -218,19 +218,6 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .collect(Collectors.toList());
     }
 
-    private static @NonNull SetMenuItemResponse getSetMenuItemResponse(Integer quantity, SetMenu setMenu, MenuItem menuItem) {
-        SetMenuItemResponse setMenuItemResponse = new SetMenuItemResponse();
-        setMenuItemResponse.setSetMenuId(setMenu.getId());
-        setMenuItemResponse.setSetMenuName(setMenu.getName());
-        setMenuItemResponse.setMenuItemId(menuItem.getId());
-        setMenuItemResponse.setMenuItemName(menuItem.getName());
-        setMenuItemResponse.setMenuItemCode(menuItem.getCode());
-        setMenuItemResponse.setMenuItemUnitPrice(menuItem.getUnitPrice());
-        setMenuItemResponse.setMenuItemDescription(menuItem.getDescription());
-        setMenuItemResponse.setQuantity(quantity);
-        return setMenuItemResponse;
-    }
-
     private SetMenuResponse mapToSetMenuResponse(SetMenu setMenu, Location location, List<SetMenuItem> setMenuItemList) {
         SetMenuResponse setMenuResponse = new SetMenuResponse();
         setMenuResponse.setId(setMenu.getId());
@@ -269,6 +256,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                             menuItem.getCode(),
                             menuItem.getName(),
                             menuItem.getUnitPrice(),
+                            menuItem.getUnit(),
                             menuItem.getDescription(),
                             setMenuItem.getQuantity()
                     );

@@ -17,6 +17,7 @@ public class MenuItemResponse {
     Location location;
     String description;
     String unitPrice;
+    String unit;
     RecordStatus status;
 
     @Getter

@@ -105,7 +105,7 @@ interface Column { field: string; header: string; }
                                     </div>
                                 </div>
                             </td>
-                            <td class="text-600">{{ menu.location?.name || '—' }}</td>
+                            <td class="text-600">{{ menu.locationName || menu.location?.name || '—' }}</td>
                             <td class="font-semibold text-900">{{ formatPrice(menu.setPrice) }}</td>
                             <td>
                                 <span class="px-2 py-1 border-round text-xs font-medium"
