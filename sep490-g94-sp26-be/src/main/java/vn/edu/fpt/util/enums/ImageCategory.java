@@ -1,4 +1,4 @@
-package vn.edu.fpt.enums;
+package vn.edu.fpt.util.enums;
 
 public enum ImageCategory {
     MENU_ITEM("menu-items"),

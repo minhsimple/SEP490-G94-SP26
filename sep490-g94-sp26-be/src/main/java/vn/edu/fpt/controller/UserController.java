@@ -12,14 +12,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
-import vn.edu.fpt.dto.request.lead.LeadRequest;
-import vn.edu.fpt.dto.request.lead.LeadsFilterRequest;
 import vn.edu.fpt.dto.request.user.UserFilterRequest;
 import vn.edu.fpt.dto.request.user.UserRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.UserResponse;
-import vn.edu.fpt.dto.response.lead.LeadResponse;
-import vn.edu.fpt.enums.Constants;
+import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.UserService;
 
 @RestController

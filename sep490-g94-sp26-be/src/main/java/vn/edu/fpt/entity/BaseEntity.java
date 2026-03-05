@@ -12,10 +12,9 @@ import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @EntityListeners(AuditingEntityListener.class)
 @Getter

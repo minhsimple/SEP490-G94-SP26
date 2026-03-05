@@ -2,7 +2,7 @@ package vn.edu.fpt.respository;
 
 import vn.edu.fpt.entity.User;
 import org.springframework.stereotype.Repository;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.util.Optional;
 import java.util.Set;

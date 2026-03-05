@@ -1,20 +1,15 @@
 package vn.edu.fpt.respository;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import vn.edu.fpt.entity.Lead;
-import vn.edu.fpt.entity.User;
-import vn.edu.fpt.enums.LeadState;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.LeadState;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Optional;
-import java.util.UUID;
 
 public interface LeadRepository extends BaseRepository<Lead, Integer> {
 

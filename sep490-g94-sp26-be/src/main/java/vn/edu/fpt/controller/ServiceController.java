@@ -10,19 +10,13 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
-import vn.edu.fpt.dto.request.customer.CustomersFilterRequest;
-import vn.edu.fpt.dto.request.menuitem.MenuItemRequest;
 import vn.edu.fpt.dto.request.service.ServiceFilterRequest;
 import vn.edu.fpt.dto.request.service.ServiceRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
-import vn.edu.fpt.dto.response.customer.CustomerResponse;
-import vn.edu.fpt.dto.response.menuitem.MenuItemResponse;
 import vn.edu.fpt.dto.response.service.ServiceResponse;
-import vn.edu.fpt.enums.Constants;
+import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.ServiceItemService;
 
 @RestController

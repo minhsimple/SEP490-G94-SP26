@@ -15,7 +15,7 @@ import vn.edu.fpt.entity.CategoryMenuItem;
 import vn.edu.fpt.entity.Location;
 import vn.edu.fpt.entity.MenuItem;
 import vn.edu.fpt.entity.SetMenuItem;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.MenuItemMapper;

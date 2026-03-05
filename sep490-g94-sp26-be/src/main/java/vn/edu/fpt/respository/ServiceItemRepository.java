@@ -3,7 +3,7 @@ package vn.edu.fpt.respository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import vn.edu.fpt.entity.Services;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.math.BigDecimal;
 import java.util.List;

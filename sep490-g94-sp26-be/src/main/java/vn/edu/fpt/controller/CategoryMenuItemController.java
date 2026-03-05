@@ -16,7 +16,7 @@ import vn.edu.fpt.dto.request.categorymenuitem.CategoryMenuItemFilterRequest;
 import vn.edu.fpt.dto.request.categorymenuitem.CategoryMenuItemRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.categorymenuitem.CategoryMenuItemResponse;
-import vn.edu.fpt.enums.Constants;
+import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.CategoryMenuItemService;
 
 @RestController

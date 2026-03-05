@@ -2,7 +2,7 @@ package vn.edu.fpt.dto.response.service;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.math.BigDecimal;
 

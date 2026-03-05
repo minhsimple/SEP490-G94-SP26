@@ -15,7 +15,7 @@ import vn.edu.fpt.dto.request.customer.CustomersFilterRequest;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
 import vn.edu.fpt.entity.Customer;
 import vn.edu.fpt.entity.Location;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.CustomerMapper;

@@ -16,7 +16,7 @@ import vn.edu.fpt.dto.request.menuitem.MenuItemFilterRequest;
 import vn.edu.fpt.dto.request.menuitem.MenuItemRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.menuitem.MenuItemResponse;
-import vn.edu.fpt.enums.Constants;
+import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.MenuItemService;
 
 @RestController

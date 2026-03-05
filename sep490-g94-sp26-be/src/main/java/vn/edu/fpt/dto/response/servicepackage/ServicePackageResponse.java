@@ -3,11 +3,9 @@ package vn.edu.fpt.dto.response.servicepackage;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import vn.edu.fpt.entity.PackageService;
-import vn.edu.fpt.entity.Services;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter

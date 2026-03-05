@@ -19,8 +19,7 @@ import vn.edu.fpt.dto.request.customer.CustomerUpdateRequest;
 import vn.edu.fpt.dto.request.customer.CustomersFilterRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
-import vn.edu.fpt.entity.Customer;
-import vn.edu.fpt.enums.Constants;
+import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.CustomerService;
 
 @RestController

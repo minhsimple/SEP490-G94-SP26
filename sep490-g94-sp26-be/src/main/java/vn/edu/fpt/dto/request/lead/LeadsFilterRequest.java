@@ -1,10 +1,8 @@
 package vn.edu.fpt.dto.request.lead;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
-import vn.edu.fpt.enums.LeadState;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.LeadState;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 @Data
 @Builder

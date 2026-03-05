@@ -2,7 +2,7 @@ package vn.edu.fpt.util.security;
 
 import vn.edu.fpt.entity.Role;
 import vn.edu.fpt.entity.User;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.respository.RoleRepository;
 import vn.edu.fpt.respository.UserRepository;
 import lombok.RequiredArgsConstructor;
