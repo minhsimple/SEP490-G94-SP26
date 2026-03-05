@@ -33,16 +33,28 @@ import { MenuItemService } from '../service/menu-item.service';
 
             <!-- Toolbar -->
             <div class="flex items-center justify-between mb-6">
-                <p-iconfield class="flex-1 mr-4" style="max-width: 420px;">
-                    <p-inputicon styleClass="pi pi-search" />
-                    <input
-                        pInputText type="text"
-                        [(ngModel)]="searchKeyword"
-                        (input)="onSearch()"
-                        placeholder="Tìm kiếm món ăn..."
-                        class="w-full"
+                <div class="flex items-center gap-3">
+                    <p-iconfield class="flex-1" style="max-width: 420px;">
+                        <p-inputicon styleClass="pi pi-search" />
+                        <input
+                            pInputText type="text"
+                            [(ngModel)]="searchKeyword"
+                            (input)="onSearch()"
+                            placeholder="Tìm kiếm món ăn..."
+                            class="w-full"
+                        />
+                    </p-iconfield>
+                    <p-select
+                        [options]="locationOptions"
+                        [(ngModel)]="selectedLocationId"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Lọc chi nhánh"
+                        (onChange)="onLocationChange($event)"
+                        [showClear]="true"
+                        style="width: 200px"
                     />
-                </p-iconfield>
+                </div>
                 <p-button label="Thêm món ăn" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
             </div>
 
@@ -77,6 +89,7 @@ import { MenuItemService } from '../service/menu-item.service';
                             <th style="min-width:14rem">Danh mục</th>
                             <th style="min-width:14rem">Chi nhánh</th>
                             <th style="min-width:10rem">Đơn giá</th>
+                            <th style="min-width:8rem">Đơn vị</th>
                             <th style="min-width:10rem">Trạng thái</th>
                             <th style="min-width:8rem">Thao tác</th>
                         </tr>
@@ -104,6 +117,7 @@ import { MenuItemService } from '../service/menu-item.service';
                                     {{ item.unitPrice != null ? (+item.unitPrice | number:'1.0-0') + ' đ' : '-' }}
                                 </span>
                             </td>
+                            <td class="text-600 text-sm">{{ item.unit || '-' }}</td>
                             <td>
                                 <span class="font-medium"
                                       [style.color]="item.status === 'inactive' ? '#ef4444' : '#22c55e'">
@@ -129,7 +143,7 @@ import { MenuItemService } from '../service/menu-item.service';
 
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="7" class="text-center py-8 text-500">
+                            <td colspan="8" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
                                 Không có món ăn nào
                             </td>
@@ -215,6 +229,16 @@ import { MenuItemService } from '../service/menu-item.service';
                             <small class="text-red-500" *ngIf="submitted && editingItem.unitPrice == null">Đơn giá là bắt buộc.</small>
                         </div>
 
+                        <!-- Đơn vị -->
+                        <div>
+                            <label class="block font-semibold mb-2 text-sm">Đơn vị <span class="text-red-500">*</span></label>
+                            <input type="text" pInputText [(ngModel)]="editingItem.unit" fluid
+                                placeholder="VD: phần, tô, dĩa, ly..."
+                                [class.ng-invalid]="submitted && !editingItem.unit"
+                                [class.ng-dirty]="submitted && !editingItem.unit" />
+                            <small class="text-red-500" *ngIf="submitted && !editingItem.unit">Đơn vị là bắt buộc.</small>
+                        </div>
+
                         <!-- Mô tả -->
                         <div>
                             <label class="block font-semibold mb-2 text-sm">Mô tả</label>
@@ -270,6 +294,8 @@ export class MenuItemComponent implements OnInit {
     currentPage = 0;
     searchKeyword = '';
     searchTimeout: any;
+    selectedLocationId: number | null = null;
+    locationOptions: { label: string; value: number }[] = [];
 
     itemDialog = false;
     submitted = false;
@@ -282,7 +308,7 @@ export class MenuItemComponent implements OnInit {
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private cdr: ChangeDetectorRef
-    ) {}
+    ) { }
 
     ngOnInit() {
         this.loadDropdowns();
@@ -294,13 +320,23 @@ export class MenuItemComponent implements OnInit {
             next: (res: any) => { if (res?.data?.content) this.categories = res.data.content; }
         });
         this.menuItemService.getLocations().subscribe({
-            next: (res: any) => { if (res?.data?.content) this.locations = res.data.content; }
+            next: (res: any) => {
+                if (res?.data?.content) {
+                    this.locations = res.data.content;
+                    this.locationOptions = res.data.content.map((l: any) => ({
+                        label: l.name ?? '',
+                        value: l.id
+                    }));
+                }
+            }
         });
     }
 
-    loadItems(page = 0, size = this.pageSize, name?: string) {
+    loadItems(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
         this.loading = true;
-        this.menuItemService.search({ page, size, name }).subscribe({
+        const params: any = { page, size, name };
+        if (locationId) params.locationId = locationId;
+        this.menuItemService.search(params).subscribe({
             next: (res: any) => {
                 if (res?.data) {
                     this.menuItems.set(res.data.content);
@@ -318,14 +354,22 @@ export class MenuItemComponent implements OnInit {
     onLazyLoad(event: any) {
         this.currentPage = event.first / event.rows;
         this.pageSize = event.rows;
-        this.loadItems(this.currentPage, event.rows, this.searchKeyword || undefined);
+        this.loadItems(this.currentPage, event.rows, this.searchKeyword || undefined, this.selectedLocationId);
     }
 
     onSearch() {
         clearTimeout(this.searchTimeout);
         this.searchTimeout = setTimeout(() => {
-            this.loadItems(0, this.pageSize, this.searchKeyword || undefined);
+            this.loadItems(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
         }, 400);
+    }
+
+    onLocationChange(event: any) {
+        this.selectedLocationId = event.value;
+        this.loadItems(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
+        if (this.dt) {
+            this.dt.reset();
+        }
     }
 
     openNew() {
@@ -371,6 +415,7 @@ export class MenuItemComponent implements OnInit {
         if (!this.editingItem.categoryMenuItemsId) return;
         if (!this.editingItem.locationId) return;
         if (this.editingItem.unitPrice == null) return;
+        if (!this.editingItem.unit?.trim()) return;
 
         this.saving = true;
         const payload: any = {
@@ -379,6 +424,7 @@ export class MenuItemComponent implements OnInit {
             categoryMenuItemsId: this.editingItem.categoryMenuItemsId,
             locationId: this.editingItem.locationId,
             unitPrice: this.editingItem.unitPrice,
+            unit: this.editingItem.unit.trim(),
             description: this.editingItem.description
         };
 
@@ -405,7 +451,7 @@ export class MenuItemComponent implements OnInit {
         this.messageService.add({ severity: 'success', summary: 'Thành công', detail, life: 3000 });
         this.itemDialog = false;
         this.saving = false;
-        this.loadItems(this.currentPage, this.pageSize);
+        this.loadItems(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
     }
 
     toggleStatus(item: any) {
@@ -418,7 +464,7 @@ export class MenuItemComponent implements OnInit {
             accept: () => {
                 this.menuItemService.changeStatus(item.id).subscribe({
                     next: () => {
-                        this.loadItems(this.currentPage, this.pageSize);
+                        this.loadItems(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
                         this.messageService.add({ severity: 'success', summary: 'Thành công', detail: `Đã ${action} món ăn`, life: 3000 });
                     },
                     error: (err: any) => {
