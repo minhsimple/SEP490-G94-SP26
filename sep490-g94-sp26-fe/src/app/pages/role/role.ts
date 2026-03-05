@@ -119,9 +119,6 @@ interface Column {
             <th pSortableColumn="status" style="min-width:10rem">
               Trạng thái <p-sortIcon field="status" />
             </th>
-            <th pSortableColumn="createdAt" style="min-width:12rem">
-              Ngày tạo <p-sortIcon field="createdAt" />
-            </th>
             <th style="min-width:12rem">Thao tác</th>
           </tr>
         </ng-template>
@@ -148,7 +145,6 @@ interface Column {
                 [severity]="getStatusSeverity(role.status)"
               />
             </td>
-            <td>{{ role.createdAt | date: 'dd/MM/yyyy' }}</td>
             <td>
               <div class="flex gap-2">
                 <p-button
