@@ -1,7 +1,7 @@
 package vn.edu.fpt.respository;
 
 import vn.edu.fpt.entity.CategoryMenuItem;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.util.Optional;
 

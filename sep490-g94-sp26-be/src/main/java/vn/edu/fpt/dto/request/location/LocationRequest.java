@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 @Data
 @Builder

@@ -2,8 +2,8 @@ package vn.edu.fpt.dto.response.lead;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import vn.edu.fpt.enums.LeadState;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.LeadState;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 @Getter
 @Setter

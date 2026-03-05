@@ -16,7 +16,7 @@ import vn.edu.fpt.dto.request.servicepackage.ServicePackageFilterRequest;
 import vn.edu.fpt.dto.request.servicepackage.ServicePackageRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.servicepackage.ServicePackageResponse;
-import vn.edu.fpt.enums.Constants;
+import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.ServicePackageService;
 
 @RestController

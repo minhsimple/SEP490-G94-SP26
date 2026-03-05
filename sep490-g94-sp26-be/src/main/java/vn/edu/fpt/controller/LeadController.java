@@ -19,7 +19,7 @@ import vn.edu.fpt.dto.request.lead.LeadRequest;
 import vn.edu.fpt.dto.request.lead.LeadsFilterRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.lead.LeadResponse;
-import vn.edu.fpt.enums.Constants;
+import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.LeadService;
 
 @RestController

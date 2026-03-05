@@ -1,17 +1,13 @@
 package vn.edu.fpt.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
-import vn.edu.fpt.enums.LeadState;
-
-import java.util.UUID;
+import vn.edu.fpt.util.enums.LeadState;
 
 @Entity
 @Table(name = "leads", schema = "wedding")

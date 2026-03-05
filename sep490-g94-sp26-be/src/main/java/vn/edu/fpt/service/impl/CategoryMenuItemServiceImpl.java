@@ -12,7 +12,7 @@ import vn.edu.fpt.dto.request.categorymenuitem.CategoryMenuItemFilterRequest;
 import vn.edu.fpt.dto.request.categorymenuitem.CategoryMenuItemRequest;
 import vn.edu.fpt.dto.response.categorymenuitem.CategoryMenuItemResponse;
 import vn.edu.fpt.entity.CategoryMenuItem;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.CategoryMenuItemMapper;

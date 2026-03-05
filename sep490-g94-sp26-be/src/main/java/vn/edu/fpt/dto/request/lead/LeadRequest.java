@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.*;
-import vn.edu.fpt.enums.LeadState;
+import vn.edu.fpt.util.enums.LeadState;
 
 @Data
 @Builder

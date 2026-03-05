@@ -1,14 +1,11 @@
 package vn.edu.fpt.respository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import vn.edu.fpt.dto.response.role.RoleResponse;
 import vn.edu.fpt.entity.Role;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 public interface RoleRepository extends BaseRepository<Role, Integer> {

@@ -16,7 +16,7 @@ import vn.edu.fpt.dto.request.hall.HallFilterRequest;
 import vn.edu.fpt.dto.request.hall.HallRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.hall.HallResponse;
-import vn.edu.fpt.enums.Constants;
+import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.HallService;
 
 @RestController

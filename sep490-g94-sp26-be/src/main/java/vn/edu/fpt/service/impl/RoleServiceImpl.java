@@ -10,7 +10,7 @@ import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.role.RoleRequest;
 import vn.edu.fpt.dto.response.role.RoleResponse;
 import vn.edu.fpt.entity.Role;
-import vn.edu.fpt.enums.RecordStatus;
+import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.RoleMapper;

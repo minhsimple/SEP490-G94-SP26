@@ -15,7 +15,7 @@ import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.role.RoleRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.role.RoleResponse;
-import vn.edu.fpt.enums.Constants;
+import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.RoleService;
 
 @RestController
