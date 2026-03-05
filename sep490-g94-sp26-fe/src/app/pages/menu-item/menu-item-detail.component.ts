@@ -487,6 +487,17 @@ export class MenuItemDetailComponent implements OnInit {
         });
     }
 
+    /** Reload data without showing loading spinner */
+    refreshItem(id: any) {
+        this.menuItemService.getById(id).subscribe({
+            next: (res: any) => {
+                this.item = res?.data ?? null;
+                this.buildImages();
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
     buildImages() {
         // TODO: When backend supports images, populate from item.images
         // For now, use placeholder food images
@@ -545,7 +556,7 @@ export class MenuItemDetailComponent implements OnInit {
                     next: () => {
                         this.messageService.add({ severity: 'success', summary: 'Thành công', detail: `Đã ${action} món ăn`, life: 3000 });
                         this.togglingStatus = false;
-                        this.loadItem(this.item.id);
+                        this.refreshItem(this.item.id);
                     },
                     error: (err: any) => {
                         this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: err?.error?.message || 'Không thể thay đổi trạng thái', life: 3000 });
@@ -592,7 +603,7 @@ export class MenuItemDetailComponent implements OnInit {
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật món ăn', life: 3000 });
                 this.editDialog = false;
                 this.saving = false;
-                this.loadItem(this.item.id);
+                this.refreshItem(this.item.id);
             },
             error: () => {
                 this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể cập nhật món ăn', life: 3000 });

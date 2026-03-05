@@ -20,6 +20,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { TooltipModule } from 'primeng/tooltip';
 import { LocationService } from '../service/location.service';
 import { MenuItem, SetMenu, SetMenuService } from '../service/set-menu';
+import { Router } from '@angular/router';
 
 interface Column { field: string; header: string; }
 
@@ -120,6 +121,9 @@ interface Column { field: string; header: string; }
                             </td>
                             <td>
                                 <div class="flex gap-1">
+                                    <p-button icon="pi pi-eye" [rounded]="true" [text]="true"
+                                        severity="secondary" (click)="viewSetMenu(menu)"
+                                        pTooltip="Xem chi tiết" tooltipPosition="top" />
                                     <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="editSetMenu(menu)"
                                         pTooltip="Chỉnh sửa" tooltipPosition="top" />
@@ -295,14 +299,15 @@ export class SetMenuComponent implements OnInit {
     cols: Column[] = [];
 
     @ViewChild('dt') dt!: Table;
-private setMenuService = inject(SetMenuService)
+    private setMenuService = inject(SetMenuService)
 
     constructor(
         private locationService: LocationService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
-        private cdr: ChangeDetectorRef
-    ) {}
+        private cdr: ChangeDetectorRef,
+        private router: Router
+    ) { }
 
     ngOnInit() {
         this.cols = [
@@ -366,6 +371,10 @@ private setMenuService = inject(SetMenuService)
         }, 400);
     }
 
+    viewSetMenu(menu: SetMenu) {
+        this.router.navigate(['/pages/set-menu', menu.id]);
+    }
+
     // ── Menu Items ─────────────────────────────────────────────────────────────
     addMenuItem() {
         if (!this.editingMenu.menuItems) this.editingMenu.menuItems = [];
@@ -417,11 +426,11 @@ private setMenuService = inject(SetMenuService)
 
         this.saving = true;
         const payload = {
-            code:        this.editingMenu.code ?? this.generateUUID(),
-            name:        this.editingMenu.name,
+            code: this.editingMenu.code ?? this.generateUUID(),
+            name: this.editingMenu.name,
             description: this.editingMenu.description,
-            locationId:  this.editingMenu.locationId,
-            menuItems:   (this.editingMenu.menuItems ?? []).filter((i: MenuItem) => i.name?.trim())
+            locationId: this.editingMenu.locationId,
+            menuItems: (this.editingMenu.menuItems ?? []).filter((i: MenuItem) => i.name?.trim())
         };
 
         if (this.editingMenu.id) {
