@@ -111,7 +111,7 @@ import { SetMenuService } from '../service/set-menu';
                              class="dish-row">
                             <div class="dish-image-container">
                                 <img *ngIf="dish.imageUrl" [src]="dish.imageUrl" [alt]="dish.name"
-                                     class="dish-image" (click)="openDishImage(dish)" />
+                                     class="dish-image" />
                                 <div *ngIf="!dish.imageUrl" class="dish-image-placeholder">
                                     <span style="font-size: 1.2rem;">🍴</span>
                                 </div>
@@ -152,25 +152,6 @@ import { SetMenuService } from '../service/set-menu';
                 <i class="pi pi-info-circle text-4xl mb-3 block"></i>
                 Không tìm thấy set menu
             </div>
-
-            <!-- Image Viewer -->
-            <p-dialog
-                [(visible)]="imageViewerVisible"
-                [style]="{ width: '90vw', maxWidth: '800px' }"
-                [modal]="true"
-                [showHeader]="false"
-                styleClass="image-viewer-dialog"
-            >
-                <ng-template #content>
-                    <div class="image-viewer">
-                        <img [src]="viewingImageUrl" [alt]="viewingImageName" class="viewer-image" />
-                        <div class="viewer-caption">{{ viewingImageName }}</div>
-                        <button class="viewer-close" (click)="imageViewerVisible = false">
-                            <i class="pi pi-times"></i>
-                        </button>
-                    </div>
-                </ng-template>
-            </p-dialog>
 
             <p-confirmdialog />
         </div>
@@ -259,12 +240,12 @@ import { SetMenuService } from '../service/set-menu';
         }
         .dish-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
         .dish-image-container {
-            width: 56px; height: 56px; border-radius: 8px;
+            width: 80px; height: 80px; border-radius: 8px;
             overflow: hidden; flex-shrink: 0;
         }
         .dish-image {
             width: 100%; height: 100%; object-fit: cover;
-            cursor: pointer; transition: transform 0.2s;
+            transition: transform 0.2s;
         }
         .dish-image:hover { transform: scale(1.08); }
         .dish-name-link {
@@ -277,30 +258,6 @@ import { SetMenuService } from '../service/set-menu';
             width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
             background: #f1f5f9;
-        }
-        /* Image Viewer */
-        .image-viewer {
-            position: relative; text-align: center;
-            background: #000; border-radius: 8px; overflow: hidden;
-        }
-        .viewer-image { max-width: 100%; max-height: 75vh; object-fit: contain; }
-        .viewer-caption {
-            position: absolute; bottom: 1rem; left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.6); color: white;
-            padding: 6px 20px; border-radius: 20px;
-            font-size: 0.85rem; white-space: nowrap;
-        }
-        .viewer-close {
-            position: absolute; top: 0.75rem; right: 0.75rem;
-            background: rgba(0,0,0,0.5); color: white; border: none;
-            width: 32px; height: 32px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-        }
-        .viewer-close:hover { background: rgba(0,0,0,0.75); }
-        :host ::ng-deep {
-            .image-viewer-dialog .p-dialog-content { padding: 0 !important; background: transparent !important; }
         }
         @media (max-width: 768px) {
             .stats-grid { grid-template-columns: 1fr; }
@@ -377,6 +334,9 @@ export class SetMenuDetailComponent implements OnInit {
     processData() {
         if (!this.item) return;
 
+        // Temporary placeholder images
+        this.heroImage = 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=1200&h=400&fit=crop';
+
         // Categories
         if (this.item.menuItemsByCategory) {
             this.categoryKeys = Object.keys(this.item.menuItemsByCategory);
@@ -386,6 +346,12 @@ export class SetMenuDetailComponent implements OnInit {
                 const items = this.item.menuItemsByCategory[cat];
                 if (Array.isArray(items)) {
                     this.totalDishes += items.reduce((sum: number, i: any) => sum + (i.quantity ?? 0), 0);
+                    // Add placeholder image for dishes
+                    items.forEach((dish: any) => {
+                        if (!dish.imageUrl) {
+                            dish.imageUrl = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=300&fit=crop';
+                        }
+                    });
                 }
             });
         } else if (this.item.menuItems && Array.isArray(this.item.menuItems)) {
@@ -393,13 +359,6 @@ export class SetMenuDetailComponent implements OnInit {
             this.categoryCount = 0;
             this.totalDishes = this.item.menuItems.reduce((sum: number, i: any) => sum + (i.quantity ?? 0), 0);
         }
-    }
-
-    openDishImage(dish: any) {
-        if (!dish.imageUrl) return;
-        this.viewingImageUrl = dish.imageUrl;
-        this.viewingImageName = dish.name || 'Ảnh món ăn';
-        this.imageViewerVisible = true;
     }
 
     toggleStatus() {
