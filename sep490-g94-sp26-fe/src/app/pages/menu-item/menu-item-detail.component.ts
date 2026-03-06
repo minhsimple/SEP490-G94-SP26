@@ -613,6 +613,11 @@ export class MenuItemDetailComponent implements OnInit {
     }
 
     goBack() {
-        this.router.navigate(['/pages/menu-item']);
+        const fromSetMenuId = this.route.snapshot.queryParamMap.get('fromSetMenu');
+        if (fromSetMenuId) {
+            this.router.navigate(['/pages/set-menu', fromSetMenuId]);
+        } else {
+            this.router.navigate(['/pages/menu-item']);
+        }
     }
 }

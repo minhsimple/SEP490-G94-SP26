@@ -117,7 +117,9 @@ import { SetMenuService } from '../service/set-menu';
                                 </div>
                             </div>
                             <div class="flex-1">
-                                <div class="font-semibold text-900 text-sm">{{ dish.name }}</div>
+                                <div class="font-semibold text-sm dish-name-link" (click)="viewDishDetail(dish.id)" pTooltip="Xem chi tiết món ăn" tooltipPosition="top">
+                                    {{ dish.name }}
+                                </div>
                                 <div class="text-xs text-500 mt-1">{{ dish.quantity ?? 1 }} {{ dish.unit || 'đĩa' }}</div>
                             </div>
                             <div class="text-right">
@@ -265,6 +267,12 @@ import { SetMenuService } from '../service/set-menu';
             cursor: pointer; transition: transform 0.2s;
         }
         .dish-image:hover { transform: scale(1.08); }
+        .dish-name-link {
+            cursor: pointer; color: #1e293b; transition: color 0.2s;
+        }
+        .dish-name-link:hover {
+            color: #3b82f6; text-decoration: underline;
+        }
         .dish-image-placeholder {
             width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
@@ -426,6 +434,14 @@ export class SetMenuDetailComponent implements OnInit {
 
     goBack() {
         this.router.navigate(['/pages/set-menu']);
+    }
+
+    viewDishDetail(dishId: any) {
+        if (dishId) {
+            this.router.navigate(['/pages/menu-item', dishId], {
+                queryParams: { fromSetMenu: this.item.id }
+            });
+        }
     }
 
     formatPrice(price?: number): string {
