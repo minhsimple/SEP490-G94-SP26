@@ -80,10 +80,11 @@ interface Column { field: string; header: string; }
                 >
                     <ng-template #header>
                         <tr>
+                            <th style="width:5rem">Ảnh</th>
                             <th style="min-width:20rem">Tên set menu</th>
                             <th style="min-width:12rem">Chi nhánh</th>
                             <th style="min-width:10rem">Giá / bàn</th>
-                            <th style="min-width:8rem">Tổng số đĩa</th>
+                            <th style="min-width:8rem">Tổng số món</th>
                             <th style="min-width:8rem">Trạng thái</th>
                             <th style="min-width:8rem">Thao tác</th>
                         </tr>
@@ -92,11 +93,12 @@ interface Column { field: string; header: string; }
                     <ng-template #body let-menu>
                         <tr>
                             <td>
+                                <div class="table-img-container shadow-2 border-round ml-2">
+                                    <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=100&h=100&fit=crop" class="table-img" alt="Set Menu" />
+                                </div>
+                            </td>
+                            <td>
                                 <div class="flex items-center gap-3">
-                                    <div class="flex items-center justify-center w-8 h-8 border-round-lg"
-                                         style="background: linear-gradient(135deg, #fef9c3, #fef08a); color: #a16207;">
-                                        <i class="pi pi-receipt text-sm"></i>
-                                    </div>
                                     <div>
                                         <div class="font-medium text-900">{{ menu.name }}</div>
                                         <div class="text-xs text-500 mt-1" *ngIf="menu.description">
@@ -146,7 +148,7 @@ interface Column { field: string; header: string; }
 
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="6" class="text-center py-8 text-500">
+                            <td colspan="7" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
                                 Không có set menu nào
                             </td>
@@ -154,68 +156,6 @@ interface Column { field: string; header: string; }
                     </ng-template>
                 </p-table>
             </div>
-
-            <!-- ── Dialog XEM CHI TIẾT ── -->
-            <p-dialog
-                [(visible)]="viewDialog"
-                [style]="{ width: '520px' }"
-                [header]="viewingMenu?.name"
-                [modal]="true"
-                [closable]="true"
-            >
-                <ng-template #content>
-                    <div *ngIf="viewingMenu">
-                        <!-- Stats row -->
-                        <div class="grid gap-3 mb-5" style="grid-template-columns: 1fr 1fr 1fr;">
-                            <div class="p-3 border-round" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                                <div class="text-xs text-500 mb-1">Giá set menu</div>
-                                <div class="font-bold text-primary text-lg">{{ formatPrice(viewingMenu.setPrice) }}</div>
-                                <div class="text-xs text-400">/ bàn</div>
-                            </div>
-                            <div class="p-3 border-round" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                                <div class="text-xs text-500 mb-1">Tổng số món</div>
-                                <div class="font-bold text-900 text-lg">{{ viewingMenu.menuItems?.length ?? 0 }} món</div>
-                            </div>
-                            <div class="p-3 border-round" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                                <div class="text-xs text-500 mb-1">Trạng thái</div>
-                                <span class="px-2 py-1 border-round text-xs font-semibold"
-                                      [style]="viewingMenu.status === 'inactive'
-                                        ? 'background:#fee2e2; color:#dc2626;'
-                                        : 'background:#dbeafe; color:#1d4ed8;'">
-                                    {{ viewingMenu.status === 'inactive' ? 'Không hoạt động' : 'Đang áp dụng' }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Danh sách món -->
-                        <div *ngIf="!viewingMenu.menuItems?.length" class="text-center py-8 text-500">
-                            <i class="pi pi-fw" style="font-size:2.5rem;">🍴</i>
-                            <div class="mt-3">Chưa có món ăn nào trong set menu này</div>
-                        </div>
-
-                        <div *ngIf="viewingMenu.menuItems?.length">
-                            <div class="text-sm font-semibold text-700 mb-3">Danh sách món ăn</div>
-                            <div class="flex flex-col gap-2">
-                                <div *ngFor="let item of viewingMenu.menuItems"
-                                     class="flex items-center justify-between px-3 py-2 border-round"
-                                     style="background:#f8fafc; border:1px solid #e2e8f0;">
-                                    <div class="flex items-center gap-2">
-                                        <span class="flex items-center justify-center w-6 h-6 border-round-full text-xs font-bold"
-                                              style="background:#e0e7ff; color:#4338ca; min-width:1.5rem;">
-                                            {{ item.courseOrder }}
-                                        </span>
-                                        <span class="font-medium text-900 text-sm">{{ item.name }}</span>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="font-semibold text-sm text-900">{{ formatPrice(item.unitPrice) }}</div>
-                                        <div class="text-xs text-400">x{{ item.quantity }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </ng-template>
-            </p-dialog>
 
             <!-- ── Dialog THÊM / SỬA ── -->
             <p-dialog
@@ -283,6 +223,14 @@ interface Column { field: string; header: string; }
         </div>
     `,
     styles: [`
+        .table-img-container {
+            width: 48px; height: 48px;
+            border-radius: 8px; overflow: hidden;
+            flex-shrink: 0; background-color: #f1f5f9;
+        }
+        .table-img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
         :host ::ng-deep {
             .p-datatable .p-datatable-thead > tr > th {
                 background: #f8fafc; font-weight: 600; color: #64748b;
@@ -312,7 +260,6 @@ export class SetMenuComponent implements OnInit {
     searchTimeout: any;
 
     menuDialog = false;
-    viewDialog = false;
     submitted = false;
     isActive = true;
     editingMenu: any = { menuItems: [] };
@@ -331,7 +278,7 @@ export class SetMenuComponent implements OnInit {
         private cdr: ChangeDetectorRef,
         private router: Router,
 
-    ) {}
+    ) { }
 
     ngOnInit() {
         this.cols = [
@@ -394,27 +341,18 @@ export class SetMenuComponent implements OnInit {
 
     // ── Xem chi tiết ──────────────────────────────────────────────────────────
     viewSetMenu(menu: SetMenu) {
-        this.setMenuService.getById(menu.id).subscribe({
-            next: (res: any) => {
-                this.viewingMenu = res.code === 200 ? res.data : menu;
-                this.viewDialog = true;
-            },
-            error: () => {
-                this.viewingMenu = menu;
-                this.viewDialog = true;
-            }
-        });
+        this.router.navigate(['/pages/set-menu', menu.id]);
     }
 
     // ── Chỉnh sửa ─────────────────────────────────────────────────────────────
-// Đảm bảo dùng absolute path có dấu /
-openNew() {
-    this.router.navigate(['/pages/set-menu/create']);
-}
+    // Đảm bảo dùng absolute path có dấu /
+    openNew() {
+        this.router.navigate(['/pages/set-menu/create']);
+    }
 
-editSetMenu(menu: SetMenu) {
-    this.router.navigate(['/pages/set-menu/edit', menu.id]);
-}
+    editSetMenu(menu: SetMenu) {
+        this.router.navigate(['/pages/set-menu/edit', menu.id]);
+    }
 
     hideDialog() {
         this.menuDialog = false;
@@ -427,11 +365,11 @@ editSetMenu(menu: SetMenu) {
 
         this.saving = true;
         const payload = {
-            code:        this.editingMenu.code ?? this.generateUUID(),
-            name:        this.editingMenu.name,
+            code: this.editingMenu.code ?? this.generateUUID(),
+            name: this.editingMenu.name,
             description: this.editingMenu.description,
-            locationId:  this.editingMenu.locationId,
-            menuItems:   (this.editingMenu.menuItems ?? []).filter((i: MenuItem) => i.name?.trim())
+            locationId: this.editingMenu.locationId,
+            menuItems: (this.editingMenu.menuItems ?? []).filter((i: MenuItem) => i.name?.trim())
         };
 
         if (this.editingMenu.id) {

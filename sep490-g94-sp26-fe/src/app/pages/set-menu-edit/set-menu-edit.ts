@@ -305,7 +305,7 @@ export class SetMenuEditComponent implements OnInit {
         private locationService: LocationService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef
-    ) {}
+    ) { }
 
     ngOnInit() {
         this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
@@ -493,15 +493,15 @@ export class SetMenuEditComponent implements OnInit {
 
         // Payload matches: { id, quantity } per item
         const menuItems: { id: number; quantity: number }[] = this.selectedItems.map(item => ({
-            id:       item.id,
+            id: item.id,
             quantity: item.quantity ?? 1
         }));
 
         const payload = {
-            code:        this.form.code ?? this.generateUUID(),
-            name:        this.form.name.trim(),
+            code: this.form.code ?? this.generateUUID(),
+            name: this.form.name.trim(),
             description: this.form.description ?? '',
-            locationId:  this.form.locationId,
+            locationId: this.form.locationId,
             menuItems
         };
 
@@ -541,7 +541,11 @@ export class SetMenuEditComponent implements OnInit {
     }
 
     goBack() {
-        this.router.navigate(['/pages/set-menu']);
+        if (this.isEditing && this.menuId) {
+            this.router.navigate(['/pages/set-menu', this.menuId]);
+        } else {
+            this.router.navigate(['/pages/set-menu']);
+        }
     }
 
     formatPrice(price?: number): string {

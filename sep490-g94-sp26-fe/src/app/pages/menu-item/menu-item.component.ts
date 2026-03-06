@@ -1,4 +1,5 @@
 import { Component, OnInit, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
 import { CommonModule } from '@angular/common';
@@ -73,6 +74,7 @@ import { MenuItemService } from '../service/menu-item.service';
                     <ng-template #header>
                         <tr>
                             <th style="min-width:6rem">Mã</th>
+                            <th style="width:5rem">Ảnh</th>
                             <th style="min-width:16rem">Tên món ăn</th>
                             <th style="min-width:14rem">Danh mục</th>
                             <th style="min-width:14rem">Chi nhánh</th>
@@ -87,11 +89,12 @@ import { MenuItemService } from '../service/menu-item.service';
                         <tr>
                             <td class="text-600 text-sm font-mono">{{ item.code || '-' }}</td>
                             <td>
+                                <div class="table-img-container shadow-2 border-round mr-2">
+                                    <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop" class="table-img" alt="Món ăn" />
+                                </div>
+                            </td>
+                            <td>
                                 <div class="flex items-center gap-3">
-                                    <div class="flex items-center justify-center w-8 h-8 border-round-lg"
-                                         style="background: linear-gradient(135deg, #fef3c7, #fde68a); color: #b45309;">
-                                        <i class="pi pi-box text-sm"></i>
-                                    </div>
                                     <div>
                                         <div class="font-medium text-900">{{ item.name }}</div>
                                         <div class="text-xs text-500 mt-1" *ngIf="item.description">{{ item.description }}</div>
@@ -114,6 +117,9 @@ import { MenuItemService } from '../service/menu-item.service';
                             </td>
                             <td>
                                 <div class="flex gap-1">
+                                    <p-button icon="pi pi-eye" [rounded]="true" [text]="true"
+                                        severity="info" (click)="viewItem(item)"
+                                        pTooltip="Xem chi tiết" tooltipPosition="top" />
                                     <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="editItem(item)"
                                         pTooltip="Chỉnh sửa" tooltipPosition="top" />
@@ -131,7 +137,7 @@ import { MenuItemService } from '../service/menu-item.service';
 
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="8" class="text-center py-8 text-500">
+                            <td colspan="9" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
                                 Không có món ăn nào
                             </td>
@@ -253,6 +259,14 @@ import { MenuItemService } from '../service/menu-item.service';
         </div>
     `,
     styles: [`
+        .table-img-container {
+            width: 48px; height: 48px;
+            border-radius: 8px; overflow: hidden;
+            flex-shrink: 0; background-color: #f1f5f9;
+        }
+        .table-img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
         :host ::ng-deep {
             .p-datatable .p-datatable-thead > tr > th {
                 background: #f8fafc; font-weight: 600; color: #64748b;
@@ -289,6 +303,7 @@ export class MenuItemComponent implements OnInit {
 
     @ViewChild('dt') dt!: Table;
     private menuItemService = inject(MenuItemService);
+    private router = inject(Router);
 
     constructor(
         private messageService: MessageService,
@@ -370,6 +385,10 @@ export class MenuItemComponent implements OnInit {
                 this.itemDialog = true;
             }
         });
+    }
+
+    viewItem(item: any) {
+        this.router.navigate(['/pages/menu-item', item.id]);
     }
 
     hideDialog() {
