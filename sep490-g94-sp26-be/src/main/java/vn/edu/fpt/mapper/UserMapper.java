@@ -15,9 +15,11 @@ public interface UserMapper {
 
     // Update entity (không update id & password)
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(source = "roleId", target = "role_id")
     @Mapping(source = "password", target = "passwordHash")
     void updateEntity(@MappingTarget User user, UserRequest updatedUser);
 
+    @Mapping(source = "roleId", target = "role_id")
     @Mapping(source = "password", target = "passwordHash")
     User toEntity(UserRequest request);
 }

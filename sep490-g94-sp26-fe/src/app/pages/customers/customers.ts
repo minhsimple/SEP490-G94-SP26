@@ -16,6 +16,7 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { PasswordModule } from 'primeng/password';
 import { Customer, CustomerService } from '../service/customer.service';
+import { Location, LocationService } from '../service/location.service';
 
 interface Column {
     field: string;
@@ -54,6 +55,17 @@ interface Column {
                         severity="primary"
                         class="mr-2"
                         (onClick)="openNew()"
+                    />
+                    <p-select
+                        [options]="locationOptions"
+                        [(ngModel)]="selectedLocationId"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Lọc chi nhánh"
+                        (onChange)="onLocationChange($event)"
+                        class="ml-2"
+                        [showClear]="true"
+                        style="width: 200px"
                     />
                 </ng-template>
                 <ng-template #end>
@@ -117,6 +129,9 @@ interface Column {
                         <th pSortableColumn="phone" style="min-width:12rem">
                             Số điện thoại <p-sortIcon field="phone" />
                         </th>
+                        <th pSortableColumn="locationId" style="min-width:12rem">
+                            Chi nhánh <p-sortIcon field="locationId" />
+                        </th>
                         <th pSortableColumn="taxCode" style="min-width:12rem">
                             Mã số thuế <p-sortIcon field="taxCode" />
                         </th>
@@ -149,6 +164,7 @@ interface Column {
                             <i class="pi pi-phone mr-2 text-gray-400"></i>
                             {{ customer.phone || '-' }}
                         </td>
+                        <td>{{ customer.locationName || customer.location?.name || '-' }}</td>
                         <td>{{ customer.taxCode || '-' }}</td>
                         <td>
                             <p-tag
@@ -249,27 +265,20 @@ interface Column {
                             />
                         </div>
                         <div>
-    <label for="locationId" class="block font-bold mb-2">Chi nhánh</label>
-    <p-select
-        [(ngModel)]="customer.locationId"
-        inputId="locationId"
-        [options]="locations"
-        optionLabel="name"
-        optionValue="id"
-        placeholder="Chọn chi nhánh"
-        fluid
-        [filter]="true"
-        filterBy="name"
-        emptyMessage="Không có dữ liệu"
-    >
-        <ng-template pTemplate="option" let-loc>
-            <div class="flex flex-col">
-                <span class="font-medium">{{ loc.name }}</span>
-                <small class="text-gray-400">{{ loc.address }}</small>
-            </div>
-        </ng-template>
-    </p-select>
-</div>
+                            <label for="locationId" class="block font-bold mb-2">Chi nhánh</label>
+                            <p-select
+                                [(ngModel)]="customer.locationId"
+                                inputId="locationId"
+                                [options]="locationOptions"
+                                optionLabel="label"
+                                optionValue="value"
+                                placeholder="Chọn chi nhánh"
+                                fluid
+                                [filter]="true"
+                                filterBy="label"
+                                emptyMessage="Không có dữ liệu"
+                            />
+                        </div>
 
                         <div>
                             <label for="taxCode" class="block font-bold mb-2">Mã số thuế</label>
@@ -371,6 +380,8 @@ export class Customers implements OnInit {
     totalRecords = 0;
     currentPage = 0;
     pageSize = 20;
+    selectedLocationId: number | null = null;
+    locationOptions: { label: string; value: number }[] = [];
 
     cols!: Column[];
 
@@ -379,9 +390,9 @@ export class Customers implements OnInit {
     constructor(
         private customerService: CustomerService,
         private messageService: MessageService,
-        private confirmationService: ConfirmationService
+        private confirmationService: ConfirmationService,
+        private locationService: LocationService
     ) {}
-locations: Location[] = [];
 
     ngOnInit() {
         this.cols = [
@@ -389,17 +400,45 @@ locations: Location[] = [];
             { field: 'citizenIdNumber', header: 'Số CCCD' },
             { field: 'email', header: 'Email' },
             { field: 'phone', header: 'Số điện thoại' },
+            { field: 'locationId', header: 'Chi nhánh' },
             { field: 'taxCode', header: 'Mã số thuế' },
             { field: 'status', header: 'Trạng thái' }
         ];
+        this.loadLocationOptions();
         this.loadCustomers();
-    this.loadCustomers();
-    this.loadLocations();
     }
 
-    loadCustomers() {
+    loadLocationOptions() {
+        this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
+            next: (res) => {
+                if (res.code === 200) {
+                    this.locationOptions = res.data.content.map((l) => ({
+                        label: l.name ?? '',
+                        value: l.id
+                    }));
+                }
+            },
+            error: () => {
+                this.messageService.add({
+                    severity: 'error',
+                    summary: 'Lỗi',
+                    detail: 'Không thể tải danh sách chi nhánh',
+                    life: 3000
+                });
+            }
+        });
+    }
+
+    getLocationName(locationId?: number): string {
+        if (!locationId) return '-';
+        return this.locationOptions.find(l => l.value === locationId)?.label ?? '-';
+    }
+
+    loadCustomers(locationId?: number | null) {
         this.loading = true;
-        this.customerService.searchCustomers({ page: this.currentPage, size: this.pageSize }).subscribe({
+        const params: any = { page: this.currentPage, size: this.pageSize };
+        if (locationId) params.locationId = locationId;
+        this.customerService.searchCustomers(params).subscribe({
             next: (res) => {
                 this.customers.set(res.data.content);
                 this.totalRecords = res.data.totalElements;
@@ -415,11 +454,20 @@ locations: Location[] = [];
     onPageChange(event: any) {
         this.currentPage = event.first / event.rows;
         this.pageSize = event.rows;
-        this.loadCustomers();
+        this.loadCustomers(this.selectedLocationId);
     }
 
     onGlobalFilter(table: Table, event: Event) {
         table.filterGlobal((event.target as HTMLInputElement).value, 'contains');
+    }
+
+    onLocationChange(event: any) {
+        this.selectedLocationId = event.value;
+        this.currentPage = 0;
+        this.loadCustomers(this.selectedLocationId);
+        if (this.dt) {
+            this.dt.reset();
+        }
     }
 
     openNew() {
@@ -560,17 +608,4 @@ locations: Location[] = [];
     getStatusSeverity(status: string | undefined): 'success' | 'danger' {
         return status === 'active' ? 'success' : 'danger';
     }
-
-    loadLocations() {
-    this.customerService.searchLocations().subscribe({
-        next: (res) => {
-            this.locations = res.data.content;
-        },
-        error: () => {
-            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách chi nhánh', life: 3000 });
-        }
-    });
-}
-
-
 }

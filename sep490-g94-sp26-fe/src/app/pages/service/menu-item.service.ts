@@ -10,6 +10,8 @@ export interface MenuItem {
     unitPrice?: any;
     unit?: string;
     categoryMenuItem?: { id: number; name: string };
+    locationId?: number;
+    locationName?: string;
     location?: { id: number; name: string };
     status?: string;
     createdAt?: string;
