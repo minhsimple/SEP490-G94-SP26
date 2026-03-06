@@ -54,6 +54,17 @@ interface Column {
             class="mr-2"
             (onClick)="openNew()"
           />
+          <p-select
+            [options]="locationOptions"
+            [(ngModel)]="selectedLocationId"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Lọc chi nhánh"
+            (onChange)="onLocationChange($event)"
+            class="ml-2"
+            [showClear]="true"
+            style="width: 200px"
+          />
         </ng-template>
         <ng-template #end>
           <p-button
@@ -328,6 +339,7 @@ export class Leads implements OnInit {
 
   locationOptions: { label: string; value: number }[] = [];
   locationName = '';
+  selectedLocationId: number | null = null;
   @ViewChild('dt') dt!: Table;
 
   constructor(
@@ -343,9 +355,11 @@ export class Leads implements OnInit {
     this.loadLeads();
   }
 
-  loadLeads(page = 0, size = this.pageSize) {
+  loadLeads(page = 0, size = this.pageSize, locationId?: number | null) {
     this.loading = true;
-    this.leadService.searchLeads({ page, size }).subscribe({
+    const params: any = { page, size };
+    if (locationId) params.locationId = locationId;
+    this.leadService.searchLeads(params).subscribe({
       next: (res) => {
         if (res.code === 200 || res.data) {
           this.leads.set(res.data.content);
@@ -370,7 +384,7 @@ export class Leads implements OnInit {
     const size = event.rows;
     this.currentPage = page;
     this.pageSize = size;
-    this.loadLeads(page, size);
+    this.loadLeads(page, size, this.selectedLocationId);
   }
 
   initializeDropdowns() {
@@ -392,6 +406,14 @@ export class Leads implements OnInit {
 
   onGlobalFilter(table: Table, event: Event) {
     table.filterGlobal((event.target as HTMLInputElement).value, 'contains');
+  }
+
+  onLocationChange(event: any) {
+    this.selectedLocationId = event.value;
+    this.loadLeads(0, this.pageSize, this.selectedLocationId);
+    if (this.dt) {
+      this.dt.reset();
+    }
   }
 
   resolveLocationName(locationId?: number) {
@@ -436,7 +458,7 @@ export class Leads implements OnInit {
               detail: 'Đã đổi trạng thái',
               life: 3000,
             });
-            this.loadLeads(this.currentPage, this.pageSize);
+            this.loadLeads(this.currentPage, this.pageSize, this.selectedLocationId);
           },
           error: () => {
             this.messageService.add({
@@ -512,7 +534,7 @@ export class Leads implements OnInit {
         this.leadDialog = false;
         this.lead = {};
         this.saving = false;
-        this.loadLeads(this.currentPage, this.pageSize);
+        this.loadLeads(this.currentPage, this.pageSize, this.selectedLocationId);
       },
       error: () => {
         this.messageService.add({

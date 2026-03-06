@@ -40,16 +40,28 @@ interface Column { field: string; header: string; }
 
             <!-- Toolbar -->
             <div class="flex items-center justify-between mb-6">
-                <p-iconfield class="flex-1 mr-4" style="max-width: 420px;">
-                    <p-inputicon styleClass="pi pi-search" />
-                    <input
-                        pInputText type="text"
-                        [(ngModel)]="searchKeyword"
-                        (input)="onSearch()"
-                        placeholder="Tìm kiếm set menu..."
-                        class="w-full"
+                <div class="flex items-center gap-3">
+                    <p-iconfield class="flex-1" style="max-width: 420px;">
+                        <p-inputicon styleClass="pi pi-search" />
+                        <input
+                            pInputText type="text"
+                            [(ngModel)]="searchKeyword"
+                            (input)="onSearch()"
+                            placeholder="Tìm kiếm set menu..."
+                            class="w-full"
+                        />
+                    </p-iconfield>
+                    <p-select
+                        [options]="locationFilterOptions"
+                        [(ngModel)]="selectedLocationId"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Lọc chi nhánh"
+                        (onChange)="onLocationChange($event)"
+                        [showClear]="true"
+                        style="width: 200px"
                     />
-                </p-iconfield>
+                </div>
                 <p-button label="Thêm set menu" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
             </div>
 
@@ -258,6 +270,8 @@ export class SetMenuComponent implements OnInit {
     currentPage = 0;
     searchKeyword = '';
     searchTimeout: any;
+    selectedLocationId: number | null = null;
+    locationFilterOptions: { label: string; value: number }[] = [];
 
     menuDialog = false;
     submitted = false;
@@ -295,6 +309,10 @@ export class SetMenuComponent implements OnInit {
                         label: l.name ?? '',
                         value: l.id
                     }));
+                    this.locationFilterOptions = res.data.content.map((l: any) => ({
+                        label: l.name ?? '',
+                        value: l.id
+                    }));
                     this.cdr.markForCheck();
                 }
                 this.loadSetMenus();
@@ -309,9 +327,11 @@ export class SetMenuComponent implements OnInit {
         });
     }
 
-    loadSetMenus(page = 0, size = this.pageSize, name?: string) {
+    loadSetMenus(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
         this.loading = true;
-        this.setMenuService.searchSetMenus({ page, size, name }).subscribe({
+        const params: any = { page, size, name };
+        if (locationId) params.locationId = locationId;
+        this.setMenuService.searchSetMenus(params).subscribe({
             next: (res: any) => {
                 if (res.data) {
                     this.setMenus.set(res.data.content);
@@ -329,14 +349,22 @@ export class SetMenuComponent implements OnInit {
     onLazyLoad(event: any) {
         this.currentPage = event.first / event.rows;
         this.pageSize = event.rows;
-        this.loadSetMenus(this.currentPage, event.rows, this.searchKeyword || undefined);
+        this.loadSetMenus(this.currentPage, event.rows, this.searchKeyword || undefined, this.selectedLocationId);
     }
 
     onSearch() {
         clearTimeout(this.searchTimeout);
         this.searchTimeout = setTimeout(() => {
-            this.loadSetMenus(0, this.pageSize, this.searchKeyword || undefined);
+            this.loadSetMenus(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
         }, 400);
+    }
+
+    onLocationChange(event: any) {
+        this.selectedLocationId = event.value;
+        this.loadSetMenus(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
+        if (this.dt) {
+            this.dt.reset();
+        }
     }
 
     // ── Xem chi tiết ──────────────────────────────────────────────────────────
@@ -407,7 +435,7 @@ export class SetMenuComponent implements OnInit {
         this.messageService.add({ severity: 'success', summary: 'Thành công', detail, life: 3000 });
         this.menuDialog = false;
         this.saving = false;
-        this.loadSetMenus(this.currentPage, this.pageSize);
+        this.loadSetMenus(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
     }
 
     toggleStatus(menu: SetMenu) {
@@ -420,7 +448,7 @@ export class SetMenuComponent implements OnInit {
             accept: () => {
                 this.setMenuService.changeStatus(menu.id).subscribe({
                     next: () => {
-                        this.loadSetMenus(this.currentPage, this.pageSize);
+                        this.loadSetMenus(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
                         this.messageService.add({ severity: 'success', summary: 'Thành công', detail: `Đã ${action} set menu`, life: 3000 });
                     },
                     error: (err: any) => {
