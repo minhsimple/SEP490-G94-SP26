@@ -20,6 +20,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { TooltipModule } from 'primeng/tooltip';
 import { LocationService } from '../service/location.service';
 import { MenuItem, SetMenu, SetMenuService } from '../service/set-menu';
+import { Router } from '@angular/router';
 
 interface Column { field: string; header: string; }
 
@@ -79,6 +80,7 @@ interface Column { field: string; header: string; }
                 >
                     <ng-template #header>
                         <tr>
+                            <th style="width:5rem">Ảnh</th>
                             <th style="min-width:20rem">Tên set menu</th>
                             <th style="min-width:12rem">Chi nhánh</th>
                             <th pSortableColumn="setPrice" style="min-width:10rem">
@@ -93,11 +95,12 @@ interface Column { field: string; header: string; }
                     <ng-template #body let-menu>
                         <tr>
                             <td>
+                                <div class="table-img-container shadow-2 border-round ml-2">
+                                    <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=100&h=100&fit=crop" class="table-img" alt="Set Menu" />
+                                </div>
+                            </td>
+                            <td>
                                 <div class="flex items-center gap-3">
-                                    <div class="flex items-center justify-center w-8 h-8 border-round-lg"
-                                         style="background: linear-gradient(135deg, #fef9c3, #fef08a); color: #a16207;">
-                                        <i class="pi pi-receipt text-sm"></i>
-                                    </div>
                                     <div>
                                         <div class="font-medium text-900">{{ menu.name }}</div>
                                         <div class="text-xs text-500 mt-1">{{ menu.description }}</div>
@@ -120,6 +123,9 @@ interface Column { field: string; header: string; }
                             </td>
                             <td>
                                 <div class="flex gap-1">
+                                    <p-button icon="pi pi-eye" [rounded]="true" [text]="true"
+                                        severity="secondary" (click)="viewSetMenu(menu)"
+                                        pTooltip="Xem chi tiết" tooltipPosition="top" />
                                     <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="editSetMenu(menu)"
                                         pTooltip="Chỉnh sửa" tooltipPosition="top" />
@@ -137,7 +143,7 @@ interface Column { field: string; header: string; }
 
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="6" class="text-center py-8 text-500">
+                            <td colspan="7" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
                                 Không có set menu nào
                             </td>
@@ -258,6 +264,14 @@ interface Column { field: string; header: string; }
         </div>
     `,
     styles: [`
+        .table-img-container {
+            width: 48px; height: 48px;
+            border-radius: 8px; overflow: hidden;
+            flex-shrink: 0; background-color: #f1f5f9;
+        }
+        .table-img {
+            width: 100%; height: 100%; object-fit: cover;
+        }
         :host ::ng-deep {
             .p-datatable .p-datatable-thead > tr > th {
                 background: #f8fafc; font-weight: 600; color: #64748b;
@@ -295,14 +309,15 @@ export class SetMenuComponent implements OnInit {
     cols: Column[] = [];
 
     @ViewChild('dt') dt!: Table;
-private setMenuService = inject(SetMenuService)
+    private setMenuService = inject(SetMenuService)
 
     constructor(
         private locationService: LocationService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
-        private cdr: ChangeDetectorRef
-    ) {}
+        private cdr: ChangeDetectorRef,
+        private router: Router
+    ) { }
 
     ngOnInit() {
         this.cols = [
@@ -366,6 +381,10 @@ private setMenuService = inject(SetMenuService)
         }, 400);
     }
 
+    viewSetMenu(menu: SetMenu) {
+        this.router.navigate(['/pages/set-menu', menu.id]);
+    }
+
     // ── Menu Items ─────────────────────────────────────────────────────────────
     addMenuItem() {
         if (!this.editingMenu.menuItems) this.editingMenu.menuItems = [];
@@ -417,11 +436,11 @@ private setMenuService = inject(SetMenuService)
 
         this.saving = true;
         const payload = {
-            code:        this.editingMenu.code ?? this.generateUUID(),
-            name:        this.editingMenu.name,
+            code: this.editingMenu.code ?? this.generateUUID(),
+            name: this.editingMenu.name,
             description: this.editingMenu.description,
-            locationId:  this.editingMenu.locationId,
-            menuItems:   (this.editingMenu.menuItems ?? []).filter((i: MenuItem) => i.name?.trim())
+            locationId: this.editingMenu.locationId,
+            menuItems: (this.editingMenu.menuItems ?? []).filter((i: MenuItem) => i.name?.trim())
         };
 
         if (this.editingMenu.id) {
