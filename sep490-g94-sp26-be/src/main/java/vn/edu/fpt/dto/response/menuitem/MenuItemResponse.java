@@ -2,6 +2,7 @@ package vn.edu.fpt.dto.response.menuitem;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import vn.edu.fpt.dto.response.image.ImageUrlsResponseDTO;
 import vn.edu.fpt.util.enums.RecordStatus;
 
 @Getter
@@ -19,6 +20,7 @@ public class MenuItemResponse {
     String unitPrice;
     String unit;
     RecordStatus status;
+    ImageUrlsResponseDTO imageUrls;
 
     @Getter
     @Setter

@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.setmenu.SetMenuFilterRequest;
 import vn.edu.fpt.dto.request.setmenu.SetMenuRequest;
-import vn.edu.fpt.dto.response.setmenu.SetMenuItemResponse;
 import vn.edu.fpt.dto.response.setmenu.SetMenuResponse;
 import vn.edu.fpt.entity.*;
 import vn.edu.fpt.util.enums.RecordStatus;
