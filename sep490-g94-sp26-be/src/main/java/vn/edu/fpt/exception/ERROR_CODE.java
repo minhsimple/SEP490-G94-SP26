@@ -112,8 +112,9 @@ public enum ERROR_CODE {
      * File Error
      */
     FILE_EMPTY(13001, "File không được để trống", HttpStatus.BAD_REQUEST),
-    FILE_INVALID_CONTENT_TYPE(13002, "Chỉ chấp nhận file ảnh png và jpg", HttpStatus.BAD_REQUEST),
+    FILE_INVALID_CONTENT_TYPE(13002, "Chỉ chấp nhận file ảnh jpg", HttpStatus.BAD_REQUEST),
     FILE_TOO_LARGE(13003, "Kích thước file vượt quá 5MB", HttpStatus.BAD_REQUEST),
+    FILE_ERROR(13004, "Lỗi xử lý file", HttpStatus.INTERNAL_SERVER_ERROR),
 
     /**
      * Other Error

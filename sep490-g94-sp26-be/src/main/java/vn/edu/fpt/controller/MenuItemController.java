@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.menuitem.MenuItemFilterRequest;
 import vn.edu.fpt.dto.request.menuitem.MenuItemRequest;
@@ -30,8 +31,9 @@ public class MenuItemController {
     @Operation(summary = "Tạo món ăn mới")
     @PostMapping("/create")
     public ApiResponse<MenuItemResponse> createNewMenuItem(
-            @Valid @RequestBody MenuItemRequest menuItemRequest) {
-        MenuItemResponse menuItemResponse = menuItemService.createNewMenuItem(menuItemRequest);
+            @Valid @RequestBody MenuItemRequest menuItemRequest,
+            MultipartFile imageFile) throws Exception {
+        MenuItemResponse menuItemResponse = menuItemService.createNewMenuItem(menuItemRequest, imageFile);
         return ApiResponse.<MenuItemResponse>builder()
                 .data(menuItemResponse)
                 .build();
@@ -51,7 +53,7 @@ public class MenuItemController {
 
     @Operation(summary = "xem chi tiết món ăn")
     @GetMapping("/{menuItemId}")
-    public ApiResponse<MenuItemResponse> viewDetailMenuItem(@PathVariable Integer menuItemId) {
+    public ApiResponse<MenuItemResponse> viewDetailMenuItem(@PathVariable Integer menuItemId) throws Exception {
         MenuItemResponse menuItemResponse = menuItemService.getMenuItemById(menuItemId);
         return ApiResponse.<MenuItemResponse>builder()
                 .data(menuItemResponse)
@@ -60,7 +62,7 @@ public class MenuItemController {
 
     @Operation(summary = "Thay đổi trạng thái món ăn")
     @PutMapping("/{menuItemId}/change-status")
-    public ApiResponse<MenuItemResponse> changeStatusMenuItem(@PathVariable Integer menuItemId) {
+    public ApiResponse<MenuItemResponse> changeStatusMenuItem(@PathVariable Integer menuItemId) throws Exception {
         MenuItemResponse menuItemResponse = menuItemService.changeStatusMenuItem(menuItemId);
         return ApiResponse.<MenuItemResponse>builder()
                 .data(menuItemResponse)

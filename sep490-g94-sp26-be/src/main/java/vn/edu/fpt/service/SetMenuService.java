@@ -3,10 +3,7 @@ package vn.edu.fpt.service;
 import org.springframework.data.domain.Pageable;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.setmenu.SetMenuFilterRequest;
-import vn.edu.fpt.dto.request.setmenu.SetMenuItemRequest;
-import vn.edu.fpt.dto.request.setmenu.SetMenuItemUpdateRequest;
 import vn.edu.fpt.dto.request.setmenu.SetMenuRequest;
-import vn.edu.fpt.dto.response.setmenu.SetMenuItemResponse;
 import vn.edu.fpt.dto.response.setmenu.SetMenuResponse;
 
 public interface SetMenuService {
