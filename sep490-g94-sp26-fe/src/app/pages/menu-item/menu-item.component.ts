@@ -86,7 +86,7 @@ import { MenuItemService } from '../service/menu-item.service';
                     <ng-template #header>
                         <tr>
                             <th style="min-width:6rem">Mã</th>
-                            <th style="width:5rem">Ảnh</th>
+                            <th style="width:8rem">Ảnh</th>
                             <th style="min-width:16rem">Tên món ăn</th>
                             <th style="min-width:14rem">Danh mục</th>
                             <th style="min-width:14rem">Chi nhánh</th>
@@ -102,7 +102,7 @@ import { MenuItemService } from '../service/menu-item.service';
                             <td class="text-600 text-sm font-mono">{{ item.code || '-' }}</td>
                             <td>
                                 <div class="table-img-container shadow-2 border-round mr-2">
-                                    <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop" class="table-img" alt="Món ăn" />
+                                    <img [src]="item.imageUrls?.thumbnailUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop'" class="table-img" alt="Món ăn" />
                                 </div>
                             </td>
                             <td>
@@ -253,6 +253,13 @@ import { MenuItemService } from '../service/menu-item.service';
                                 placeholder="Mô tả về món ăn..."></textarea>
                         </div>
 
+                        <!-- Ảnh -->
+                        <div *ngIf="!editingItem?.id">
+                            <label class="block font-semibold mb-2 text-sm">Ảnh món ăn <span class="text-red-500">*</span></label>
+                            <input type="file" (change)="onFileSelect($event)" accept="image/*" class="w-full p-2 border-1 border-round surface-border" />
+                            <small class="text-red-500" *ngIf="submitted && !selectedImage">Ảnh món ăn là bắt buộc.</small>
+                        </div>
+
                     </div>
                 </ng-template>
 
@@ -272,7 +279,7 @@ import { MenuItemService } from '../service/menu-item.service';
     `,
     styles: [`
         .table-img-container {
-            width: 48px; height: 48px;
+            width: 96px; height: 72px;
             border-radius: 8px; overflow: hidden;
             flex-shrink: 0; background-color: #f1f5f9;
         }
@@ -314,6 +321,7 @@ export class MenuItemComponent implements OnInit {
     itemDialog = false;
     submitted = false;
     editingItem: any = {};
+    selectedImage: File | null = null;
 
     @ViewChild('dt') dt!: Table;
     private menuItemService = inject(MenuItemService);
@@ -389,8 +397,15 @@ export class MenuItemComponent implements OnInit {
 
     openNew() {
         this.editingItem = {};
+        this.selectedImage = null;
         this.submitted = false;
         this.itemDialog = true;
+    }
+
+    onFileSelect(event: any) {
+        if (event.target.files.length > 0) {
+            this.selectedImage = event.target.files[0];
+        }
     }
 
     editItem(item: any) {
@@ -435,6 +450,7 @@ export class MenuItemComponent implements OnInit {
         if (!this.editingItem.locationId) return;
         if (this.editingItem.unitPrice == null) return;
         if (!this.editingItem.unit?.trim()) return;
+        if (!this.editingItem.id && !this.selectedImage) return;
 
         this.saving = true;
         const payload: any = {
@@ -456,7 +472,7 @@ export class MenuItemComponent implements OnInit {
                 }
             });
         } else {
-            this.menuItemService.create(payload).subscribe({
+            this.menuItemService.create(payload, this.selectedImage!).subscribe({
                 next: () => this.afterSave('Đã thêm món ăn mới'),
                 error: () => {
                     this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể thêm món ăn', life: 3000 });
