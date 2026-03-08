@@ -31,8 +31,8 @@ public class MenuItemController {
     @Operation(summary = "Tạo món ăn mới")
     @PostMapping("/create")
     public ApiResponse<MenuItemResponse> createNewMenuItem(
-            @Valid @RequestBody MenuItemRequest menuItemRequest,
-            MultipartFile imageFile) throws Exception {
+            @Valid @RequestPart("menuItemRequest") MenuItemRequest menuItemRequest,
+            @RequestPart("imageFile") MultipartFile imageFile) throws Exception {
         MenuItemResponse menuItemResponse = menuItemService.createNewMenuItem(menuItemRequest, imageFile);
         return ApiResponse.<MenuItemResponse>builder()
                 .data(menuItemResponse)
