@@ -52,7 +52,7 @@ export class MenuItemService {
     private categoryUrl = 'http://localhost:8080/api/v1/category-menu-item';
     private locationUrl = 'http://localhost:8080/api/v1/location';
 
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) { }
 
     private getHeaders(): HttpHeaders {
         const token = localStorage.getItem('accessToken');
@@ -97,9 +97,18 @@ export class MenuItemService {
         unitPrice: number;
         unit?: string;
         description?: string;
-    }): Observable<ApiResponse<MenuItem>> {
-        return this.http.post<ApiResponse<MenuItem>>(`${this.baseUrl}/create`, payload, {
-            headers: this.getHeaders()
+    }, imageFile: File): Observable<ApiResponse<MenuItem>> {
+        const formData = new FormData();
+        formData.append('menuItemRequest', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+        formData.append('imageFile', imageFile);
+
+        const token = localStorage.getItem('accessToken');
+        const headers = new HttpHeaders({
+            Authorization: `Bearer ${token}`
+        });
+
+        return this.http.post<ApiResponse<MenuItem>>(`${this.baseUrl}/create`, formData, {
+            headers
         });
     }
 
