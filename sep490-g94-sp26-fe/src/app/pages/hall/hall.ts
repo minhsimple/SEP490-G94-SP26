@@ -637,12 +637,16 @@ export class HallComponent implements OnInit {
 
         this.saving = true;
         const payload = {
-            code: this.editingHall.code,
-            name: this.editingHall.name,
-            locationId: this.editingHall.locationId,
-            capacity: this.editingHall.capacity,
-            notes: this.editingHall.notes
-        };
+    code: this.editingHall.code,
+    name: this.editingHall.name,
+    locationId: this.editingHall.locationId,
+    capacity: Number(this.editingHall.capacity),
+    minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
+    maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
+    imageUrl: this.editingHall.imageUrl || null,
+    notes: this.editingHall.notes || null,
+    status: this.isActive ? 'ACTIVE' : 'INACTIVE'
+};
 
         if (this.editingHall.id) {
             this.hallService.updateHall(this.editingHall.id, payload).subscribe({
