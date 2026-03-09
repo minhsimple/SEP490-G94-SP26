@@ -14,13 +14,9 @@ public class CustomerResponse {
 
     String fullName;
 
-    String citizenIdNumber;
-
     String phone;
 
     String email;
-
-    String taxCode;
 
     String address;
 

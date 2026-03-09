@@ -16,16 +16,12 @@ import lombok.NoArgsConstructor;
 public class CustomerUpdateRequest {
     String fullName;
 
-    String citizenIdNumber;
-
     @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$",
             message = "Số điện thoại không hợp lệ")
     String phone;
 
     @Email(message = "Email không đúng định dạng")
     String email;
-
-    String taxCode;
 
     String address;
 

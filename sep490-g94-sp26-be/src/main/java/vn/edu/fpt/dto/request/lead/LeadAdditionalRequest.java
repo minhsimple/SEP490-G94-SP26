@@ -11,12 +11,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LeadAdditionalRequest {
-    @NotBlank(message = "Số CMND/CCCD không đc để trống")
-    String citizenIdNumber;
-
-    @NotBlank(message = "Mã số thuế không đc để trống")
-    String taxCode;
-
     @NotBlank(message = "Địa chỉ không đc để trống")
     String address;
 }

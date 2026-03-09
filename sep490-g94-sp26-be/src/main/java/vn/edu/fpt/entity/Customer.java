@@ -22,16 +22,10 @@ public class Customer extends BaseEntity {
     @Column(name = "full_name", nullable = false)
     String fullName;
 
-    @Column(name = "citizen_id_number", nullable = false, length = 50)
-    String citizenIdNumber;
-
     @Column(name = "phone", nullable = false)
     String phone;
 
     String email;
-
-    @Column(name = "tax_code")
-    String taxCode;
 
     String address;
 
