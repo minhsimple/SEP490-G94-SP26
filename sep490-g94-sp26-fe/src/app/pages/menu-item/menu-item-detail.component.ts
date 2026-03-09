@@ -293,7 +293,7 @@ import { MenuItemService } from '../service/menu-item.service';
     styles: [`
         .detail-hero {
             border-radius: 12px;
-            min-height: 220px;
+            min-height: 320px;
             position: relative;
             display: flex;
             align-items: flex-end;
@@ -499,13 +499,16 @@ export class MenuItemDetailComponent implements OnInit {
     }
 
     buildImages() {
-        // TODO: When backend supports images, populate from item.images
-        // For now, use placeholder food images
-        this.images = [
-            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=400&fit=crop',
-            'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=400&fit=crop',
-            'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&h=400&fit=crop'
-        ];
+        if (this.item?.imageUrls?.mediumUrl) {
+            this.images = [this.item.imageUrls.mediumUrl];
+        } else {
+            // Placeholder images if no image exists
+            this.images = [
+                'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=400&fit=crop',
+                'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=400&fit=crop',
+                'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&h=400&fit=crop'
+            ];
+        }
         this.currentImageIndex = 0;
     }
 
