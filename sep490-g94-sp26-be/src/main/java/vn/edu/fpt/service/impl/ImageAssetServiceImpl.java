@@ -1,3 +1,4 @@
+
 package vn.edu.fpt.service.impl;
 
 import io.minio.GetPresignedObjectUrlArgs;
@@ -19,8 +20,14 @@ import vn.edu.fpt.util.image.ImageStorageResult;
 import vn.edu.fpt.util.image.ProcessedImage;
 
 import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +36,7 @@ public class ImageAssetServiceImpl implements ImageAssetService {
     private final MinioClient minio;
     private final MinioProperties props;
     private final ImageNamingStrategy naming = new ImageNamingStrategy();
+    private final Executor uploadExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     @Override
     public ImageStorageResult uploadImageSet(ImageCategory category, Integer entityId, MultipartFile file) throws Exception {
@@ -37,23 +45,32 @@ public class ImageAssetServiceImpl implements ImageAssetService {
         String folder = naming.baseFolder(category, entityId);
         String id = naming.newId();
 
-        // Build keys
-        String origKey = naming.objectKey(folder, "orig", id, extFromFilename(set.originalOptimized().filename()));
+        String origKey = buildObjectKey(folder, "orig", id, set.originalOptimized().filename());
         Map<ImageVariant, String> keys = new EnumMap<>(ImageVariant.class);
-        for (var e : set.variants().entrySet()) {
-            keys.put(e.getKey(), naming.objectKey(folder, e.getKey().name().toLowerCase(), id, extFromFilename(e.getValue().filename())));
-        }
+        set.variants().forEach((variant, img) ->
+                keys.put(variant, buildObjectKey(folder, variant.name().toLowerCase(), id, img.filename()))
+        );
 
-        // Upload with rollback on failure
+        List<String> allKeys = new ArrayList<>();
+        allKeys.add(origKey);
+        allKeys.addAll(keys.values());
+
         try {
+            // Upload original first, then variants in parallel
             put(origKey, set.originalOptimized());
-            for (var e : set.variants().entrySet()) {
-                put(keys.get(e.getKey()), e.getValue());
-            }
+
+            List<CompletableFuture<Void>> futures = set.variants().entrySet().stream()
+                    .map(e -> CompletableFuture.runAsync(
+                            () -> putUnchecked(keys.get(e.getKey()), e.getValue()), uploadExecutor))
+                    .toList();
+
+            CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+        } catch (CompletionException ex) {
+            allKeys.forEach(this::safeDelete);
+            Throwable cause = ex.getCause();
+            throw cause instanceof Exception ? (Exception) cause : new RuntimeException(cause);
         } catch (Exception ex) {
-            // best-effort cleanup
-            safeDelete(origKey);
-            for (String k : keys.values()) safeDelete(k);
+            allKeys.forEach(this::safeDelete);
             throw ex;
         }
 
@@ -72,8 +89,12 @@ public class ImageAssetServiceImpl implements ImageAssetService {
         );
     }
 
+    private String buildObjectKey(String folder, String prefix, String id, String filename) {
+        return naming.objectKey(folder, prefix, id, extFromFilename(filename));
+    }
+
     private void put(String objectKey, ProcessedImage img) throws Exception {
-        try (ByteArrayInputStream in = new ByteArrayInputStream(img.bytes())) {
+        try (var in = new ByteArrayInputStream(img.bytes())) {
             minio.putObject(
                     PutObjectArgs.builder()
                             .bucket(props.getBucket())
@@ -85,10 +106,19 @@ public class ImageAssetServiceImpl implements ImageAssetService {
         }
     }
 
+    private void putUnchecked(String objectKey, ProcessedImage img) {
+        try {
+            put(objectKey, img);
+        } catch (Exception e) {
+            throw new CompletionException(e);
+        }
+    }
+
     private void safeDelete(String objectKey) {
         try {
             minio.removeObject(RemoveObjectArgs.builder().bucket(props.getBucket()).object(objectKey).build());
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 
     private String extFromFilename(String filename) {
