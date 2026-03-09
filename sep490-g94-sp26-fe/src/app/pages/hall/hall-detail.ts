@@ -510,21 +510,23 @@ export class HallDetailComponent implements OnInit {
     }
 
     loadHall(id: any) {
-        this.loading = true;
-        this.hallService.getHallById(id).subscribe({
-            next: (res) => {
-                if (res.code === 200) {
-                    this.hall = res.data;
-                    this.buildImages(res.data);
-                }
-                this.loading = false;
-            },
-            error: () => {
-                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải thông tin sảnh', life: 3000 });
-                this.loading = false;
+    this.loading = true;
+    this.hallService.getHallById(id).subscribe({
+        next: (res) => {
+            if (res.code === 200) {
+                this.hall = res.data;
+                this.buildImages(res.data);
             }
-        });
-    }
+            this.loading = false;
+            this.cdr.detectChanges(); // ← thêm dòng này
+        },
+        error: () => {
+            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải thông tin sảnh', life: 3000 });
+            this.loading = false;
+            this.cdr.detectChanges(); // ← thêm dòng này
+        }
+    });
+}
 
     buildImages(hall: Hall) {
         const imgs: string[] = [];
@@ -578,12 +580,16 @@ export class HallDetailComponent implements OnInit {
 
         this.saving = true;
         const payload = {
-            code: this.editingHall.code,
-            name: this.editingHall.name,
-            locationId: this.editingHall.locationId,
-            capacity: this.editingHall.capacity,
-            notes: this.editingHall.notes
-        };
+    code: this.editingHall.code,
+    name: this.editingHall.name,
+    locationId: this.editingHall.locationId,
+    capacity: Number(this.editingHall.capacity),
+    minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
+    maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
+    imageUrl: this.editingHall.imageUrl || null,
+    notes: this.editingHall.notes || null,
+    status: this.isActive ? 'ACTIVE' : 'INACTIVE'
+};
 
         this.hallService.updateHall(this.editingHall.id, payload).subscribe({
             next: (res) => {

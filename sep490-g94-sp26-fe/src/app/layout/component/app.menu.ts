@@ -94,6 +94,11 @@ export class AppMenu {
                         icon: 'pi pi-fw pi-shopping-bag',
                         routerLink: ['/pages/service']
                     },
+                    {
+                        label: 'Quản lý combo-dịch vụ',
+                        icon: 'pi pi-fw pi-shopping-bag',
+                        routerLink: ['/pages/combo-services']
+                    },
                     // {
                     //     label: 'Empty',
                     //     icon: 'pi pi-fw pi-circle-off',
