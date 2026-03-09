@@ -254,10 +254,26 @@ import { MenuItemService } from '../service/menu-item.service';
                         </div>
 
                         <!-- Ảnh -->
-                        <div *ngIf="!editingItem?.id">
-                            <label class="block font-semibold mb-2 text-sm">Ảnh món ăn <span class="text-red-500">*</span></label>
+                        <div>
+                            <label class="block font-semibold mb-2 text-sm">Ảnh món ăn (chọn nếu muốn đổi ảnh)</label>
+                            
+                            <!-- Vùng hiển thị ảnh cũ và mới -->
+                            <div class="flex gap-4 mb-3">
+                                <!-- Ảnh hiện tại (nếu có) -->
+                                <div *ngIf="editingItem?.id && editingItem?.imageUrls?.thumbnailUrl">
+                                    <div class="text-500 text-xs mb-1">Ảnh hiện tại:</div>
+                                    <img [src]="editingItem.imageUrls.thumbnailUrl" class="border-round shadow-1" style="width: 96px; height: 72px; object-fit: cover;" alt="Ảnh hiện tại" />
+                                </div>
+                                
+                                <!-- Ảnh mới được chọn -->
+                                <div *ngIf="selectedImageUrl">
+                                    <div class="text-500 text-xs mb-1">Ảnh thay thế mới:</div>
+                                    <img [src]="selectedImageUrl" class="border-round shadow-1 border-primary" style="width: 96px; height: 72px; object-fit: cover; border: 2px solid var(--primary-color);" alt="Ảnh mới" />
+                                </div>
+                            </div>
+
                             <input type="file" (change)="onFileSelect($event)" accept="image/*" class="w-full p-2 border-1 border-round surface-border" />
-                            <small class="text-red-500" *ngIf="submitted && !selectedImage">Ảnh món ăn là bắt buộc.</small>
+                            <small class="text-red-500" *ngIf="submitted && !selectedImage && !editingItem?.id">Ảnh món ăn là bắt buộc khi thêm mới.</small>
                         </div>
 
                     </div>
@@ -322,6 +338,7 @@ export class MenuItemComponent implements OnInit {
     submitted = false;
     editingItem: any = {};
     selectedImage: File | null = null;
+    selectedImageUrl: string | null = null;
 
     @ViewChild('dt') dt!: Table;
     private menuItemService = inject(MenuItemService);
@@ -398,13 +415,26 @@ export class MenuItemComponent implements OnInit {
     openNew() {
         this.editingItem = {};
         this.selectedImage = null;
+        this.selectedImageUrl = null;
         this.submitted = false;
         this.itemDialog = true;
+        this.cdr.detectChanges();
     }
 
     onFileSelect(event: any) {
         if (event.target.files.length > 0) {
             this.selectedImage = event.target.files[0];
+
+            // Đọc file để preview
+            const reader = new FileReader();
+            reader.onload = (e: any) => {
+                this.selectedImageUrl = e.target.result;
+                this.cdr.detectChanges();
+            };
+            reader.readAsDataURL(this.selectedImage as Blob);
+        } else {
+            this.selectedImage = null;
+            this.selectedImageUrl = null;
         }
     }
 
@@ -418,8 +448,11 @@ export class MenuItemComponent implements OnInit {
                     locationId: data.location?.id ?? data.locationId,
                     unitPrice: parseFloat(data.unitPrice) || 0
                 };
+                this.selectedImage = null;
+                this.selectedImageUrl = null;
                 this.submitted = false;
                 this.itemDialog = true;
+                this.cdr.detectChanges();
             },
             error: () => {
                 this.editingItem = {
@@ -464,7 +497,7 @@ export class MenuItemComponent implements OnInit {
         };
 
         if (this.editingItem.id) {
-            this.menuItemService.update(this.editingItem.id, payload).subscribe({
+            this.menuItemService.update(this.editingItem.id, payload, this.selectedImage || undefined).subscribe({
                 next: () => this.afterSave('Đã cập nhật món ăn'),
                 error: () => {
                     this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể cập nhật món ăn', life: 3000 });

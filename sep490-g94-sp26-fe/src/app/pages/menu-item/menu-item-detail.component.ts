@@ -242,6 +242,28 @@ import { MenuItemService } from '../service/menu-item.service';
                                 placeholder="Mô tả về món ăn..."></textarea>
                         </div>
 
+                        <!-- Ảnh -->
+                        <div>
+                            <label class="block font-semibold mb-2 text-sm">Ảnh món ăn (chọn nếu muốn đổi ảnh)</label>
+                            
+                            <!-- Vùng hiển thị ảnh cũ và mới -->
+                            <div class="flex gap-4 mb-3">
+                                <!-- Ảnh hiện tại (nếu có) -->
+                                <div *ngIf="editingItem?.id && editingItem?.imageUrls?.thumbnailUrl">
+                                    <div class="text-500 text-xs mb-1">Ảnh hiện tại:</div>
+                                    <img [src]="editingItem.imageUrls.thumbnailUrl" class="border-round shadow-1" style="width: 96px; height: 72px; object-fit: cover;" alt="Ảnh hiện tại" />
+                                </div>
+                                
+                                <!-- Ảnh mới được chọn -->
+                                <div *ngIf="selectedImageUrl">
+                                    <div class="text-500 text-xs mb-1">Ảnh thay thế mới:</div>
+                                    <img [src]="selectedImageUrl" class="border-round shadow-1 border-primary" style="width: 96px; height: 72px; object-fit: cover; border: 2px solid var(--primary-color);" alt="Ảnh mới" />
+                                </div>
+                            </div>
+
+                            <input type="file" (change)="onFileSelect($event)" accept="image/*" class="w-full p-2 border-1 border-round surface-border" />
+                        </div>
+
                     </div>
                 </ng-template>
 
@@ -445,6 +467,8 @@ export class MenuItemDetailComponent implements OnInit {
     editingItem: any = {};
     categories: any[] = [];
     locations: any[] = [];
+    selectedImage: File | null = null;
+    selectedImageUrl: string | null = null;
 
     // Images
     images: string[] = [];
@@ -578,8 +602,28 @@ export class MenuItemDetailComponent implements OnInit {
             locationId: this.item.location?.id,
             unitPrice: parseFloat(this.item.unitPrice) || 0
         };
+        this.selectedImage = null;
+        this.selectedImageUrl = null;
         this.submitted = false;
         this.editDialog = true;
+        this.cdr.detectChanges();
+    }
+
+    onFileSelect(event: any) {
+        if (event.target.files.length > 0) {
+            this.selectedImage = event.target.files[0];
+
+            // Đọc file để preview
+            const reader = new FileReader();
+            reader.onload = (e: any) => {
+                this.selectedImageUrl = e.target.result;
+                this.cdr.detectChanges();
+            };
+            reader.readAsDataURL(this.selectedImage as Blob);
+        } else {
+            this.selectedImage = null;
+            this.selectedImageUrl = null;
+        }
     }
 
     saveEdit() {
@@ -601,7 +645,7 @@ export class MenuItemDetailComponent implements OnInit {
             description: this.editingItem.description
         };
 
-        this.menuItemService.update(this.item.id, payload).subscribe({
+        this.menuItemService.update(this.item.id, payload, this.selectedImage || undefined).subscribe({
             next: () => {
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật món ăn', life: 3000 });
                 this.editDialog = false;

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, OnInit, signal, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
 import { CommonModule } from '@angular/common';
@@ -14,7 +14,6 @@ import { TagModule } from 'primeng/tag';
 import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { PasswordModule } from 'primeng/password';
 import { Customer, CustomerService } from '../service/customer.service';
 import { Location, LocationService } from '../service/location.service';
 
@@ -40,8 +39,7 @@ interface Column {
         TagModule,
         InputIconModule,
         IconFieldModule,
-        ConfirmDialogModule,
-        PasswordModule
+        ConfirmDialogModule
     ],
     template: `
         <div class="card">
@@ -120,9 +118,6 @@ interface Column {
                         <th pSortableColumn="fullName" style="min-width:14rem">
                             Họ và tên <p-sortIcon field="fullName" />
                         </th>
-                        <th pSortableColumn="citizenIdNumber" style="min-width:14rem">
-                            Số CCCD <p-sortIcon field="citizenIdNumber" />
-                        </th>
                         <th pSortableColumn="email" style="min-width:16rem">
                             Email <p-sortIcon field="email" />
                         </th>
@@ -131,9 +126,6 @@ interface Column {
                         </th>
                         <th pSortableColumn="locationId" style="min-width:12rem">
                             Chi nhánh <p-sortIcon field="locationId" />
-                        </th>
-                        <th pSortableColumn="taxCode" style="min-width:12rem">
-                            Mã số thuế <p-sortIcon field="taxCode" />
                         </th>
                         <th pSortableColumn="status" style="min-width:10rem">
                             Trạng thái <p-sortIcon field="status" />
@@ -155,7 +147,6 @@ interface Column {
                                 <span class="font-medium">{{ customer.fullName }}</span>
                             </div>
                         </td>
-                        <td>{{ customer.citizenIdNumber || '-' }}</td>
                         <td>
                             <i class="pi pi-envelope mr-2 text-gray-400"></i>
                             {{ customer.email || '-' }}
@@ -165,7 +156,6 @@ interface Column {
                             {{ customer.phone || '-' }}
                         </td>
                         <td>{{ customer.locationName || customer.location?.name || '-' }}</td>
-                        <td>{{ customer.taxCode || '-' }}</td>
                         <td>
                             <p-tag
                                 [value]="getStatusLabel(customer.status)"
@@ -227,19 +217,6 @@ interface Column {
                         </div>
 
                         <div>
-                            <label for="citizenIdNumber" class="block font-bold mb-2">Số CCCD</label>
-                            <input
-                                type="number"
-                                pInputText
-                                id="citizenIdNumber"
-                                [(ngModel)]="customer.citizenIdNumber"
-                                fluid
-                                placeholder="012345678901"
-                                min="0"
-                            />
-                        </div>
-
-                        <div>
                             <label for="email" class="block font-bold mb-2">Email</label>
                             <input
                                 type="email"
@@ -281,18 +258,6 @@ interface Column {
                         </div>
 
                         <div>
-                            <label for="taxCode" class="block font-bold mb-2">Mã số thuế</label>
-                            <input
-                                type="text"
-                                pInputText
-                                id="taxCode"
-                                [(ngModel)]="customer.taxCode"
-                                fluid
-                                placeholder="0123456789"
-                            />
-                        </div>
-
-                        <div>
                             <label for="address" class="block font-bold mb-2">Địa chỉ</label>
                             <input
                                 type="text"
@@ -314,21 +279,6 @@ interface Column {
                                 fluid
                                 placeholder="Ghi chú thêm..."
                             />
-                        </div>
-
-                        <div *ngIf="!isEditing">
-                            <label for="password" class="block font-bold mb-2">
-                                Mật khẩu <span class="text-red-500">*</span>
-                            </label>
-                            <p-password
-                                [(ngModel)]="newPassword"
-                                [toggleMask]="true"
-                                fluid
-                                placeholder="Nhập mật khẩu"
-                            />
-                            <small class="text-red-500" *ngIf="submitted && !isEditing && !newPassword">
-                                Mật khẩu là bắt buộc.
-                            </small>
                         </div>
 
                     </div>
@@ -369,7 +319,6 @@ export class Customers implements OnInit {
 
     newEmail = '';
     newPhone = '';
-    newPassword = '';
 
     isEditing = false;
     selectedCustomers!: Customer[] | null;
@@ -391,17 +340,16 @@ export class Customers implements OnInit {
         private customerService: CustomerService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
-        private locationService: LocationService
-    ) {}
+        private locationService: LocationService,
+        private cdr: ChangeDetectorRef
+    ) { }
 
     ngOnInit() {
         this.cols = [
             { field: 'fullName', header: 'Họ và tên' },
-            { field: 'citizenIdNumber', header: 'Số CCCD' },
             { field: 'email', header: 'Email' },
             { field: 'phone', header: 'Số điện thoại' },
             { field: 'locationId', header: 'Chi nhánh' },
-            { field: 'taxCode', header: 'Mã số thuế' },
             { field: 'status', header: 'Trạng thái' }
         ];
         this.loadLocationOptions();
@@ -443,10 +391,12 @@ export class Customers implements OnInit {
                 this.customers.set(res.data.content);
                 this.totalRecords = res.data.totalElements;
                 this.loading = false;
+                this.cdr.markForCheck();
             },
             error: () => {
                 this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách khách hàng', life: 3000 });
                 this.loading = false;
+                this.cdr.markForCheck();
             }
         });
     }
@@ -474,7 +424,6 @@ export class Customers implements OnInit {
         this.customer = {};
         this.newEmail = '';
         this.newPhone = '';
-        this.newPassword = '';
         this.isEditing = false;
         this.submitted = false;
         this.customerDialog = true;
@@ -487,12 +436,14 @@ export class Customers implements OnInit {
                 this.isEditing = true;
                 this.submitted = false;
                 this.customerDialog = true;
+                this.cdr.markForCheck();
             },
             error: () => {
                 this.customer = { ...customer };
                 this.isEditing = true;
                 this.submitted = false;
                 this.customerDialog = true;
+                this.cdr.markForCheck();
             }
         });
     }
@@ -533,20 +484,13 @@ export class Customers implements OnInit {
 
         if (!this.customer.fullName?.trim()) return;
 
-        if (!this.isEditing && !this.newPassword) {
-            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Vui lòng nhập mật khẩu', life: 3000 });
-            return;
-        }
-
         this.saving = true;
 
         if (this.isEditing) {
             this.customerService.updateCustomer(this.customer.id, {
                 fullName: this.customer.fullName,
-                citizenIdNumber: this.customer.citizenIdNumber,
                 phone: this.customer.phone,
                 email: this.customer.email,
-                taxCode: this.customer.taxCode,
                 address: this.customer.address,
                 notes: this.customer.notes,
                 locationId: this.customer.locationId
@@ -558,33 +502,34 @@ export class Customers implements OnInit {
                     this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật khách hàng', life: 3000 });
                     this.customerDialog = false;
                     this.saving = false;
+                    this.cdr.markForCheck();
                 },
                 error: () => {
                     this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Cập nhật thất bại', life: 3000 });
                     this.saving = false;
+                    this.cdr.markForCheck();
                 }
             });
         } else {
             this.customerService.createCustomer({
                 fullName: this.customer.fullName!,
-                citizenIdNumber: this.customer.citizenIdNumber,
                 phone: this.newPhone || undefined,
                 email: this.newEmail || undefined,
-                taxCode: this.customer.taxCode,
                 address: this.customer.address,
                 notes: this.customer.notes,
-                locationId: this.customer.locationId,
-                password: this.newPassword
+                locationId: this.customer.locationId
             }).subscribe({
                 next: (res) => {
                     this.customers.update(list => [res.data, ...list]);
                     this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã tạo khách hàng mới', life: 3000 });
                     this.customerDialog = false;
                     this.saving = false;
+                    this.cdr.markForCheck();
                 },
                 error: () => {
                     this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Tạo khách hàng thất bại', life: 3000 });
                     this.saving = false;
+                    this.cdr.markForCheck();
                 }
             });
         }
