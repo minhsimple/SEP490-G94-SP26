@@ -53,7 +53,7 @@ export interface PageResponse<T> {
 export class CustomerService {
     private baseUrl = 'http://localhost:8080/api/v1/customer';
 
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) { }
 
     private getHeaders(): HttpHeaders {
         const token = localStorage.getItem('accessToken');
@@ -100,7 +100,7 @@ export class CustomerService {
         address?: string;
         notes?: string;
         locationId?: number;
-        password: string;
+        password?: string;
     }): Observable<ApiResponse<Customer>> {
         return this.http.post<ApiResponse<Customer>>(`${this.baseUrl}/create`, customer, {
             headers: this.getHeaders()
@@ -129,15 +129,15 @@ export class CustomerService {
         });
     }
     searchLocations(page = 0, size = 20): Observable<ApiResponse<PageResponse<Location>>> {
-    const params = new HttpParams()
-        .set('page', page)
-        .set('size', size)
-        .set('sort', 'updatedAt,DESC');
+        const params = new HttpParams()
+            .set('page', page)
+            .set('size', size)
+            .set('sort', 'updatedAt,DESC');
 
-    return this.http.get<ApiResponse<PageResponse<Location>>>(`http://localhost:8080/api/v1/location/search`, {
-        headers: this.getHeaders(),
-        params
-    });
-}
+        return this.http.get<ApiResponse<PageResponse<Location>>>(`http://localhost:8080/api/v1/location/search`, {
+            headers: this.getHeaders(),
+            params
+        });
+    }
 
 }
