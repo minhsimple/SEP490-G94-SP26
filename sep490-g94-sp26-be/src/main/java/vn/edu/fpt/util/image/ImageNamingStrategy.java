@@ -20,4 +20,12 @@ public class ImageNamingStrategy {
     public String objectKey(String baseFolder, String variantName, String id, String ext) {
         return baseFolder + "/" + variantName + "_" + id + ext;
     }
+
+    public String baseFolderFromKey(String objectKey) {
+        int lastSlash = objectKey.lastIndexOf('/');
+        if (lastSlash <= 0) {
+            throw new IllegalArgumentException("Invalid object key: " + objectKey);
+        }
+        return objectKey.substring(0, lastSlash + 1);
+    }
 }

@@ -9,7 +9,7 @@ import vn.edu.fpt.dto.response.menuitem.MenuItemResponse;
 
 public interface MenuItemService {
     MenuItemResponse createNewMenuItem(MenuItemRequest request, MultipartFile imageFile) throws Exception;
-    MenuItemResponse updateMenuItem(Integer id, MenuItemRequest request);
+    MenuItemResponse updateMenuItem(Integer id, MenuItemRequest request, MultipartFile imageFile) throws Exception;
     MenuItemResponse getMenuItemById(Integer id) throws Exception;
     SimplePage<MenuItemResponse> getAllMenuItems(Pageable pageable, MenuItemFilterRequest filterRequest);
     MenuItemResponse changeStatusMenuItem(Integer id) throws Exception;

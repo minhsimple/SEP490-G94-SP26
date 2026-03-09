@@ -32,7 +32,7 @@ public class MenuItemController {
     @PostMapping("/create")
     public ApiResponse<MenuItemResponse> createNewMenuItem(
             @Valid @RequestPart("menuItemRequest") MenuItemRequest menuItemRequest,
-            @RequestPart("imageFile") MultipartFile imageFile) throws Exception {
+            @RequestPart(value = "imageFile") MultipartFile imageFile) throws Exception {
         MenuItemResponse menuItemResponse = menuItemService.createNewMenuItem(menuItemRequest, imageFile);
         return ApiResponse.<MenuItemResponse>builder()
                 .data(menuItemResponse)
@@ -43,9 +43,10 @@ public class MenuItemController {
     @PutMapping("/update")
     public ApiResponse<MenuItemResponse> updateMenuItem(
             @RequestParam Integer menuItemId,
-            @Valid @RequestBody MenuItemRequest menuItemRequest
-    ) {
-        MenuItemResponse menuItemResponse = menuItemService.updateMenuItem(menuItemId, menuItemRequest);
+            @Valid @RequestPart("menuItemRequest") MenuItemRequest menuItemRequest,
+            @RequestPart(value = "imageFile", required = false) MultipartFile imageFile
+    ) throws Exception {
+        MenuItemResponse menuItemResponse = menuItemService.updateMenuItem(menuItemId, menuItemRequest, imageFile);
         return ApiResponse.<MenuItemResponse>builder()
                 .data(menuItemResponse)
                 .build();

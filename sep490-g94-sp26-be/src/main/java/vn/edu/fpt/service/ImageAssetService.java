@@ -7,4 +7,5 @@ import vn.edu.fpt.util.image.ImageStorageResult;
 public interface ImageAssetService {
     ImageStorageResult uploadImageSet(ImageCategory category, Integer entityId, MultipartFile file) throws Exception;
     String preSignedUrl(String objectKey, int minutes) throws Exception;
+    void deleteFolder(String objectKey);
 }

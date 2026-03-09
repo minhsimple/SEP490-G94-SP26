@@ -64,11 +64,7 @@ public class MenuItemServiceImpl implements MenuItemService {
         MenuItem menuItem = menuItemMapper.toEntity(request);
         menuItem = menuItemRepository.save(menuItem);
 
-        ImageStorageResult imageStorageResult = imageAssetService.uploadImageSet(ImageCategory.MENU_ITEM, menuItem.getId(), imageFile);
-        menuItem.setImageOrigKey(imageStorageResult.originalKey());
-        menuItem.setImageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null));
-        menuItem.setImageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null));
-        menuItem.setImageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null));
+        uploadMenuItemImage(imageFile, menuItem);
 
         MenuItemResponse menuItemResponse = menuItemMapper.toResponse(menuItem, location, categoryMenuItem);
         menuItemResponse.setImageUrls(getPresignedImageUrls(menuItem));
@@ -78,7 +74,7 @@ public class MenuItemServiceImpl implements MenuItemService {
 
     @Transactional
     @Override
-    public MenuItemResponse updateMenuItem(Integer id, MenuItemRequest request) {
+    public MenuItemResponse updateMenuItem(Integer id, MenuItemRequest request, MultipartFile imageFile) throws Exception {
         MenuItem menuItem = menuItemRepository.findMenuItemByIdAndStatus(id, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.MENU_ITEM_NOT_EXISTED));
 
@@ -94,9 +90,26 @@ public class MenuItemServiceImpl implements MenuItemService {
             throw new AppException(ERROR_CODE.MENU_ITEM_CODE_EXISTED_SAME_LOCATION);
         }
 
-        menuItemMapper.updateEntity(menuItem, request);
+        if (imageFile != null && !imageFile.isEmpty()) {
+            if (!StringUtils.isNullOrEmptyOrBlank(menuItem.getImageOrigKey())) {
+                imageAssetService.deleteFolder(menuItem.getImageOrigKey());
+            }
+            uploadMenuItemImage(imageFile, menuItem);
+        }
 
-        return menuItemMapper.toResponse(menuItem, location, categoryMenuItem);
+        menuItemMapper.updateEntity(menuItem, request);
+        MenuItemResponse menuItemResponse = menuItemMapper.toResponse(menuItem, location, categoryMenuItem);
+        menuItemResponse.setImageUrls(getPresignedImageUrls(menuItem));
+
+        return menuItemResponse;
+    }
+
+    private void uploadMenuItemImage(MultipartFile imageFile, MenuItem menuItem) throws Exception {
+        ImageStorageResult imageStorageResult = imageAssetService.uploadImageSet(ImageCategory.MENU_ITEM, menuItem.getId(), imageFile);
+        menuItem.setImageOrigKey(imageStorageResult.originalKey());
+        menuItem.setImageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null));
+        menuItem.setImageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null));
+        menuItem.setImageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null));
     }
 
     @Override
