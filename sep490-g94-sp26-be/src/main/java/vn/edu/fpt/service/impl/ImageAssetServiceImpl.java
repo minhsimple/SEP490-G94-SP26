@@ -2,11 +2,18 @@
 package vn.edu.fpt.service.impl;
 
 import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.ListObjectsArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import io.minio.RemoveObjectsArgs;
+import io.minio.Result;
 import io.minio.http.Method;
+import io.minio.messages.DeleteError;
+import io.minio.messages.DeleteObject;
+import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.config.MinioProperties;
@@ -29,6 +36,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ImageAssetServiceImpl implements ImageAssetService {
@@ -87,6 +95,42 @@ public class ImageAssetServiceImpl implements ImageAssetService {
                         .expiry(minutes * 60)
                         .build()
         );
+    }
+
+    @Override
+    public void deleteFolder(String objectKey) {
+        String prefix = naming.baseFolderFromKey(objectKey);
+
+        List<DeleteObject> objects = new ArrayList<>();
+        for (Result<Item> result : minio.listObjects(
+                ListObjectsArgs.builder()
+                        .bucket(props.getBucket())
+                        .prefix(prefix)
+                        .recursive(true)
+                        .build())) {
+            try {
+                objects.add(new DeleteObject(result.get().objectName()));
+            } catch (Exception e) {
+                log.warn("Failed to list object under prefix {}: {}", prefix, e.getMessage());
+            }
+        }
+
+        if (objects.isEmpty()) {
+            return;
+        }
+
+        for (Result<DeleteError> result : minio.removeObjects(
+                RemoveObjectsArgs.builder()
+                        .bucket(props.getBucket())
+                        .objects(objects)
+                        .build())) {
+            try {
+                DeleteError error = result.get();
+                log.warn("Failed to delete {}: {}", error.objectName(), error.message());
+            } catch (Exception e) {
+                log.warn("Error during batch deletion under prefix {}: {}", prefix, e.getMessage());
+            }
+        }
     }
 
     private String buildObjectKey(String folder, String prefix, String id, String filename) {
