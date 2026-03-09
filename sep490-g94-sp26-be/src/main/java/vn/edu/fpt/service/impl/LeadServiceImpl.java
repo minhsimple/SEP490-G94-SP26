@@ -223,8 +223,6 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
         customer.setEmail(lead.getEmail());
         customer.setLocationId(lead.getLocationId());
         customer.setNotes(lead.getNotes());
-        customer.setCitizenIdNumber(additionalRequest.getCitizenIdNumber());
-        customer.setTaxCode(additionalRequest.getTaxCode());
         customer.setAddress(additionalRequest.getAddress());
         return customer;
     }

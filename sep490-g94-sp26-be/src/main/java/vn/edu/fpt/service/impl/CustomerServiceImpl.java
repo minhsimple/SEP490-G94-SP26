@@ -44,14 +44,10 @@ public class CustomerServiceImpl implements CustomerService {
                 () -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED)
         );
 
-        if (customerRepository.existsByCitizenIdNumber(request.getCitizenIdNumber())) {
-            throw new AppException(ERROR_CODE.CUSTOMER_CITIZEN_ID_NUMBER_EXISTED);
-        } else if (customerRepository.existsByPhone(request.getPhone())) {
+        if (customerRepository.existsByPhone(request.getPhone())) {
             throw new AppException(ERROR_CODE.CUSTOMER_PHONE_EXISTED);
         } else if (request.getEmail() != null && customerRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ERROR_CODE.CUSTOMER_EMAIL_EXISTED);
-        } else if (customerRepository.existsByTaxCode(request.getTaxCode())) {
-            throw new AppException(ERROR_CODE.CUSTOMER_TAX_CODE_EXISTED);
         }
 
         Customer customer = customerMapper.toEntity(request);
@@ -70,14 +66,10 @@ public class CustomerServiceImpl implements CustomerService {
                 .findByIdAndStatus(id, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED));
 
-        if (customerUpdateRequest.getCitizenIdNumber() != null && customerRepository.existsByCitizenIdNumberAndIdNot(customerUpdateRequest.getCitizenIdNumber(), id)) {
-            throw new AppException(ERROR_CODE.CUSTOMER_CITIZEN_ID_NUMBER_EXISTED);
-        } else if (customerUpdateRequest.getPhone() != null && customerRepository.existsByPhoneAndIdNot(customerUpdateRequest.getPhone(), id)) {
+        if (customerUpdateRequest.getPhone() != null && customerRepository.existsByPhoneAndIdNot(customerUpdateRequest.getPhone(), id)) {
             throw new AppException(ERROR_CODE.CUSTOMER_PHONE_EXISTED);
         } else if (customerUpdateRequest.getEmail() != null && customerRepository.existsByEmailAndIdNot(customerUpdateRequest.getEmail(), id)) {
             throw new AppException(ERROR_CODE.CUSTOMER_EMAIL_EXISTED);
-        } else if (customerUpdateRequest.getTaxCode() != null && customerRepository.existsByTaxCodeAndIdNot(customerUpdateRequest.getTaxCode(), id)) {
-            throw new AppException(ERROR_CODE.CUSTOMER_TAX_CODE_EXISTED);
         }
 
         if (customerUpdateRequest.getLocationId() != null) {
@@ -132,12 +124,6 @@ public class CustomerServiceImpl implements CustomerService {
                         "%" + filterRequest.getFullName().toLowerCase() + "%"
                 ));
             }
-            if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getCitizenIdNumber())) {
-                predicates.add(cb.like(
-                        root.get("citizenIdNumber"),
-                        "%" + filterRequest.getCitizenIdNumber() + "%"
-                ));
-            }
             if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getPhone())) {
                 predicates.add(cb.like(
                         root.get("phone"),
@@ -148,12 +134,6 @@ public class CustomerServiceImpl implements CustomerService {
                 predicates.add(cb.like(
                         cb.lower(root.get("email")),
                         "%" + filterRequest.getEmail().toLowerCase() + "%"
-                ));
-            }
-            if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getTaxCode())) {
-                predicates.add(cb.like(
-                        root.get("taxCode"),
-                        "%" + filterRequest.getTaxCode() + "%"
                 ));
             }
             if (!StringUtils.isNullOrEmptyOrBlank(filterRequest.getAddress())) {

@@ -17,9 +17,6 @@ public class CustomerRequest {
     @NotBlank(message = "Họ tên không đc để trống")
     String fullName;
 
-    @NotBlank(message = "Số CMND/CCCD không đc để trống")
-    String citizenIdNumber;
-
     @NotBlank(message = "Số điện thoại không đc để trống")
     @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$",
             message = "Số điện thoại không hợp lệ")
@@ -27,9 +24,6 @@ public class CustomerRequest {
 
     @Email(message = "Email không đúng định dạng")
     String email;
-
-    @NotBlank(message = "Mã số thuế không đc để trống")
-    String taxCode;
 
     @NotBlank(message = "Địa chỉ không đc để trống")
     String address;
