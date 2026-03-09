@@ -120,9 +120,20 @@ export class MenuItemService {
         unitPrice?: number;
         unit?: string;
         description?: string;
-    }): Observable<ApiResponse<MenuItem>> {
-        return this.http.put<ApiResponse<MenuItem>>(`${this.baseUrl}/update`, payload, {
-            headers: this.getHeaders(),
+    }, imageFile?: File): Observable<ApiResponse<MenuItem>> {
+        const formData = new FormData();
+        formData.append('menuItemRequest', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+        if (imageFile) {
+            formData.append('imageFile', imageFile);
+        }
+
+        const token = localStorage.getItem('accessToken');
+        const headers = new HttpHeaders({
+            Authorization: `Bearer ${token}`
+        });
+
+        return this.http.put<ApiResponse<MenuItem>>(`${this.baseUrl}/update`, formData, {
+            headers,
             params: new HttpParams().set('menuItemId', id)
         });
     }
