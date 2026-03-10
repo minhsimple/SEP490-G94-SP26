@@ -61,12 +61,12 @@ import { LocationService } from '../service/location.service';
 
                         <!-- Overlay info -->
                         <div class="hero-overlay">
-                            <h1>{{ hall.name }}</h1>
-                            <div class="hero-sub">
-                                <i class="pi pi-map-marker"></i>
-                                <span>{{ hall.locationName || 'Chi nhánh #' + hall.locationId }}</span>
-                            </div>
-                        </div>
+    <h1 style="color: white;">{{ hall.name }}</h1>
+    <div class="hero-sub">
+        <i class="pi pi-map-marker"></i>
+        <span>{{ hall.locationName || 'Chi nhánh #' + hall.locationId }}</span>
+    </div>
+</div>
 
                         <span class="status-chip" [class.active]="hall.status === 'ACTIVE'">
                             <i class="pi pi-circle-fill" style="font-size:0.5rem"></i>
@@ -501,7 +501,7 @@ export class HallDetailComponent implements OnInit {
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private cdr: ChangeDetectorRef,
-    ) {}
+    ) { }
 
     ngOnInit() {
         const id = this.route.snapshot.paramMap.get('id');
@@ -510,23 +510,23 @@ export class HallDetailComponent implements OnInit {
     }
 
     loadHall(id: any) {
-    this.loading = true;
-    this.hallService.getHallById(id).subscribe({
-        next: (res) => {
-            if (res.code === 200) {
-                this.hall = res.data;
-                this.buildImages(res.data);
+        this.loading = true;
+        this.hallService.getHallById(id).subscribe({
+            next: (res) => {
+                if (res.code === 200) {
+                    this.hall = res.data;
+                    this.buildImages(res.data);
+                }
+                this.loading = false;
+                this.cdr.detectChanges(); // ← thêm dòng này
+            },
+            error: () => {
+                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải thông tin sảnh', life: 3000 });
+                this.loading = false;
+                this.cdr.detectChanges(); // ← thêm dòng này
             }
-            this.loading = false;
-            this.cdr.detectChanges(); // ← thêm dòng này
-        },
-        error: () => {
-            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải thông tin sảnh', life: 3000 });
-            this.loading = false;
-            this.cdr.detectChanges(); // ← thêm dòng này
-        }
-    });
-}
+        });
+    }
 
     buildImages(hall: Hall) {
         const imgs: string[] = [];
@@ -580,16 +580,16 @@ export class HallDetailComponent implements OnInit {
 
         this.saving = true;
         const payload = {
-    code: this.editingHall.code,
-    name: this.editingHall.name,
-    locationId: this.editingHall.locationId,
-    capacity: Number(this.editingHall.capacity),
-    minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
-    maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
-    imageUrl: this.editingHall.imageUrl || null,
-    notes: this.editingHall.notes || null,
-    status: this.isActive ? 'ACTIVE' : 'INACTIVE'
-};
+            code: this.editingHall.code,
+            name: this.editingHall.name,
+            locationId: this.editingHall.locationId,
+            capacity: Number(this.editingHall.capacity),
+            minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
+            maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
+            imageUrl: this.editingHall.imageUrl || null,
+            notes: this.editingHall.notes || null,
+            status: this.isActive ? 'ACTIVE' : 'INACTIVE'
+        };
 
         this.hallService.updateHall(this.editingHall.id, payload).subscribe({
             next: (res) => {
