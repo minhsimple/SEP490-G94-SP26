@@ -105,8 +105,12 @@ public class HallServiceImpl implements HallService {
         Location location = locationRepository.findByIdAndStatus(hall.getLocationId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
 
+        List<MediaAsset> mediaAssets = mediaAssetRepository.findMediaAssetByOwnerId(hall.getId());
+
         HallResponse response = hallMapper.toResponse(hall);
         response.setLocationName(location.getName());
+        response.setImageUrls(getPresignedUrls(imageAssetService, mediaAssets));
+
         return response;
     }
 
@@ -150,9 +154,6 @@ public class HallServiceImpl implements HallService {
                 }
             }
 
-            //  filter status
-//            predicates.add(cb.equal(root.get("status"), RecordStatus.active));
-
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
@@ -173,6 +174,8 @@ public class HallServiceImpl implements HallService {
         List<HallResponse> responses = hallList.stream()
                 .map(hall -> {
                     HallResponse response = hallMapper.toResponse(hall);
+                    List<MediaAsset> mediaAssets = mediaAssetRepository.findMediaAssetByOwnerId(hall.getId());
+                    response.setImageUrls(getPresignedUrls(imageAssetService, mediaAssets));
                     Location location = locationMap.get(hall.getLocationId());
                     if (location != null) {
                         response.setLocationName(location.getName());
