@@ -92,7 +92,7 @@ interface Column { field: string; header: string; }
                 >
                     <ng-template #header>
                         <tr>
-                            <th style="width:5rem">Ảnh</th>
+                            <th style="width:8rem">Ảnh</th>
                             <th style="min-width:20rem">Tên set menu</th>
                             <th style="min-width:12rem">Chi nhánh</th>
                             <th style="min-width:10rem">Giá / bàn</th>
@@ -105,8 +105,15 @@ interface Column { field: string; header: string; }
                     <ng-template #body let-menu>
                         <tr>
                             <td>
-                                <div class="table-img-container shadow-2 border-round ml-2">
-                                    <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=100&h=100&fit=crop" class="table-img" alt="Set Menu" />
+                                <div class="table-img-container shadow-2 border-round ml-2 flex items-center justify-center bg-gray-100 overflow-hidden" 
+                                     style="width: 96px; height: 72px;">
+                                    <img *ngIf="menu.imageUrls?.thumbnailUrl" 
+                                         [src]="menu.imageUrls?.thumbnailUrl" 
+                                         class="w-full h-full" 
+                                         style="object-fit: cover;" 
+                                         alt="Set Menu" />
+                                    <!-- Fallback khi không có ảnh -->
+                                    <i *ngIf="!menu.imageUrls?.thumbnailUrl" class="pi pi-image text-400" style="font-size: 1.5rem;"></i>
                                 </div>
                             </td>
                             <td>
