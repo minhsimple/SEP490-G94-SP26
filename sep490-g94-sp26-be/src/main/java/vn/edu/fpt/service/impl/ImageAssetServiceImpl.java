@@ -86,6 +86,86 @@ public class ImageAssetServiceImpl implements ImageAssetService {
     }
 
     @Override
+    public List<ImageStorageResult> uploadImageSets(ImageCategory category, Integer entityId, List<MultipartFile> files) throws Exception {
+        String folder = naming.baseFolder(category, entityId);
+
+        // Process all images in parallel (CPU-bound resizing)
+        List<CompletableFuture<ImageSet>> processFutures = files.stream()
+                .map(file -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return processor.process(file);
+                    } catch (Exception e) {
+                        throw new CompletionException(e);
+                    }
+                }, uploadExecutor))
+                .toList();
+
+        List<ImageSet> sets;
+        try {
+            sets = CompletableFuture.allOf(processFutures.toArray(CompletableFuture[]::new))
+                    .thenApply(v -> processFutures.stream()
+                            .map(CompletableFuture::join)
+                            .toList())
+                    .join();
+        } catch (CompletionException ex) {
+            Throwable cause = ex.getCause();
+            throw cause instanceof Exception ? (Exception) cause : new RuntimeException(cause);
+        }
+
+        // Build keys for each image set, one unique id per image
+        List<String> allKeys = new ArrayList<>();
+        List<ImageStorageResult> results = new ArrayList<>(sets.size());
+        List<String> origKeys = new ArrayList<>(sets.size());
+        List<Map<ImageVariant, String>> variantKeysList = new ArrayList<>(sets.size());
+
+        for (ImageSet set : sets) {
+            String id = naming.newId();
+            String origKey = buildObjectKey(folder, "orig", id, set.originalOptimized().filename());
+            Map<ImageVariant, String> keys = new EnumMap<>(ImageVariant.class);
+            set.variants().forEach((variant, img) ->
+                    keys.put(variant, buildObjectKey(folder, variant.name().toLowerCase(), id, img.filename()))
+            );
+
+            allKeys.add(origKey);
+            allKeys.addAll(keys.values());
+            origKeys.add(origKey);
+            variantKeysList.add(keys);
+            results.add(new ImageStorageResult(origKey, keys));
+        }
+
+        // Upload all originals + variants in parallel
+        try {
+            List<CompletableFuture<Void>> uploadFutures = new ArrayList<>();
+            for (int i = 0; i < sets.size(); i++) {
+                ImageSet set = sets.get(i);
+                String origKey = origKeys.get(i);
+                Map<ImageVariant, String> keys = variantKeysList.get(i);
+
+                uploadFutures.add(CompletableFuture.runAsync(
+                        () -> putUnchecked(origKey, set.originalOptimized()), uploadExecutor));
+
+                for (var entry : set.variants().entrySet()) {
+                    String key = keys.get(entry.getKey());
+                    ProcessedImage img = entry.getValue();
+                    uploadFutures.add(CompletableFuture.runAsync(
+                            () -> putUnchecked(key, img), uploadExecutor));
+                }
+            }
+
+            CompletableFuture.allOf(uploadFutures.toArray(CompletableFuture[]::new)).join();
+        } catch (CompletionException ex) {
+            allKeys.forEach(this::safeDelete);
+            Throwable cause = ex.getCause();
+            throw cause instanceof Exception ? (Exception) cause : new RuntimeException(cause);
+        } catch (Exception ex) {
+            allKeys.forEach(this::safeDelete);
+            throw ex;
+        }
+
+        return results;
+    }
+
+    @Override
     public String preSignedUrl(String objectKey, int minutes) throws Exception {
         return minio.getPresignedObjectUrl(
                 GetPresignedObjectUrlArgs.builder()
