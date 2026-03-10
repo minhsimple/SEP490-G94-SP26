@@ -530,17 +530,33 @@ export class HallDetailComponent implements OnInit {
 
     buildImages(hall: Hall) {
         const imgs: string[] = [];
-        if (hall.imageUrl) imgs.push(hall.imageUrl);
-        if (hall.images?.length) imgs.push(...hall.images);
-        // Fallback placeholder images for demo
+
+        // Priority 1: High quality images from imageUrls array
+        if (hall.imageUrls && hall.imageUrls.length > 0) {
+            hall.imageUrls.forEach(img => {
+                if (img.originalUrl) imgs.push(img.originalUrl);
+                else if (img.largeUrl) imgs.push(img.largeUrl);
+                else if (img.mediumUrl) imgs.push(img.mediumUrl);
+            });
+        }
+
+        // Priority 2: Old imageUrl text
+        if (hall.imageUrl && !imgs.includes(hall.imageUrl)) imgs.push(hall.imageUrl);
+
+        // Priority 3: Old images array
+        if (hall.images?.length) {
+            hall.images.forEach(img => {
+                if (!imgs.includes(img)) imgs.push(img);
+            });
+        }
+
+        // Fallback placeholder images if completely empty
         if (imgs.length === 0) {
             imgs.push(
-                'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&h=400&fit=crop',
-                'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&h=400&fit=crop',
-                'https://images.unsplash.com/photo-1510076857177-7470076d4098?w=800&h=400&fit=crop',
-                'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&h=400&fit=crop'
+                'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&h=400&fit=crop'
             );
         }
+
         this.images = imgs;
         this.activeImage = imgs[0];
         this.activeIndex = 0;
