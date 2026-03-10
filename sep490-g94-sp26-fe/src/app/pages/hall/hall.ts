@@ -88,8 +88,12 @@ import { LocationService } from '../service/location.service';
                         <div class="halls-grid" *ngIf="viewMode === 'grid'">
                             <div class="hall-card" *ngFor="let hall of group.halls">
                                 <div class="card-image" (click)="viewDetail(hall)">
-                                    <img [src]="hall.imageUrl || 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=400&h=250&fit=crop'"
+                                    <img *ngIf="hall.imageUrls?.[0]?.mediumUrl || hall.imageUrl" [src]="hall.imageUrls?.[0]?.mediumUrl || hall.imageUrl"
                                         [alt]="hall.name" />
+                                    <!-- Fallback -->
+                                    <div *ngIf="!(hall.imageUrls?.[0]?.mediumUrl || hall.imageUrl)" class="flex items-center justify-center w-full h-full bg-gray-200">
+                                        <i class="pi pi-image text-500" style="font-size: 2rem;"></i>
+                                    </div>
                                     <span class="status-badge" [class.active]="hall.status === 'ACTIVE'">
                                         {{ hall.status != 'ACTIVE' ? 'Hoạt động' : 'Ngừng hoạt động' }}
                                     </span>
@@ -118,9 +122,10 @@ import { LocationService } from '../service/location.service';
                         <!-- List view -->
                         <div class="halls-list" *ngIf="viewMode === 'list'">
                             <div class="hall-row" *ngFor="let hall of group.halls">
-                                <div class="row-img">
-                                    <img [src]="hall.imageUrl || 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=80&h=60&fit=crop'"
-                                        [alt]="hall.name" />
+                                <div class="row-img border-round overflow-hidden bg-gray-100 flex items-center justify-center">
+                                    <img *ngIf="hall.imageUrls?.[0]?.thumbnailUrl || hall.imageUrl" [src]="hall.imageUrls?.[0]?.thumbnailUrl || hall.imageUrl"
+                                        [alt]="hall.name" class="w-full h-full" style="object-fit: cover;" />
+                                    <i *ngIf="!(hall.imageUrls?.[0]?.thumbnailUrl || hall.imageUrl)" class="pi pi-image text-400"></i>
                                 </div>
                                 <div class="row-info">
                                     <span class="row-name">{{ hall.name }}</span>
@@ -208,9 +213,22 @@ import { LocationService } from '../service/location.service';
                             <input type="number" pInputText [(ngModel)]="editingHall.maxTable" placeholder="50" />
                         </div>
 
-                        <div class="form-field full">
+                        <div class="form-field full" *ngIf="editingHall?.id">
                             <label>URL ảnh sảnh</label>
-                            <input type="text" pInputText [(ngModel)]="editingHall.imageUrl" placeholder="https://..." />
+                            <input type="text" pInputText [(ngModel)]="editingHall.imageUrl" placeholder="https://... (Chỉ dùng khi cập nhật)" />
+                        </div>
+
+                        <div class="form-field full" *ngIf="!editingHall?.id">
+                            <label>Ảnh sảnh cưới (Tùy chọn)</label>
+                            
+                            <div class="flex flex-wrap gap-3 mb-2" *ngIf="selectedImageUrls.length > 0">
+                                <div *ngFor="let url of selectedImageUrls" class="relative border-round overflow-hidden bg-gray-100 flex items-center justify-center p-1" style="width: 100px; height: 75px; border: 1px solid #cbd5e1;">
+                                    <img [src]="url" class="w-full h-full" style="object-fit: cover; border-radius: 4px;" alt="Image Preview" />
+                                </div>
+                            </div>
+
+                            <input type="file" #fileInput (change)="onFileSelect($event)" accept="image/*" multiple class="w-full p-2 border-1 surface-border border-round" />
+                            <small class="text-500">Mẹo: Bạn có thể chọn nhiều ảnh cùng lúc.</small>
                         </div>
 
                         <div class="form-field full">
@@ -551,6 +569,8 @@ export class HallComponent implements OnInit {
     isActive = true;
 
     editingHall: any = {};
+    selectedImages: File[] = [];
+    selectedImageUrls: string[] = [];
 
     constructor(
         private hallService: HallService,
@@ -559,7 +579,7 @@ export class HallComponent implements OnInit {
         private confirmationService: ConfirmationService,
         private router: Router,
         private cdr: ChangeDetectorRef,
-    ) {}
+    ) { }
 
     ngOnInit() {
         this.loadLocations();
@@ -617,6 +637,8 @@ export class HallComponent implements OnInit {
         this.editingHall = {};
         this.isActive = true;
         this.submitted = false;
+        this.selectedImages = [];
+        this.selectedImageUrls = [];
         this.hallDialog = true;
     }
 
@@ -624,11 +646,29 @@ export class HallComponent implements OnInit {
         this.editingHall = { ...hall };
         this.isActive = hall.status === 'ACTIVE';
         this.submitted = false;
+        this.selectedImages = [];
+        this.selectedImageUrls = [];
         this.hallDialog = true;
     }
 
     viewDetail(hall: Hall) {
         this.router.navigate(['/pages/hall', hall.id]);
+    }
+
+    onFileSelect(event: any) {
+        const files: FileList = event.target.files;
+        this.selectedImages = Array.from(files);
+        this.selectedImageUrls = [];
+
+        // Generate preview URLs
+        this.selectedImages.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e: any) => {
+                this.selectedImageUrls.push(e.target.result);
+                this.cdr.detectChanges();
+            };
+            reader.readAsDataURL(file);
+        });
     }
 
     saveHall() {
@@ -637,16 +677,16 @@ export class HallComponent implements OnInit {
 
         this.saving = true;
         const payload = {
-    code: this.editingHall.code,
-    name: this.editingHall.name,
-    locationId: this.editingHall.locationId,
-    capacity: Number(this.editingHall.capacity),
-    minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
-    maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
-    imageUrl: this.editingHall.imageUrl || null,
-    notes: this.editingHall.notes || null,
-    status: this.isActive ? 'ACTIVE' : 'INACTIVE'
-};
+            code: this.editingHall.code,
+            name: this.editingHall.name,
+            locationId: this.editingHall.locationId,
+            capacity: Number(this.editingHall.capacity),
+            minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
+            maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
+            imageUrl: this.editingHall.imageUrl || null,
+            notes: this.editingHall.notes || null,
+            status: this.isActive ? 'ACTIVE' : 'INACTIVE'
+        };
 
         if (this.editingHall.id) {
             this.hallService.updateHall(this.editingHall.id, payload).subscribe({
@@ -670,7 +710,7 @@ export class HallComponent implements OnInit {
                 }
             });
         } else {
-            this.hallService.createHall(payload).subscribe({
+            this.hallService.createHall(payload, this.selectedImages).subscribe({
                 next: (res) => {
                     if (res.code === 200) {
                         this.loadHalls();
