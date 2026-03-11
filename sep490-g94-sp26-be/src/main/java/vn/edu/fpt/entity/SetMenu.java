@@ -31,17 +31,5 @@ public class SetMenu extends BaseEntity {
 
     @Column(name = "location_id", nullable = false)
     Integer locationId;
-
-    @Column(name = "image_orig_key")
-    String imageOrigKey;
-
-    @Column(name = "image_thumb_key")
-    String imageThumbKey;
-
-    @Column(name = "image_medium_key")
-    String imageMediumKey;
-
-    @Column(name = "image_large_key")
-    String imageLargeKey;
 }
 
