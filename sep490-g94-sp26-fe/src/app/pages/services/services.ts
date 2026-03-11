@@ -135,7 +135,7 @@ interface Column {
                                 </div>
                             </td>
               
-                            <td class="text-600">{{ service.locationName || service.location?.name || '-' }}</td>
+                            <td class="text-600">{{ service.locationName || getLocationName(service.locationId) }}</td>
                             <td class="font-semibold text-900">
                                 {{ formatPrice(service.basePrice) }}
                             </td>
