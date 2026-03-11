@@ -276,17 +276,6 @@ interface Column {
                                 ></textarea>
                             </div>
 
-                            <div>
-                                <label class="block font-semibold mb-2 text-sm">Ảnh đại diện (URL)</label>
-                                <input
-                                    type="text"
-                                    pInputText
-                                    [(ngModel)]="newCombo.imageUrl"
-                                    fluid
-                                    placeholder="https://example.com/image.jpg"
-                                />
-                            </div>
-
                             <div class="flex items-center justify-between py-2 px-3 border-round"
                                  style="background:#f8fafc; border:1px solid #e2e8f0;">
                                 <span class="font-semibold text-sm text-700">Đang cung cấp</span>
@@ -431,17 +420,6 @@ interface Column {
                                     fluid
                                     class="w-full"
                                 ></textarea>
-                            </div>
-
-                            <div>
-                                <label class="block font-semibold mb-2 text-sm">Ảnh đại diện (URL)</label>
-                                <input
-                                    type="text"
-                                    pInputText
-                                    [(ngModel)]="editedCombo.imageUrl"
-                                    fluid
-                                    placeholder="https://example.com/image.jpg"
-                                />
                             </div>
 
                             <div class="flex items-center justify-between py-2 px-3 border-round"

@@ -2,6 +2,7 @@ package vn.edu.fpt.dto.response.setmenu;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import vn.edu.fpt.dto.response.image.ImageUrlsResponseDTO;
 import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ public class SetMenuResponse {
     BigDecimal setPrice;
     RecordStatus status;
     Map<String, List<MenuItem>> menuItemsByCategory;
+    ImageUrlsResponseDTO imageUrls;
 
     @Getter
     @Setter
@@ -36,6 +38,7 @@ public class SetMenuResponse {
         String unit;
         String description;
         Integer quantity;
+        ImageUrlsResponseDTO imageUrls;
     }
 
     @Getter

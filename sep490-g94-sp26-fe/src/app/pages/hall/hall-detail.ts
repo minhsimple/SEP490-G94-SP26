@@ -61,12 +61,12 @@ import { LocationService } from '../service/location.service';
 
                         <!-- Overlay info -->
                         <div class="hero-overlay">
-                            <h1>{{ hall.name }}</h1>
-                            <div class="hero-sub">
-                                <i class="pi pi-map-marker"></i>
-                                <span>{{ hall.locationName || 'Chi nhánh #' + hall.locationId }}</span>
-                            </div>
-                        </div>
+    <h1 style="color: white;">{{ hall.name }}</h1>
+    <div class="hero-sub">
+        <i class="pi pi-map-marker"></i>
+        <span>{{ hall.locationName || 'Chi nhánh #' + hall.locationId }}</span>
+    </div>
+</div>
 
                         <span class="status-chip" [class.active]="hall.status === 'ACTIVE'">
                             <i class="pi pi-circle-fill" style="font-size:0.5rem"></i>
@@ -501,7 +501,7 @@ export class HallDetailComponent implements OnInit {
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private cdr: ChangeDetectorRef,
-    ) {}
+    ) { }
 
     ngOnInit() {
         const id = this.route.snapshot.paramMap.get('id');
@@ -510,37 +510,53 @@ export class HallDetailComponent implements OnInit {
     }
 
     loadHall(id: any) {
-    this.loading = true;
-    this.hallService.getHallById(id).subscribe({
-        next: (res) => {
-            if (res.code === 200) {
-                this.hall = res.data;
-                this.buildImages(res.data);
+        this.loading = true;
+        this.hallService.getHallById(id).subscribe({
+            next: (res) => {
+                if (res.code === 200) {
+                    this.hall = res.data;
+                    this.buildImages(res.data);
+                }
+                this.loading = false;
+                this.cdr.detectChanges(); // ← thêm dòng này
+            },
+            error: () => {
+                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải thông tin sảnh', life: 3000 });
+                this.loading = false;
+                this.cdr.detectChanges(); // ← thêm dòng này
             }
-            this.loading = false;
-            this.cdr.detectChanges(); // ← thêm dòng này
-        },
-        error: () => {
-            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải thông tin sảnh', life: 3000 });
-            this.loading = false;
-            this.cdr.detectChanges(); // ← thêm dòng này
-        }
-    });
-}
+        });
+    }
 
     buildImages(hall: Hall) {
         const imgs: string[] = [];
-        if (hall.imageUrl) imgs.push(hall.imageUrl);
-        if (hall.images?.length) imgs.push(...hall.images);
-        // Fallback placeholder images for demo
+
+        // Priority 1: High quality images from imageUrls array
+        if (hall.imageUrls && hall.imageUrls.length > 0) {
+            hall.imageUrls.forEach(img => {
+                if (img.originalUrl) imgs.push(img.originalUrl);
+                else if (img.largeUrl) imgs.push(img.largeUrl);
+                else if (img.mediumUrl) imgs.push(img.mediumUrl);
+            });
+        }
+
+        // Priority 2: Old imageUrl text
+        if (hall.imageUrl && !imgs.includes(hall.imageUrl)) imgs.push(hall.imageUrl);
+
+        // Priority 3: Old images array
+        if (hall.images?.length) {
+            hall.images.forEach(img => {
+                if (!imgs.includes(img)) imgs.push(img);
+            });
+        }
+
+        // Fallback placeholder images if completely empty
         if (imgs.length === 0) {
             imgs.push(
-                'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&h=400&fit=crop',
-                'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&h=400&fit=crop',
-                'https://images.unsplash.com/photo-1510076857177-7470076d4098?w=800&h=400&fit=crop',
-                'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&h=400&fit=crop'
+                'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&h=400&fit=crop'
             );
         }
+
         this.images = imgs;
         this.activeImage = imgs[0];
         this.activeIndex = 0;
@@ -580,16 +596,16 @@ export class HallDetailComponent implements OnInit {
 
         this.saving = true;
         const payload = {
-    code: this.editingHall.code,
-    name: this.editingHall.name,
-    locationId: this.editingHall.locationId,
-    capacity: Number(this.editingHall.capacity),
-    minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
-    maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
-    imageUrl: this.editingHall.imageUrl || null,
-    notes: this.editingHall.notes || null,
-    status: this.isActive ? 'ACTIVE' : 'INACTIVE'
-};
+            code: this.editingHall.code,
+            name: this.editingHall.name,
+            locationId: this.editingHall.locationId,
+            capacity: Number(this.editingHall.capacity),
+            minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
+            maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
+            imageUrl: this.editingHall.imageUrl || null,
+            notes: this.editingHall.notes || null,
+            status: this.isActive ? 'ACTIVE' : 'INACTIVE'
+        };
 
         this.hallService.updateHall(this.editingHall.id, payload).subscribe({
             next: (res) => {

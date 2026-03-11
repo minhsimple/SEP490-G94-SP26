@@ -7,12 +7,20 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.hall.HallFilterRequest;
 import vn.edu.fpt.dto.request.hall.HallRequest;
 import vn.edu.fpt.dto.response.hall.HallResponse;
+import vn.edu.fpt.dto.response.image.ImageUrlsResponseDTO;
 import vn.edu.fpt.entity.Hall;
 import vn.edu.fpt.entity.Location;
+import vn.edu.fpt.entity.MediaAsset;
+import vn.edu.fpt.respository.MediaAssetRepository;
+import vn.edu.fpt.service.ImageAssetService;
+import vn.edu.fpt.util.enums.ImageCategory;
+import vn.edu.fpt.util.enums.ImageVariant;
+import vn.edu.fpt.util.enums.MediaAssetOwnerType;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -21,6 +29,7 @@ import vn.edu.fpt.respository.HallRepository;
 import vn.edu.fpt.respository.LocationRepository;
 import vn.edu.fpt.service.HallService;
 import vn.edu.fpt.util.StringUtils;
+import vn.edu.fpt.util.image.ImageStorageResult;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,10 +40,13 @@ public class HallServiceImpl implements HallService {
     private final HallRepository hallRepository;
     private final LocationRepository locationRepository;
     private final HallMapper hallMapper;
+    private final MediaAssetRepository mediaAssetRepository;
+
+    private final ImageAssetService imageAssetService;
 
     @Transactional
     @Override
-    public HallResponse createHall(HallRequest request) {
+    public HallResponse createHall(HallRequest request, List<MultipartFile> imageFiles) throws Exception {
         if (request == null) {
             throw new AppException(ERROR_CODE.INVALID_REQUEST);
         }
@@ -48,12 +60,17 @@ public class HallServiceImpl implements HallService {
             throw new AppException(ERROR_CODE.HALL_EXISTED);
         }
 
+
         Hall hall = hallMapper.toEntity(request);
         hall.setStatus(RecordStatus.active);
         Hall saved = hallRepository.save(hall);
 
+        List<MediaAsset> mediaAssets = uploadHallImages(imageFiles, saved.getId());
+
         HallResponse response = hallMapper.toResponse(saved);
         response.setLocationName(location.getName());
+        response.setImageUrls(getPresignedUrls(imageAssetService, mediaAssets));
+
         return response;
     }
 
@@ -88,8 +105,12 @@ public class HallServiceImpl implements HallService {
         Location location = locationRepository.findByIdAndStatus(hall.getLocationId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
 
+        List<MediaAsset> mediaAssets = mediaAssetRepository.findMediaAssetByOwnerId(hall.getId());
+
         HallResponse response = hallMapper.toResponse(hall);
         response.setLocationName(location.getName());
+        response.setImageUrls(getPresignedUrls(imageAssetService, mediaAssets));
+
         return response;
     }
 
@@ -133,9 +154,6 @@ public class HallServiceImpl implements HallService {
                 }
             }
 
-            //  filter status
-//            predicates.add(cb.equal(root.get("status"), RecordStatus.active));
-
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
@@ -156,6 +174,8 @@ public class HallServiceImpl implements HallService {
         List<HallResponse> responses = hallList.stream()
                 .map(hall -> {
                     HallResponse response = hallMapper.toResponse(hall);
+                    List<MediaAsset> mediaAssets = mediaAssetRepository.findMediaAssetByOwnerId(hall.getId());
+                    response.setImageUrls(getPresignedUrls(imageAssetService, mediaAssets));
                     Location location = locationMap.get(hall.getLocationId());
                     if (location != null) {
                         response.setLocationName(location.getName());
@@ -191,6 +211,44 @@ public class HallServiceImpl implements HallService {
                 .ifPresent(location -> response.setLocationName(location.getName()));
 
         return response;
+    }
+
+    private List<ImageUrlsResponseDTO> getPresignedUrls(ImageAssetService imageAssetService, List<MediaAsset> mediaAssets) {
+        if (mediaAssets == null || mediaAssets.isEmpty()) {
+            return null;
+        }
+        return mediaAssets.stream()
+                .map(mediaAsset -> {
+                    try {
+                        return ImageUrlsResponseDTO.builder()
+                                .originalUrl(mediaAsset.getImageOrigKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageOrigKey(), 60) : null)
+                                .thumbnailUrl(mediaAsset.getImageThumbKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageThumbKey(), 60) : null)
+                                .mediumUrl(mediaAsset.getImageMediumKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageMediumKey(), 60) : null)
+                                .largeUrl(mediaAsset.getImageLargeKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageLargeKey(), 60) : null)
+                                .build();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toList());
+    }
+
+    private List<MediaAsset> uploadHallImages(List<MultipartFile> imageFiles, Integer hallId) throws Exception {
+        List<ImageStorageResult> imageStorageResults = imageAssetService.uploadImageSets(ImageCategory.HALL, hallId, imageFiles);
+        if (imageStorageResults == null || imageStorageResults.isEmpty()) {
+            return null;
+        }
+        List<MediaAsset> mediaAssets = imageStorageResults.stream()
+                .map(imageStorageResult -> MediaAsset.builder()
+                        .ownerId(hallId)
+                        .ownerType(MediaAssetOwnerType.HALL)
+                        .imageOrigKey(imageStorageResult.originalKey())
+                        .imageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null))
+                        .imageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null))
+                        .imageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null))
+                        .build())
+                .collect(Collectors.toList());
+        return mediaAssetRepository.saveAll(mediaAssets);
     }
 }
 

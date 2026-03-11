@@ -4,33 +4,33 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
-
-import java.math.BigDecimal;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import vn.edu.fpt.util.enums.MediaAssetOwnerType;
 
 @Entity
-@Table(name = "set_menus", schema = "wedding")
+@Table(name = "media_assets", schema = "wedding")
 @Getter
 @Setter
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class SetMenu extends BaseEntity {
+public class MediaAsset extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
-    @Column(unique = true, nullable = false)
-    String code;
+    Integer ownerId;
 
-    @Column(nullable = false)
-    String name;
-
-    String description;
-
-    @Column(name = "location_id", nullable = false)
-    Integer locationId;
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(
+            name = "owner_type",
+            nullable = false
+    )
+    MediaAssetOwnerType ownerType;
 
     @Column(name = "image_orig_key")
     String imageOrigKey;
@@ -44,4 +44,3 @@ public class SetMenu extends BaseEntity {
     @Column(name = "image_large_key")
     String imageLargeKey;
 }
-

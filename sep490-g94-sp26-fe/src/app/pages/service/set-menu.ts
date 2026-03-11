@@ -23,6 +23,12 @@ export interface SetMenu {
     setPrice?: number;
     menuItems?: MenuItem[];
     menuItemsByCategory?: { [category: string]: MenuItem[] };
+    imageUrls?: {
+        originalUrl?: string;
+        thumbnailUrl?: string;
+        mediumUrl?: string;
+        largeUrl?: string;
+    };
     createdAt?: string;
     updatedAt?: string;
 }
@@ -58,7 +64,7 @@ export interface PageResponse<T> {
 export class SetMenuService {
     private baseUrl = 'http://localhost:8080/api/v1/set-menu';
 
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) { }
 
     private getHeaders(): HttpHeaders {
         const token = localStorage.getItem('accessToken');
@@ -74,13 +80,13 @@ export class SetMenuService {
             .set('size', params.size ?? 20)
             .set('sort', params.sort ?? 'updatedAt,DESC');
 
-        if (params.code)                       httpParams = httpParams.set('code', params.code);
-        if (params.name)                       httpParams = httpParams.set('name', params.name);
-        if (params.description)                httpParams = httpParams.set('description', params.description);
-        if (params.locationId)                 httpParams = httpParams.set('locationId', params.locationId);
+        if (params.code) httpParams = httpParams.set('code', params.code);
+        if (params.name) httpParams = httpParams.set('name', params.name);
+        if (params.description) httpParams = httpParams.set('description', params.description);
+        if (params.locationId) httpParams = httpParams.set('locationId', params.locationId);
         if (params.lowerBoundSetPrice != null) httpParams = httpParams.set('lowerBoundSetPrice', params.lowerBoundSetPrice);
         if (params.upperBoundSetPrice != null) httpParams = httpParams.set('upperBoundSetPrice', params.upperBoundSetPrice);
-        if (params.status)                     httpParams = httpParams.set('status', params.status);
+        if (params.status) httpParams = httpParams.set('status', params.status);
 
         return this.http.get<ApiResponse<PageResponse<SetMenu>>>(`${this.baseUrl}/search`, {
             headers: this.getHeaders(),
@@ -100,10 +106,19 @@ export class SetMenuService {
         description?: string;
         locationId: number;
         menuItems?: MenuItem[];
-    }): Observable<ApiResponse<SetMenu>> {
-        return this.http.post<ApiResponse<SetMenu>>(`${this.baseUrl}/create`, payload, {
-            headers: this.getHeaders()
+    }, imageFile?: File): Observable<ApiResponse<SetMenu>> {
+        const formData = new FormData();
+        formData.append('setMenuRequest', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+        if (imageFile) {
+            formData.append('imageFile', imageFile);
+        }
+
+        const token = localStorage.getItem('accessToken');
+        const headers = new HttpHeaders({
+            Authorization: `Bearer ${token}`
         });
+
+        return this.http.post<ApiResponse<SetMenu>>(`${this.baseUrl}/create`, formData, { headers });
     }
 
     updateSetMenu(id: any, payload: {
@@ -112,9 +127,20 @@ export class SetMenuService {
         description?: string;
         locationId?: number;
         menuItems?: MenuItem[];
-    }): Observable<ApiResponse<SetMenu>> {
-        return this.http.put<ApiResponse<SetMenu>>(`${this.baseUrl}/update`, payload, {
-            headers: this.getHeaders(),
+    }, imageFile?: File): Observable<ApiResponse<SetMenu>> {
+        const formData = new FormData();
+        formData.append('setMenuRequest', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+        if (imageFile) {
+            formData.append('imageFile', imageFile);
+        }
+
+        const token = localStorage.getItem('accessToken');
+        const headers = new HttpHeaders({
+            Authorization: `Bearer ${token}`
+        });
+
+        return this.http.put<ApiResponse<SetMenu>>(`${this.baseUrl}/update`, formData, {
+            headers,
             params: new HttpParams().set('setMenuId', id)
         });
     }
