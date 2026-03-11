@@ -16,8 +16,6 @@ import vn.edu.fpt.dto.response.setmenu.SetMenuResponse;
 import vn.edu.fpt.entity.*;
 import vn.edu.fpt.service.ImageAssetService;
 import vn.edu.fpt.util.MediaAssetUtil;
-import vn.edu.fpt.util.enums.ImageCategory;
-import vn.edu.fpt.util.enums.ImageVariant;
 import vn.edu.fpt.util.enums.MediaAssetOwnerType;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
@@ -25,7 +23,6 @@ import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.SetMenuService;
 import vn.edu.fpt.util.StringUtils;
-import vn.edu.fpt.util.image.ImageStorageResult;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -67,7 +64,7 @@ public class SetMenuServiceImpl implements SetMenuService {
 
         Integer setMenuId = setMenuRepository.save(setMenu).getId();
 
-        MediaAsset mediaAsset = uploadSetMenuImage(imageFile, setMenuId, null);
+        MediaAsset mediaAsset = MediaAssetUtil.uploadImageAsset(imageAssetService, mediaAssetRepository, imageFile, setMenuId, MediaAssetOwnerType.SET_MENU, null);
 
         List<SetMenuItem> setMenuItems = getSetMenuItemList(setMenuRequest, menuItemIdsSet, setMenuId);
 
@@ -220,7 +217,7 @@ public class SetMenuServiceImpl implements SetMenuService {
             if (mediaAsset != null) {
                 imageAssetService.deleteFolder(mediaAsset.getImageOrigKey());
             }
-            mediaAsset = uploadSetMenuImage(imageFile, setMenuId, mediaAsset);
+            mediaAsset = MediaAssetUtil.uploadImageAsset(imageAssetService, mediaAssetRepository, imageFile, setMenuId, MediaAssetOwnerType.SET_MENU, mediaAsset);
         }
 
         setMenu.setCode(setMenuRequest.getCode());
@@ -345,25 +342,5 @@ public class SetMenuServiceImpl implements SetMenuService {
         return menuItemList.stream()
                 .map(MenuItem::getId)
                 .collect(Collectors.toSet());
-    }
-
-    private MediaAsset uploadSetMenuImage(MultipartFile imageFile, Integer setMenuId, MediaAsset mediaAsset) throws Exception {
-        ImageStorageResult imageStorageResult = imageAssetService.uploadImageSet(ImageCategory.SET_MENU, setMenuId, imageFile);
-        if (mediaAsset == null) {
-            mediaAsset = mediaAssetRepository.save(MediaAsset.builder()
-                    .ownerId(setMenuId)
-                    .ownerType(MediaAssetOwnerType.MENU_ITEM)
-                    .imageOrigKey(imageStorageResult.originalKey())
-                    .imageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null))
-                    .imageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null))
-                    .imageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null))
-                    .build());
-        } else {
-            mediaAsset.setImageOrigKey(imageStorageResult.originalKey());
-            mediaAsset.setImageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null));
-            mediaAsset.setImageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null));
-            mediaAsset.setImageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null));
-        }
-        return mediaAsset;
     }
 }
