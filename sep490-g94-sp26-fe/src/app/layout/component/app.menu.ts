@@ -90,14 +90,21 @@ export class AppMenu {
                         routerLink: ['/pages/hall']
                     },
                     {
-                        label: 'Quản lý dịch vụ',
+                        label: 'Dịch vụ',
                         icon: 'pi pi-fw pi-shopping-bag',
-                        routerLink: ['/pages/service']
-                    },
-                    {
-                        label: 'Quản lý combo-dịch vụ',
-                        icon: 'pi pi-fw pi-shopping-bag',
-                        routerLink: ['/pages/combo-services']
+                        path: '/pages/service',
+                        items: [
+                            {
+                                label: 'Quản lý dịch vụ',
+                                icon: 'pi pi-fw pi-cog',
+                                routerLink: ['/pages/service']
+                            },
+                            {
+                                label: 'Quản lý combo-dịch vụ',
+                                icon: 'pi pi-fw pi-box',
+                                routerLink: ['/pages/combo-services']
+                            }
+                        ]
                     },
                     // {
                     //     label: 'Empty',
