@@ -117,6 +117,13 @@ public enum ERROR_CODE {
     FILE_ERROR(13004, "Lỗi xử lý file", HttpStatus.INTERNAL_SERVER_ERROR),
 
     /**
+     * Booking Error
+     */
+    BOOKING_NOT_EXISTED(14001, "Đặt tiệc không tồn tại", HttpStatus.NOT_FOUND),
+    BOOKING_NO_EXISTED(14002, "Mã đặt tiệc đã tồn tại", HttpStatus.BAD_REQUEST),
+    BOOKING_INVALID_STATE_TRANSITION(14003, "Không thể chuyển trạng thái đặt tiệc", HttpStatus.BAD_REQUEST),
+
+    /**
      * Other Error
      */
     INVALID_REQUEST(30000, "Request không hợp lệ", HttpStatus.BAD_REQUEST);
