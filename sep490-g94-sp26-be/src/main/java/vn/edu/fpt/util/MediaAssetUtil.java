@@ -10,6 +10,9 @@ import vn.edu.fpt.util.enums.ImageVariant;
 import vn.edu.fpt.util.enums.MediaAssetOwnerType;
 import vn.edu.fpt.util.image.ImageStorageResult;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class MediaAssetUtil {
     public static ImageUrlsResponseDTO getPresignedImageUrls(ImageAssetService imageAssetService, MediaAsset mediaAsset) throws Exception {
         if (mediaAsset == null) {
@@ -48,6 +51,50 @@ public class MediaAssetUtil {
             mediaAsset.setImageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null));
         }
         return mediaAsset;
+    }
+
+    public static List<ImageUrlsResponseDTO> getPresignedListImageUrls(ImageAssetService imageAssetService, List<MediaAsset> mediaAssetList) {
+        if (mediaAssetList == null || mediaAssetList.isEmpty()) {
+            return null;
+        }
+        return mediaAssetList.stream()
+                .map(mediaAsset -> {
+                    try {
+                        return ImageUrlsResponseDTO.builder()
+                                .originalUrl(mediaAsset.getImageOrigKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageOrigKey(), 60) : null)
+                                .thumbnailUrl(mediaAsset.getImageThumbKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageThumbKey(), 60) : null)
+                                .mediumUrl(mediaAsset.getImageMediumKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageMediumKey(), 60) : null)
+                                .largeUrl(mediaAsset.getImageLargeKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageLargeKey(), 60) : null)
+                                .build();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .collect(Collectors.toList());
+    }
+
+    public static List<MediaAsset> uploadListImageAssets(
+            ImageAssetService imageAssetService,
+            MediaAssetRepository mediaAssetRepository,
+            List<MultipartFile> imageFiles,
+            Integer entityId,
+            MediaAssetOwnerType mediaAssetOwnerType
+    ) throws Exception {
+        List<ImageStorageResult> imageStorageResults = imageAssetService.uploadImageSets(getImageCategoryForAsset(mediaAssetOwnerType), entityId, imageFiles);
+        if (imageStorageResults == null || imageStorageResults.isEmpty()) {
+            return null;
+        }
+        List<MediaAsset> mediaAssets = imageStorageResults.stream()
+                .map(imageStorageResult -> MediaAsset.builder()
+                        .ownerId(entityId)
+                        .ownerType(mediaAssetOwnerType)
+                        .imageOrigKey(imageStorageResult.originalKey())
+                        .imageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null))
+                        .imageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null))
+                        .imageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null))
+                        .build())
+                .collect(Collectors.toList());
+        return mediaAssetRepository.saveAll(mediaAssets);
     }
 
     private static ImageCategory getImageCategoryForAsset(MediaAssetOwnerType mediaAssetOwnerType) {

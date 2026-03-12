@@ -18,6 +18,7 @@ import vn.edu.fpt.entity.Location;
 import vn.edu.fpt.entity.MediaAsset;
 import vn.edu.fpt.respository.MediaAssetRepository;
 import vn.edu.fpt.service.ImageAssetService;
+import vn.edu.fpt.util.MediaAssetUtil;
 import vn.edu.fpt.util.enums.ImageCategory;
 import vn.edu.fpt.util.enums.ImageVariant;
 import vn.edu.fpt.util.enums.MediaAssetOwnerType;
@@ -65,11 +66,11 @@ public class HallServiceImpl implements HallService {
         hall.setStatus(RecordStatus.active);
         Hall saved = hallRepository.save(hall);
 
-        List<MediaAsset> mediaAssets = uploadHallImages(imageFiles, saved.getId());
+        List<MediaAsset> mediaAssets = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, saved.getId(), MediaAssetOwnerType.HALL);
 
         HallResponse response = hallMapper.toResponse(saved);
         response.setLocationName(location.getName());
-        response.setImageUrls(getPresignedUrls(imageAssetService, mediaAssets));
+        response.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssets));
 
         return response;
     }
@@ -109,7 +110,7 @@ public class HallServiceImpl implements HallService {
 
         HallResponse response = hallMapper.toResponse(hall);
         response.setLocationName(location.getName());
-        response.setImageUrls(getPresignedUrls(imageAssetService, mediaAssets));
+        response.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssets));
 
         return response;
     }
@@ -175,7 +176,7 @@ public class HallServiceImpl implements HallService {
                 .map(hall -> {
                     HallResponse response = hallMapper.toResponse(hall);
                     List<MediaAsset> mediaAssets = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(hall.getId(), MediaAssetOwnerType.HALL);
-                    response.setImageUrls(getPresignedUrls(imageAssetService, mediaAssets));
+                    response.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssets));
                     Location location = locationMap.get(hall.getLocationId());
                     if (location != null) {
                         response.setLocationName(location.getName());
@@ -211,44 +212,6 @@ public class HallServiceImpl implements HallService {
                 .ifPresent(location -> response.setLocationName(location.getName()));
 
         return response;
-    }
-
-    private List<ImageUrlsResponseDTO> getPresignedUrls(ImageAssetService imageAssetService, List<MediaAsset> mediaAssets) {
-        if (mediaAssets == null || mediaAssets.isEmpty()) {
-            return null;
-        }
-        return mediaAssets.stream()
-                .map(mediaAsset -> {
-                    try {
-                        return ImageUrlsResponseDTO.builder()
-                                .originalUrl(mediaAsset.getImageOrigKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageOrigKey(), 60) : null)
-                                .thumbnailUrl(mediaAsset.getImageThumbKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageThumbKey(), 60) : null)
-                                .mediumUrl(mediaAsset.getImageMediumKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageMediumKey(), 60) : null)
-                                .largeUrl(mediaAsset.getImageLargeKey() != null ? imageAssetService.preSignedUrl(mediaAsset.getImageLargeKey(), 60) : null)
-                                .build();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .collect(Collectors.toList());
-    }
-
-    private List<MediaAsset> uploadHallImages(List<MultipartFile> imageFiles, Integer hallId) throws Exception {
-        List<ImageStorageResult> imageStorageResults = imageAssetService.uploadImageSets(ImageCategory.HALL, hallId, imageFiles);
-        if (imageStorageResults == null || imageStorageResults.isEmpty()) {
-            return null;
-        }
-        List<MediaAsset> mediaAssets = imageStorageResults.stream()
-                .map(imageStorageResult -> MediaAsset.builder()
-                        .ownerId(hallId)
-                        .ownerType(MediaAssetOwnerType.HALL)
-                        .imageOrigKey(imageStorageResult.originalKey())
-                        .imageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null))
-                        .imageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null))
-                        .imageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null))
-                        .build())
-                .collect(Collectors.toList());
-        return mediaAssetRepository.saveAll(mediaAssets);
     }
 }
 
