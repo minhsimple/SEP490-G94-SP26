@@ -306,6 +306,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .locationId(location.getId())
                 .basePrice(servicePackage.getBasePrice())
                 .ServiceResponseList(packageServices)
+                .status(servicePackage.getStatus())
                 .build();
+
     }
 }

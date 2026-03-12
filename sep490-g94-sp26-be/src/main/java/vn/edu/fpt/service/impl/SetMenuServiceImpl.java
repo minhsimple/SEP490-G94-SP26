@@ -16,8 +16,6 @@ import vn.edu.fpt.dto.response.setmenu.SetMenuResponse;
 import vn.edu.fpt.entity.*;
 import vn.edu.fpt.service.ImageAssetService;
 import vn.edu.fpt.util.MediaAssetUtil;
-import vn.edu.fpt.util.enums.ImageCategory;
-import vn.edu.fpt.util.enums.ImageVariant;
 import vn.edu.fpt.util.enums.MediaAssetOwnerType;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
@@ -25,7 +23,6 @@ import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.SetMenuService;
 import vn.edu.fpt.util.StringUtils;
-import vn.edu.fpt.util.image.ImageStorageResult;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -67,7 +64,7 @@ public class SetMenuServiceImpl implements SetMenuService {
 
         Integer setMenuId = setMenuRepository.save(setMenu).getId();
 
-        MediaAsset mediaAsset = uploadSetMenuImage(imageFile, setMenuId, null);
+        MediaAsset mediaAsset = MediaAssetUtil.uploadImageAsset(imageAssetService, mediaAssetRepository, imageFile, setMenuId, MediaAssetOwnerType.SET_MENU, null);
 
         List<SetMenuItem> setMenuItems = getSetMenuItemList(setMenuRequest, menuItemIdsSet, setMenuId);
 
@@ -84,8 +81,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
         List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
 
-        List<MediaAsset> mediaAssetList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(setMenu.getId(), MediaAssetOwnerType.SET_MENU);
-        MediaAsset mediaAsset = !mediaAssetList.isEmpty() ? mediaAssetList.getFirst() : null;
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, setMenu.getId(), MediaAssetOwnerType.SET_MENU);
 
         return mapToSetMenuResponse(setMenu, location, setMenuItemList, mediaAsset);
     }
@@ -155,8 +151,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .map(setMenu -> {
                     Location location = locationMap.get(setMenu.getLocationId());
                     List<SetMenuItem> setMenuItemList = setMenuItemsMap.getOrDefault(setMenu.getId(), Collections.emptyList());
-                    List<MediaAsset> mediaAssetList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(setMenu.getId(), MediaAssetOwnerType.SET_MENU);
-                    MediaAsset mediaAsset = !mediaAssetList.isEmpty() ? mediaAssetList.getFirst() : null;
+                    MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, setMenu.getId(), MediaAssetOwnerType.SET_MENU);
                     try {
                         return mapToSetMenuResponse(setMenu, location, setMenuItemList, mediaAsset);
                     } catch (Exception e) {
@@ -189,8 +184,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
         List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
 
-        List<MediaAsset> mediaAssetList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(setMenu.getId(), MediaAssetOwnerType.SET_MENU);
-        MediaAsset mediaAsset = !mediaAssetList.isEmpty() ? mediaAssetList.getFirst() : null;
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, setMenu.getId(), MediaAssetOwnerType.SET_MENU);
 
         return mapToSetMenuResponse(setMenu, location, setMenuItemList, mediaAsset);
     }
@@ -213,14 +207,13 @@ public class SetMenuServiceImpl implements SetMenuService {
             throw new AppException(ERROR_CODE.SET_MENU_EMPTY_MENU_ITEM);
         }
 
-        List<MediaAsset> mediaAssetList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(setMenuId, MediaAssetOwnerType.SET_MENU);
-        MediaAsset mediaAsset = !mediaAssetList.isEmpty() ? mediaAssetList.getFirst() : null;
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, setMenuId, MediaAssetOwnerType.SET_MENU);
 
         if (imageFile != null && !imageFile.isEmpty()) {
             if (mediaAsset != null) {
                 imageAssetService.deleteFolder(mediaAsset.getImageOrigKey());
             }
-            mediaAsset = uploadSetMenuImage(imageFile, setMenuId, mediaAsset);
+            mediaAsset = MediaAssetUtil.uploadImageAsset(imageAssetService, mediaAssetRepository, imageFile, setMenuId, MediaAssetOwnerType.SET_MENU, mediaAsset);
         }
 
         setMenu.setCode(setMenuRequest.getCode());
@@ -285,8 +278,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                     if (setMenuItem == null) {
                         return null;
                     }
-                    List<MediaAsset> mediaAssetMenuItemList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
-                    MediaAsset mediaAssetMenuItem = !mediaAssetMenuItemList.isEmpty() ? mediaAssetMenuItemList.getFirst() : null;
+                    MediaAsset mediaAssetMenuItem = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
                     try {
                         return new SetMenuResponse.MenuItem(
                                 menuItem.getId(),
@@ -345,25 +337,5 @@ public class SetMenuServiceImpl implements SetMenuService {
         return menuItemList.stream()
                 .map(MenuItem::getId)
                 .collect(Collectors.toSet());
-    }
-
-    private MediaAsset uploadSetMenuImage(MultipartFile imageFile, Integer setMenuId, MediaAsset mediaAsset) throws Exception {
-        ImageStorageResult imageStorageResult = imageAssetService.uploadImageSet(ImageCategory.SET_MENU, setMenuId, imageFile);
-        if (mediaAsset == null) {
-            mediaAsset = mediaAssetRepository.save(MediaAsset.builder()
-                    .ownerId(setMenuId)
-                    .ownerType(MediaAssetOwnerType.MENU_ITEM)
-                    .imageOrigKey(imageStorageResult.originalKey())
-                    .imageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null))
-                    .imageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null))
-                    .imageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null))
-                    .build());
-        } else {
-            mediaAsset.setImageOrigKey(imageStorageResult.originalKey());
-            mediaAsset.setImageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null));
-            mediaAsset.setImageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null));
-            mediaAsset.setImageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null));
-        }
-        return mediaAsset;
     }
 }
