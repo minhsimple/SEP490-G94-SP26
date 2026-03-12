@@ -93,8 +93,11 @@ public class HallServiceImpl implements HallService {
         hallMapper.updateEntity(hall, request);
         Hall saved = hallRepository.save(hall);
 
+        List<MediaAsset> mediaAssetList = MediaAssetUtil.getListMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, saved.getId(), MediaAssetOwnerType.HALL);
+
         HallResponse response = hallMapper.toResponse(saved);
         response.setLocationName(location.getName());
+        response.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssetList));
         return response;
     }
 
@@ -106,7 +109,7 @@ public class HallServiceImpl implements HallService {
         Location location = locationRepository.findByIdAndStatus(hall.getLocationId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
 
-        List<MediaAsset> mediaAssets = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(hall.getId(), MediaAssetOwnerType.HALL);
+        List<MediaAsset> mediaAssets = MediaAssetUtil.getListMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, hall.getId(), MediaAssetOwnerType.HALL);
 
         HallResponse response = hallMapper.toResponse(hall);
         response.setLocationName(location.getName());
@@ -175,7 +178,7 @@ public class HallServiceImpl implements HallService {
         List<HallResponse> responses = hallList.stream()
                 .map(hall -> {
                     HallResponse response = hallMapper.toResponse(hall);
-                    List<MediaAsset> mediaAssets = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(hall.getId(), MediaAssetOwnerType.HALL);
+                    List<MediaAsset> mediaAssets = MediaAssetUtil.getListMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, hall.getId(), MediaAssetOwnerType.HALL);
                     response.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssets));
                     Location location = locationMap.get(hall.getLocationId());
                     if (location != null) {
@@ -206,10 +209,13 @@ public class HallServiceImpl implements HallService {
 
         Hall saved = hallRepository.save(hall);
 
+        List<MediaAsset> mediaAssetList = MediaAssetUtil.getListMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, saved.getId(), MediaAssetOwnerType.HALL);
         HallResponse response = hallMapper.toResponse(saved);
         // Try to get location name if available
         locationRepository.findById(saved.getLocationId())
                 .ifPresent(location -> response.setLocationName(location.getName()));
+
+        response.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssetList));
 
         return response;
     }

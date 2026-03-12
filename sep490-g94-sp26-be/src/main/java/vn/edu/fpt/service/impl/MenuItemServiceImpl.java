@@ -83,8 +83,7 @@ public class MenuItemServiceImpl implements MenuItemService {
             throw new AppException(ERROR_CODE.MENU_ITEM_CODE_EXISTED_SAME_LOCATION);
         }
 
-        List<MediaAsset> mediaAssetList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
-        MediaAsset mediaAsset = !mediaAssetList.isEmpty() ? mediaAssetList.getFirst() : null;
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
 
         if (imageFile != null && !imageFile.isEmpty()) {
             if (mediaAsset != null) {
@@ -113,8 +112,7 @@ public class MenuItemServiceImpl implements MenuItemService {
                 .findById(menuItem.getLocationId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
 
-        List<MediaAsset> mediaAssetList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
-        MediaAsset mediaAsset = !mediaAssetList.isEmpty() ? mediaAssetList.getFirst() : null;
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
 
         MenuItemResponse menuItemResponse = menuItemMapper.toResponse(menuItem, location, categoryMenuItem);
         menuItemResponse.setImageUrls(MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset));
@@ -186,8 +184,7 @@ public class MenuItemServiceImpl implements MenuItemService {
                                     categoryMenuItemRepository.findById(menuItem.getCategoryMenuItemsId())
                                             .orElse(null));
                     try {
-                        List<MediaAsset> mediaAssetList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
-                        MediaAsset mediaAsset = !mediaAssetList.isEmpty() ? mediaAssetList.getFirst() : null;
+                        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
                         menuItemResponse.setImageUrls(MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset));
                     } catch (Exception e) {
                         menuItemResponse.setImageUrls(null);
@@ -227,8 +224,7 @@ public class MenuItemServiceImpl implements MenuItemService {
 
         MenuItemResponse menuItemResponse = menuItemMapper.toResponse(menuItem, location, categoryMenuItem);
 
-        List<MediaAsset> mediaAssetList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
-        MediaAsset mediaAsset = !mediaAssetList.isEmpty() ? mediaAssetList.getFirst() : null;
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
 
         menuItemResponse.setImageUrls(MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset));
 
