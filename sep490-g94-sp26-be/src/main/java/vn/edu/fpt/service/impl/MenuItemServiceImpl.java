@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.menuitem.MenuItemFilterRequest;
 import vn.edu.fpt.dto.request.menuitem.MenuItemRequest;
+import vn.edu.fpt.dto.response.image.ImageUrlsResponseDTO;
 import vn.edu.fpt.dto.response.menuitem.MenuItemResponse;
 import vn.edu.fpt.entity.*;
 import vn.edu.fpt.respository.*;
@@ -26,6 +27,9 @@ import vn.edu.fpt.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -174,21 +178,46 @@ public class MenuItemServiceImpl implements MenuItemService {
         Page<MenuItem> menuItemPage = menuItemRepository.findAll(spec, pageable);
         List<MenuItem> menuItemList = menuItemPage.getContent();
 
+        Set<Integer> menuItemIds = menuItemList.stream()
+                .map(MenuItem::getId)
+                .collect(Collectors.toSet());
+
+        Set<Integer> locationIds = menuItemList.stream()
+                .map(MenuItem::getLocationId)
+                .collect(Collectors.toSet());
+
+        Set<Integer> categoryMenuItemIds = menuItemList.stream()
+                .map(MenuItem::getCategoryMenuItemsId)
+                .collect(Collectors.toSet());
+
+        Map<Integer, Location> locationMap = locationRepository
+                .findAllByIdIn(locationIds)
+                .stream()
+                .collect(Collectors.toMap(Location::getId, location -> location));
+
+        Map<Integer, CategoryMenuItem> categoryMenuItemMap = categoryMenuItemRepository
+                .findAllByIdIn(categoryMenuItemIds)
+                .stream()
+                .collect(Collectors.toMap(CategoryMenuItem::getId, categoryMenuItem -> categoryMenuItem));
+
+        List<MediaAsset> mediaAssetList = mediaAssetRepository.findAllByOwnerIdInAndOwnerType(menuItemIds, MediaAssetOwnerType.MENU_ITEM);
+        Map<Integer, ImageUrlsResponseDTO> mediaAssetMap = mediaAssetList.stream()
+                .collect(Collectors.toMap(MediaAsset::getOwnerId, mediaAsset -> {
+                    try {
+                        return MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset);
+                    } catch (Exception e) {
+                        return new ImageUrlsResponseDTO();
+                    }
+                }));
+
         List<MenuItemResponse> responseList = menuItemList
                 .stream()
                 .map(menuItem -> {
                     MenuItemResponse menuItemResponse = menuItemMapper
                             .toResponse(menuItem,
-                                    locationRepository.findById(menuItem.getLocationId())
-                                            .orElse(null),
-                                    categoryMenuItemRepository.findById(menuItem.getCategoryMenuItemsId())
-                                            .orElse(null));
-                    try {
-                        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
-                        menuItemResponse.setImageUrls(MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset));
-                    } catch (Exception e) {
-                        menuItemResponse.setImageUrls(null);
-                    }
+                                    locationMap.getOrDefault(menuItem.getLocationId(), null),
+                                    categoryMenuItemMap.getOrDefault(menuItem.getCategoryMenuItemsId(), null));
+                    menuItemResponse.setImageUrls(mediaAssetMap.getOrDefault(menuItem.getId(), null));
                     return menuItemResponse;
                 }).toList();
 
