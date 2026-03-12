@@ -97,6 +97,15 @@ public class MediaAssetUtil {
         return mediaAssetRepository.saveAll(mediaAssets);
     }
 
+    public static MediaAsset getMediaAssetByEntityIdAndOwnerType(MediaAssetRepository mediaAssetRepository, Integer entityId, MediaAssetOwnerType mediaAssetOwnerType) {
+        List<MediaAsset> mediaAssetList = mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(entityId, mediaAssetOwnerType);
+        return !mediaAssetList.isEmpty() ? mediaAssetList.getFirst() : null;
+    }
+
+    public static List<MediaAsset> getListMediaAssetByEntityIdAndOwnerType(MediaAssetRepository mediaAssetRepository, Integer entityId, MediaAssetOwnerType mediaAssetOwnerType) {
+        return mediaAssetRepository.findMediaAssetByOwnerIdAndOwnerType(entityId, mediaAssetOwnerType);
+    }
+
     private static ImageCategory getImageCategoryForAsset(MediaAssetOwnerType mediaAssetOwnerType) {
         return switch (mediaAssetOwnerType) {
             case HALL -> ImageCategory.HALL;
