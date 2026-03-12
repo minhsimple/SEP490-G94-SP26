@@ -17,6 +17,9 @@ import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.BookingMapper;
 import vn.edu.fpt.respository.BookingRepository;
+import vn.edu.fpt.respository.CustomerRepository;
+import vn.edu.fpt.respository.HallRepository;
+import vn.edu.fpt.respository.SetMenuRepository;
 import vn.edu.fpt.service.BookingService;
 import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.BookingState;
@@ -35,12 +38,24 @@ public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
     private final BookingMapper bookingMapper;
+    private final CustomerRepository customerRepository;
+    private final HallRepository hallRepository;
+    private final SetMenuRepository setMenuRepository;
 
     @Transactional
     @Override
     public BookingResponse createBooking(BookingRequest request) {
         if (request == null) {
             throw new AppException(ERROR_CODE.INVALID_REQUEST);
+        }
+        if(!customerRepository.existsByIdAndStatus(request.getCustomerId(), RecordStatus.active)) {
+            throw new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED);
+        }
+        if(!hallRepository.existsByIdAndStatus(request.getHallId(), RecordStatus.active)) {
+            throw new AppException(ERROR_CODE.HALL_NOT_EXISTED);
+        }
+        if(!setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
+            throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
         }
 
         Booking booking = bookingMapper.toEntity(request);

@@ -9,4 +9,6 @@ public interface SetMenuRepository extends BaseRepository<SetMenu, Integer>{
     Optional<SetMenu> findSetMenuByIdAndStatus(Integer id, RecordStatus status);
     boolean existsByCodeAndLocationId(String code, Integer locationId);
     boolean existsByCodeAndLocationIdAndIdNot(String code, Integer locationId, Integer id);
+
+    boolean existsByIdAndStatus(Integer id, RecordStatus status);
 }
