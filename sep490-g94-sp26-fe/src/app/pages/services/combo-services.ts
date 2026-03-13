@@ -20,7 +20,7 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { CheckboxModule } from 'primeng/checkbox';
 import { TooltipModule } from 'primeng/tooltip';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { LocationService } from '../service/location.service';
 import { ServicePackage, ServicePackageService, ServiceResponse } from '../service/service-package.service';
 import { ServiceService, Service } from '../service/service.service';
@@ -132,12 +132,6 @@ interface Column {
                             <!-- Tên combo -->
                             <td>
                                 <div class="flex items-center gap-3">
-                                    <div
-                                        class="flex items-center justify-center border-round-lg"
-                                        style="width:38px; height:38px; background: linear-gradient(135deg, #dbeafe, #ede9fe); color: #4f46e5; flex-shrink:0;"
-                                    >
-                                        <i class="pi pi-box text-sm"></i>
-                                    </div>
                                     <div>
                                         <div class="font-semibold text-900">{{ combo.name }}</div>
                                         <div class="text-sm text-500 mt-1"
@@ -178,6 +172,7 @@ interface Column {
                             <td>
                                 <div class="flex items-center gap-1">
                                     <p-button
+                                        *ngIf="combo.status === 'active'"
                                         icon="pi pi-eye"
                                         [rounded]="true"
                                         [text]="true"
@@ -187,6 +182,7 @@ interface Column {
                                         tooltipPosition="top"
                                     />
                                     <p-button
+                                        *ngIf="combo.status === 'active'"
                                         icon="pi pi-pencil"
                                         [rounded]="true"
                                         [text]="true"
@@ -518,83 +514,6 @@ interface Column {
                 </ng-template>
             </p-dialog>
 
-            <!-- ═══════════════ Dialog Chi tiết ═══════════════ -->
-            <p-dialog
-                [(visible)]="detailDialog"
-                [style]="{ width: '680px' }"
-                [header]="detailCombo?.name ?? 'Chi tiết combo'"
-                [modal]="true"
-            >
-                <ng-template #content>
-                    <div *ngIf="detailCombo">
-                        <!-- Header -->
-                        <div class="mb-4 pb-3 border-bottom-1 surface-border">
-                            <div class="text-2xl font-bold text-900">{{ detailCombo.name }}</div>
-                            <div class="text-sm text-500 mt-2" *ngIf="detailCombo.code">Mã: {{ detailCombo.code }}</div>
-                        </div>
-
-                        <!-- Stats -->
-                        <div class="grid grid-cols-2 gap-3 mb-4">
-                            <div class="surface-card border-round-xl p-4 text-center shadow-1">
-                                <div class="text-primary text-2xl mb-1">💲</div>
-                                <div class="font-bold text-xl text-900">{{ formatPrice(detailCombo.basePrice) }}</div>
-                                <div class="text-500 text-sm mt-1">Giá combo</div>
-                            </div>
-                            <div class="surface-card border-round-xl p-4 text-center shadow-1">
-                                <div class="text-primary text-2xl mb-1">📦</div>
-                                <div class="font-bold text-xl text-900">{{ detailCombo.serviceResponseList?.length ?? 0 }}</div>
-                                <div class="text-500 text-sm mt-1">Tổng dịch vụ</div>
-                            </div>
-                        </div>
-
-                        <!-- Description -->
-                        <div class="surface-card border-round-xl p-4 shadow-1 mb-3" *ngIf="detailCombo.description">
-                            <div class="flex items-center gap-2 font-bold text-sm mb-3">
-                                <span>📦</span> Mô tả
-                            </div>
-                            <div class="text-600 text-sm line-height-3">{{ detailCombo.description }}</div>
-                        </div>
-
-                        <!-- Services list -->
-                        <div class="surface-card border-round-xl p-4 shadow-1" *ngIf="getDetailServices().length">
-                            <div class="flex items-center gap-2 font-bold text-sm mb-3">
-                                <span>✨</span> Danh sách dịch vụ
-                            </div>
-                            <div *ngFor="let svc of getDetailServices()"
-                                 class="flex items-center gap-3 py-3"
-                                 style="border-bottom:1px solid #f1f5f9;">
-                                <div class="flex items-center justify-center border-round-lg flex-shrink-0"
-                                     style="width:36px;height:36px;background:#ede9fe;color:#7c3aed;">
-                                    <i class="pi pi-sparkles text-sm"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <div class="font-medium text-900 text-sm">{{ svc.name }}</div>
-                                    <div class="text-xs text-500 mt-0.5">{{ svc.description }}</div>
-                                </div>
-                                <div class="font-bold text-sm text-primary">
-                                    {{ formatPrice(svc.basePrice) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div *ngIf="loadingDetail" class="flex items-center justify-center py-8">
-                        <i class="pi pi-spin pi-spinner text-3xl text-primary"></i>
-                    </div>
-                </ng-template>
-
-                <ng-template #footer>
-                    <div class="flex justify-end gap-2">
-                        <p-button label="Đóng" icon="pi pi-times" text (click)="detailDialog = false" />
-                        <p-button
-                            label="Chỉnh sửa"
-                            icon="pi pi-pencil"
-                            severity="primary"
-                            (click)="detailDialog = false; editCombo(detailCombo!)"
-                        />
-                    </div>
-                </ng-template>
-            </p-dialog>
-
             <p-confirmdialog />
         </div>
     `,
@@ -640,7 +559,6 @@ export class CombosComponent implements OnInit {
 
     combos = signal<ServicePackage[]>([]);
     loading = false;
-    loadingDetail = false;
     saving = false;
     totalRecords = 0;
     pageSize = 20;
@@ -653,7 +571,6 @@ export class CombosComponent implements OnInit {
     // Dialog states
     createDialog = false;
     editDialog = false;
-    detailDialog = false;
     submitted = false;
     editSubmitted = false;
 
@@ -665,8 +582,6 @@ export class CombosComponent implements OnInit {
     editedCombo: Partial<ServicePackage> = {};
     editedComboActive = true;
     editSelectedServiceIds = new Set<number>();
-
-    detailCombo: ServicePackage | null = null;
 
     // Services for picker
     allServices = signal<Service[]>([]);
@@ -685,7 +600,8 @@ export class CombosComponent implements OnInit {
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private cdr: ChangeDetectorRef,
-        private router: Router
+        private router: Router,
+        private route: ActivatedRoute
     ) {}
 
     ngOnInit() {
@@ -699,6 +615,26 @@ export class CombosComponent implements OnInit {
         this.loadLocations();
         this.loadCombos();
         this.loadAllServices();
+
+        // Check for edit query param (e.g., from detail page)
+        this.route.queryParams.subscribe(params => {
+            if (params['edit']) {
+                const editId = +params['edit'];
+                // Wait for combos to load, then open edit dialog
+                setTimeout(() => {
+                    const comboToEdit = this.combos().find(c => c.id === editId);
+                    if (comboToEdit) {
+                        this.editCombo(comboToEdit);
+                        // Clear query param
+                        this.router.navigate([], { 
+                            relativeTo: this.route, 
+                            queryParams: {}, 
+                            replaceUrl: true 
+                        });
+                    }
+                }, 500);
+            }
+        });
     }
 
     // ── Locations ──────────────────────────────────────────────────────────────
@@ -898,6 +834,17 @@ export class CombosComponent implements OnInit {
         this.submitted = true;
         if (!this.newCombo.name?.trim()) return;
 
+        // Validate at least one service is selected
+        if (this.newSelectedServiceIds.size === 0) {
+            this.messageService.add({ 
+                severity: 'warn', 
+                summary: 'Cảnh báo', 
+                detail: 'Vui lòng chọn ít nhất một dịch vụ', 
+                life: 3000 
+            });
+            return;
+        }
+
         this.saving = true;
         
         // Convert selected service IDs to serviceList with qty = 1 (default)
@@ -920,14 +867,16 @@ export class CombosComponent implements OnInit {
                 if (res.data && !this.newComboActive) {
                     // If user wants it inactive, call change-status
                     this.servicePackageService.changeStatus(res.data.id).subscribe({
-                        next: () => {
+                        next: (statusRes) => {
                             this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã thêm combo mới', life: 3000 });
                             this.createDialog = false;
                             this.saving = false;
                             this.loadCombos(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
                         },
-                        error: () => {
-                            this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã thêm combo mới', life: 3000 });
+                        error: (err) => {
+                            console.error('Change status error:', err);
+                            const errorMsg = err?.error?.message || 'Không thể thay đổi trạng thái combo';
+                            this.messageService.add({ severity: 'warning', summary: 'Cảnh báo', detail: `Đã thêm combo nhưng ${errorMsg}`, life: 4000 });
                             this.createDialog = false;
                             this.saving = false;
                             this.loadCombos(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
@@ -940,8 +889,10 @@ export class CombosComponent implements OnInit {
                     this.loadCombos(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
                 }
             },
-            error: () => {
-                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể thêm combo', life: 3000 });
+            error: (err) => {
+                console.error('Create combo error:', err);
+                const errorMsg = err?.error?.message || 'Không thể thêm combo';
+                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: errorMsg, life: 3000 });
                 this.saving = false;
             }
         });
@@ -975,7 +926,6 @@ export class CombosComponent implements OnInit {
         }));
 
         const payload = {
-            id:          this.editedCombo.id,
             code:        this.editedCombo.code ?? this.generateUUID(),
             name:        this.editedCombo.name!,
             description: this.editedCombo.description,
@@ -986,19 +936,30 @@ export class CombosComponent implements OnInit {
         const currentlyActive = this.editedCombo.status === 'active';
         const needsStatusChange = this.editedComboActive !== currentlyActive;
 
-        this.servicePackageService.updateServicePackage(payload).subscribe({
+        this.servicePackageService.updateServicePackage(this.editedCombo.id!, payload).subscribe({
             next: () => {
                 if (needsStatusChange) {
                     this.servicePackageService.changeStatus(this.editedCombo.id!).subscribe({
-                        next: () => this.afterSaveEdit(),
-                        error: () => this.afterSaveEdit()
+                        next: (statusRes) => {
+                            this.afterSaveEdit();
+                        },
+                        error: (err) => {
+                            console.error('Change status error:', err);
+                            const errorMsg = err?.error?.message || 'Không thể thay đổi trạng thái';
+                            this.messageService.add({ severity: 'warning', summary: 'Cảnh báo', detail: `Đã cập nhật combo nhưng ${errorMsg}`, life: 4000 });
+                            this.editDialog = false;
+                            this.saving = false;
+                            this.loadCombos(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
+                        }
                     });
                 } else {
                     this.afterSaveEdit();
                 }
             },
-            error: () => {
-                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể cập nhật combo', life: 3000 });
+            error: (err) => {
+                console.error('Update combo error:', err);
+                const errorMsg = err?.error?.message || 'Không thể cập nhật combo';
+                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: errorMsg, life: 3000 });
                 this.saving = false;
             }
         });
@@ -1013,21 +974,9 @@ export class CombosComponent implements OnInit {
 
     // ── Detail ─────────────────────────────────────────────────────────────────
     viewDetail(combo: ServicePackage) {
-        this.detailCombo = null;
-        this.loadingDetail = true;
-        this.detailDialog = true;
-
-        this.servicePackageService.getById(combo.id).subscribe({
-            next: (res) => {
-                if (res.data) this.detailCombo = res.data;
-                this.loadingDetail = false;
-            },
-            error: () => {
-                // Fallback: show data from list
-                this.detailCombo = combo;
-                this.loadingDetail = false;
-            }
-        });
+        console.log('View detail combo:', combo);
+        console.log('Navigating to ID:', combo.id);
+        this.router.navigate(['/pages/combo-services', combo.id]);
     }
 
     // ── Change Status ──────────────────────────────────────────────────────────
@@ -1055,21 +1004,25 @@ export class CombosComponent implements OnInit {
             acceptButtonStyleClass: isActive ? 'p-button-danger' : 'p-button-success',
             accept: () => {
                 this.servicePackageService.changeStatus(combo.id).subscribe({
-                    next: () => {
+                    next: (response) => {
+                        // Backend returns updated combo with correct status
+                        const newStatus = response.data.status;
                         this.messageService.add({ 
                             severity: 'success', 
                             summary: 'Thành công', 
                             detail: `Đã ${action} combo thành công`, 
                             life: 3000 
                         });
+                        // Reload to ensure UI is in sync with backend
                         this.loadCombos(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
                     },
                     error: (err) => {
                         console.error('Change status error:', err);
+                        const errorMsg = err?.error?.message || `Không thể ${action} combo`;
                         this.messageService.add({ 
                             severity: 'error', 
                             summary: 'Lỗi', 
-                            detail: `Không thể ${action} combo`, 
+                            detail: errorMsg, 
                             life: 3000 
                         });
                     }
@@ -1082,12 +1035,6 @@ export class CombosComponent implements OnInit {
     formatPrice(price: number | undefined): string {
         if (!price && price !== 0) return '-';
         return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
-    }
-
-    getDetailServices(): Service[] {
-        if (!this.detailCombo?.serviceResponseList) return [];
-        const serviceIds = this.detailCombo.serviceResponseList.map(sr => sr.serviceId);
-        return this.allServices().filter(s => serviceIds.includes(s.id!));
     }
 
     getLocationName(locationId?: number): string {
