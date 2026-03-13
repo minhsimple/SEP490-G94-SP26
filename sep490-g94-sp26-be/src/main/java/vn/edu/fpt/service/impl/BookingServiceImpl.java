@@ -218,7 +218,11 @@ public class BookingServiceImpl implements BookingService {
         boolean valid = switch (currentState) {
             case DRAFT -> newState == BookingState.CONVERTED
                     || newState == BookingState.CANCELLED
-                    || newState == BookingState.EXPIRED;
+                    || newState == BookingState.EXPIRED
+                    || newState == BookingState.APPROVED
+                    || newState == BookingState.UNAPPROVED;
+            case APPROVED -> false;
+            case UNAPPROVED -> false;
             case CONVERTED, CANCELLED, EXPIRED -> false;
         };
 
