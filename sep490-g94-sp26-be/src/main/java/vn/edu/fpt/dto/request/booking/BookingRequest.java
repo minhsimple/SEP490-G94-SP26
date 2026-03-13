@@ -28,8 +28,6 @@ public class BookingRequest {
     @NotNull(message = "Khung giờ đặt tiệc không được để trống")
     BookingTime bookingTime;
 
-
-
     Integer expectedTables;
 
     Integer expectedGuests;

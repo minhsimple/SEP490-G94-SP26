@@ -194,6 +194,9 @@ public class AuthServiceImpl implements AuthService {
                 .revoked(false)
                 .build();
         refreshTokenRepository.save(refreshToken);
+        String roleName = roleRepository.findByIdAndStatus(user.getRole_id(), RecordStatus.active)
+                .map(Role::getCode)
+                .orElse("UNDEFINED");
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
@@ -203,6 +206,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .locationId(user.getLocationId())
+                .codeRole(roleName)
                 .build();
     }
 }
