@@ -16,6 +16,7 @@ import { CategoryMenuItemComponent } from './category-menu-item/category-menu-it
 import { MenuItemComponent } from './menu-item/menu-item.component';
 import { MenuItemDetailComponent } from './menu-item/menu-item-detail.component';
 import { CombosComponent } from './services/combo-services';
+import { ComboServiceDetailComponent } from './services/combo-service-detail.component';
 
 export default [
     { path: 'crud', component: Crud },
@@ -28,6 +29,7 @@ export default [
     { path: 'hall', component: HallComponent },
     { path: 'hall/:id', component: HallDetailComponent },
     { path: 'service', component: ServicesComponent },
+    { path: 'combo-services/:id', component: ComboServiceDetailComponent },
     { path: 'combo-services', component: CombosComponent },
     // ⚠️ Đặt route cụ thể hơn TRƯỚC route chung
     { path: 'set-menu/create', component: SetMenuEditComponent },

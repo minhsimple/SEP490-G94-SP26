@@ -108,8 +108,7 @@ export class ServicePackageService {
             if (response.data && response.data.content) {
                 response.data.content = response.data.content.map((item: any) => ({
                     ...item,
-                    serviceResponseList: item.ServiceResponseList || item.serviceResponseList || [],
-                    status: item.status || 'active' // Default status nếu null
+                    serviceResponseList: item.ServiceResponseList || item.serviceResponseList || []
                 }));
             }
             return response as ApiResponse<PageResponse<ServicePackage>>;
@@ -121,9 +120,20 @@ export class ServicePackageService {
      * GET /api/v1/service-package/{servicePackageId}
      */
     getById(servicePackageId: number): Observable<ApiResponse<ServicePackage>> {
-        return this.http.get<ApiResponse<ServicePackage>>(
+        return this.http.get<any>(
             `${this.baseUrl}/${servicePackageId}`,
             { headers: this.getHeaders() }
+        ).pipe(
+            map(response => {
+                // Normalize backend response: ServiceResponseList -> serviceResponseList
+                if (response.data) {
+                    response.data = {
+                        ...response.data,
+                        serviceResponseList: response.data.ServiceResponseList || response.data.serviceResponseList || []
+                    };
+                }
+                return response as ApiResponse<ServicePackage>;
+            })
         );
     }
 
@@ -147,10 +157,9 @@ export class ServicePackageService {
 
     /**
      * Update service package
-     * PUT /api/v1/service-package/update
+     * PUT /api/v1/service-package/update?servicePackageId={id}
      */
-    updateServicePackage(payload: {
-        id?: number;
+    updateServicePackage(id: number, payload: {
         code?: string;
         name: string;
         description?: string;
@@ -160,7 +169,10 @@ export class ServicePackageService {
         return this.http.put<ApiResponse<ServicePackage>>(
             `${this.baseUrl}/update`,
             payload,
-            { headers: this.getHeaders() }
+            { 
+                headers: this.getHeaders(),
+                params: new HttpParams().set('servicePackageId', id)
+            }
         );
     }
 
@@ -169,7 +181,7 @@ export class ServicePackageService {
      * POST /api/v1/service-package/{servicePackageId}/change-status
      */
     changeStatus(servicePackageId: number): Observable<ApiResponse<ServicePackage>> {
-        return this.http.post<ApiResponse<ServicePackage>>(
+        return this.http.put<ApiResponse<ServicePackage>>(
             `${this.baseUrl}/${servicePackageId}/change-status`,
             {},
             { headers: this.getHeaders() }
