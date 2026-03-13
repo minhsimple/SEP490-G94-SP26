@@ -48,6 +48,7 @@ interface Column {
       <p-toolbar styleClass="mb-6">
         <ng-template #start>
           <p-button
+          
             label="Thêm Lead mới"
             icon="pi pi-plus"
             severity="primary"
@@ -166,6 +167,7 @@ interface Column {
             <td>
               <div class="flex gap-2">
                 <p-button
+                
                   icon="pi pi-pencil"
                   [rounded]="true"
                   [outlined]="true"
@@ -349,7 +351,10 @@ export class Leads implements OnInit {
     private locationService: LocationService,
   ) {}
 
+  
   ngOnInit() {
+
+
     this.initializeDropdowns();
     this.loadLocationOptions();
     this.loadLeads();

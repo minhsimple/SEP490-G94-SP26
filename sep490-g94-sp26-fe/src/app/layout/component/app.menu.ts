@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { AppMenuitem } from './app.menuitem';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../pages/service/auth.service';
+
 
 @Component({
   selector: 'app-menu',
@@ -19,123 +21,64 @@ import { AuthService } from '../../pages/service/auth.service';
       }
   </ul>`,
 })
-export class AppMenu implements OnInit {
+export class AppMenu implements OnInit, OnDestroy {
   model: MenuItem[] = [];
+  private sub!: Subscription;
 
-  // Định nghĩa TẤT CẢ các menu item
   private readonly allMenuItems: MenuItem[] = [
+    { label: 'Quản lý vai trò', icon: 'pi pi-fw pi-shield', routerLink: ['/pages/role'], id: 'role' },
+    { label: 'Quản lý chi nhánh', icon: 'pi pi-fw pi-building', routerLink: ['/pages/location'], id: 'location' },
+    { label: 'Quản lý người dùng', icon: 'pi pi-fw pi-users', routerLink: ['/pages/users'], id: 'users' },
+    { label: 'Quản lý leads', icon: 'pi pi-fw pi-users', routerLink: ['/pages/leads'], id: 'leads' },
+    { label: 'Quản lý danh sách khách hàng', icon: 'pi pi-fw pi-user-plus', routerLink: ['/pages/customers'], id: 'customers' },
+    { label: 'Quản lý sảnh hội trường', icon: 'pi pi-fw pi-home', routerLink: ['/pages/hall'], id: 'hall' },
     {
-      label: 'Quản lý vai trò',
-      icon: 'pi pi-fw pi-shield',
-      routerLink: ['/pages/role'],
-      id: 'role',
-    },
-    {
-      label: 'Quản lý chi nhánh',
-      icon: 'pi pi-fw pi-building',
-      routerLink: ['/pages/location'],
-      id: 'location',
-    },
-    {
-      label: 'Quản lý người dùng',
-      icon: 'pi pi-fw pi-users',
-      routerLink: ['/pages/users'],
-      id: 'users',
-    },
-    {
-      label: 'Quản lý leads',
-      icon: 'pi pi-fw pi-users',
-      routerLink: ['/pages/leads'],
-      id: 'leads',
-    },
-    {
-      label: 'Quản lý danh sách khách hàng',
-      icon: 'pi pi-fw pi-user-plus',
-      routerLink: ['/pages/customers'],
-      id: 'customers',
-    },
-    {
-      label: 'Quản lý sảnh hội trường',
-      icon: 'pi pi-fw pi-home',
-      routerLink: ['/pages/hall'],
-      id: 'hall',
-    },
-    {
-      label: 'Dịch vụ',
-      icon: 'pi pi-fw pi-shopping-bag',
-      path: '/pages/service',
-      id: 'service',
+      label: 'Dịch vụ', icon: 'pi pi-fw pi-shopping-bag', path: '/pages/service', id: 'service',
       items: [
-        {
-          label: 'Quản lý dịch vụ',
-          icon: 'pi pi-fw pi-cog',
-          routerLink: ['/pages/service'],
-        },
-        {
-          label: 'Quản lý combo-dịch vụ',
-          icon: 'pi pi-fw pi-box',
-          routerLink: ['/pages/combo-services'],
-        },
+        { label: 'Quản lý dịch vụ', icon: 'pi pi-fw pi-cog', routerLink: ['/pages/service'] },
+        { label: 'Quản lý combo-dịch vụ', icon: 'pi pi-fw pi-box', routerLink: ['/pages/combo-services'] },
       ],
     },
     {
-      label: 'Thực đơn',
-      icon: 'pi pi-fw pi-book',
-      path: '/pages/menu',
-      id: 'menu',
+      label: 'Thực đơn', icon: 'pi pi-fw pi-book', path: '/pages/menu', id: 'menu',
       items: [
-        {
-          label: 'Món ăn',
-          icon: 'pi pi-fw pi-receipt',
-          routerLink: ['/pages/menu-item'],
-        },
-        {
-          label: 'Danh mục món ăn',
-          icon: 'pi pi-fw pi-list',
-          routerLink: ['/pages/category-menu-item'],
-        },
-        {
-          label: 'Set Menu',
-          icon: 'pi pi-fw pi-box',
-          routerLink: ['/pages/set-menu'],
-        },
+        { label: 'Món ăn', icon: 'pi pi-fw pi-receipt', routerLink: ['/pages/menu-item'] },
+        { label: 'Danh mục món ăn', icon: 'pi pi-fw pi-list', routerLink: ['/pages/category-menu-item'] },
+        { label: 'Set Menu', icon: 'pi pi-fw pi-box', routerLink: ['/pages/set-menu'] },
       ],
     },
   ];
 
-  // Mapping roleId → danh sách id được phép hiển thị
-  // ADMIN (4) và MANAGER (3) thấy tất cả → dùng 'all'
-  private readonly rolePermissions: Record<number, string[] | 'all'> = {
-    1: ['leads', 'customers'],                                          // SALE
-    2: ['leads'],                                                       // RECEPTIONIST
-    3: 'all',                                                           // MANAGER
-    4: 'all',                                                           // ADMIN
-    5: [],                                                              // COORDINATOR — chưa có màn hình
+  private readonly rolePermissions: Record<string, string[] | 'all'> = {
+    SALE:         ['leads', 'customers'],
+    RECEPTIONIST: ['leads'],
+    MANAGER:      'all',
+    ADMIN:        'all',
+    COORDINATOR:  [],
   };
 
   constructor(private authService: AuthService) {}
 
   ngOnInit() {
-    this.authService.getMe().subscribe({
-      next: (res) => {
-        const roleId: number = res.data.roleId;
-        this.buildMenu(roleId);
-      },
-      error: () => {
-        // Fallback: không hiển thị gì khi không lấy được user
-        this.model = [];
-      },
+    // Lắng nghe codeRole$ — tự động cập nhật menu khi login/logout
+    this.sub = this.authService.codeRole$.subscribe(codeRole => {
+      console.log('[AppMenu] codeRole changed:', codeRole);
+      this.buildMenu(codeRole);
     });
   }
 
-  private buildMenu(roleId: number) {
-    const allowed = this.rolePermissions[roleId];
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
+  }
+
+  private buildMenu(codeRole: string): void {
+    const allowed = this.rolePermissions[codeRole];
 
     const filteredItems =
       allowed === 'all'
         ? this.allMenuItems
-        : this.allMenuItems.filter((item) =>
-            allowed.includes((item as any).id ?? '')
+        : this.allMenuItems.filter(item =>
+            (allowed ?? []).includes((item as any).id ?? '')
           );
 
     this.model = [
