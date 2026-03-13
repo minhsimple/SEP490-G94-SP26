@@ -144,7 +144,10 @@ public class AuthServiceImpl implements AuthService {
         Role role = roleRepository
                 .findById(currentUser.getRole_id())
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
-        return userMapper.toResponse(findUserByEmail(email)) ;
+
+        UserResponse user = userMapper.toResponse(findUserByEmail(email)) ;
+        user.setRoleCode(role.getCode());
+        return user;
     }
 
     // ==================== Private Helper Methods ====================

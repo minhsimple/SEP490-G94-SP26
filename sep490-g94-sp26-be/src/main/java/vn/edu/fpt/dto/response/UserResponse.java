@@ -17,5 +17,6 @@ public class UserResponse {
     private Integer roleId;
     private Integer locationId;
     private RecordStatus status;;
+    private String roleCode;
 
 }
