@@ -16,6 +16,8 @@ import { CategoryMenuItemComponent } from './category-menu-item/category-menu-it
 import { MenuItemComponent } from './menu-item/menu-item.component';
 import { MenuItemDetailComponent } from './menu-item/menu-item-detail.component';
 import { CombosComponent } from './services/combo-services';
+import { BookingsComponent } from './booking/Booking';
+import { BookingCreateComponent } from './booking/Booking-create';
 import { ComboServiceDetailComponent } from './services/combo-service-detail.component';
 
 export default [
@@ -39,5 +41,9 @@ export default [
     { path: 'category-menu-item', component: CategoryMenuItemComponent },
     { path: 'menu-item/:id', component: MenuItemDetailComponent },
     { path: 'menu-item', component: MenuItemComponent },
+    // ⚠️ booking/create phải đứng TRƯỚC booking/:id
+    { path: 'booking/create', component: BookingCreateComponent },
+    { path: 'booking/:id', component: BookingsComponent },  // detail — thay component khi có
+    { path: 'booking', component: BookingsComponent },
     { path: '**', redirectTo: '/notfound' }
 ] as Routes;

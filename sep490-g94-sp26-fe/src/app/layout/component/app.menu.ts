@@ -32,6 +32,7 @@ export class AppMenu implements OnInit, OnDestroy {
     { label: 'Quản lý leads', icon: 'pi pi-fw pi-users', routerLink: ['/pages/leads'], id: 'leads' },
     { label: 'Quản lý danh sách khách hàng', icon: 'pi pi-fw pi-user-plus', routerLink: ['/pages/customers'], id: 'customers' },
     { label: 'Quản lý sảnh hội trường', icon: 'pi pi-fw pi-home', routerLink: ['/pages/hall'], id: 'hall' },
+    { label: 'Đặt tiệc', icon: 'pi pi-fw pi-home', routerLink: ['/pages/booking'], id: 'booking' },
     {
       label: 'Dịch vụ', icon: 'pi pi-fw pi-shopping-bag', path: '/pages/service', id: 'service',
       items: [
