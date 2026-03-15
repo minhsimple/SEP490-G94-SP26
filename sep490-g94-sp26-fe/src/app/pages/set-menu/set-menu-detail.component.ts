@@ -109,11 +109,11 @@ import { SetMenuService } from '../service/set-menu';
                         <!-- Items in category -->
                         <div *ngFor="let dish of item.menuItemsByCategory[category]"
                              class="dish-row">
-                            <div class="dish-image-container">
-                                <img *ngIf="dish.imageUrl" [src]="dish.imageUrl" [alt]="dish.name"
+                            <div class="dish-image-container flex items-center justify-center bg-gray-100 border-round">
+                                <img *ngIf="dish.imageUrls?.thumbnailUrl" [src]="dish.imageUrls?.thumbnailUrl" [alt]="dish.name"
                                      class="dish-image" />
-                                <div *ngIf="!dish.imageUrl" class="dish-image-placeholder">
-                                    <span style="font-size: 1.2rem;">🍴</span>
+                                <div *ngIf="!dish.imageUrls?.thumbnailUrl" class="dish-image-placeholder">
+                                    <span style="font-size: 1.5rem; color: #94a3b8;"><i class="pi pi-image text-400"></i></span>
                                 </div>
                             </div>
                             <div class="flex-1">
@@ -165,7 +165,7 @@ import { SetMenuService } from '../service/set-menu';
     styles: [`
         .detail-hero {
             border-radius: 12px;
-            min-height: 220px;
+            min-height: 360px;
             position: relative;
             display: flex;
             align-items: flex-end;
@@ -334,8 +334,8 @@ export class SetMenuDetailComponent implements OnInit {
     processData() {
         if (!this.item) return;
 
-        // Temporary placeholder images
-        this.heroImage = 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=1200&h=400&fit=crop';
+        // Hero Image
+        this.heroImage = this.item.imageUrls?.mediumUrl || null;
 
         // Categories
         if (this.item.menuItemsByCategory) {
@@ -346,12 +346,6 @@ export class SetMenuDetailComponent implements OnInit {
                 const items = this.item.menuItemsByCategory[cat];
                 if (Array.isArray(items)) {
                     this.totalDishes += items.reduce((sum: number, i: any) => sum + (i.quantity ?? 0), 0);
-                    // Add placeholder image for dishes
-                    items.forEach((dish: any) => {
-                        if (!dish.imageUrl) {
-                            dish.imageUrl = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=300&fit=crop';
-                        }
-                    });
                 }
             });
         } else if (this.item.menuItems && Array.isArray(this.item.menuItems)) {

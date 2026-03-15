@@ -10,6 +10,7 @@ public interface HallRepository extends BaseRepository<Hall, Integer> {
     List<Hall> findAllByStatus(RecordStatus status);
 
     Optional<Hall> findByIdAndStatus(Integer id, RecordStatus status);
+    Boolean existsByIdAndStatus(Integer id, RecordStatus status);
 
     Boolean existsByCodeAndStatus(String code, RecordStatus status);
 

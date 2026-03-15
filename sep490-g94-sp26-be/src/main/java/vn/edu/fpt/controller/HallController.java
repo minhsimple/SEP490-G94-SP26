@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.hall.HallFilterRequest;
 import vn.edu.fpt.dto.request.hall.HallRequest;
@@ -18,6 +19,8 @@ import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.hall.HallResponse;
 import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.HallService;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/hall")
@@ -30,8 +33,10 @@ public class HallController {
 
     @Operation(summary = "Tạo hội trường mới")
     @PostMapping("/create")
-    public ApiResponse<HallResponse> createHall(@RequestBody @Valid HallRequest request) {
-        HallResponse response = hallService.createHall(request);
+    public ApiResponse<HallResponse> createHall(
+            @RequestPart("request") @Valid HallRequest request,
+            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+        HallResponse response = hallService.createHall(request, imageFiles);
         return ApiResponse.<HallResponse>builder()
                 .data(response)
                 .build();

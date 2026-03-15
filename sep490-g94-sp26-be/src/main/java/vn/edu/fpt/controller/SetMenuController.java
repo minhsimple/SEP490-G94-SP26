@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.setmenu.SetMenuFilterRequest;
 import vn.edu.fpt.dto.request.setmenu.SetMenuRequest;
@@ -31,8 +32,10 @@ public class SetMenuController {
     @Transactional
     @Operation(summary = "Tạo set menu mới")
     @PostMapping("/create")
-    public ApiResponse<SetMenuResponse> createNewSetMenu(@Valid @RequestBody SetMenuRequest setMenuRequest) {
-        SetMenuResponse setMenuResponse = setMenuService.createNewSetMenu(setMenuRequest);
+    public ApiResponse<SetMenuResponse> createNewSetMenu(
+            @Valid @RequestPart("setMenuRequest") SetMenuRequest setMenuRequest,
+            @RequestPart("imageFile") MultipartFile imageFile) throws Exception {
+        SetMenuResponse setMenuResponse = setMenuService.createNewSetMenu(setMenuRequest, imageFile);
         return ApiResponse.<SetMenuResponse>builder()
                 .data(setMenuResponse)
                 .build();
@@ -40,7 +43,7 @@ public class SetMenuController {
 
     @Operation(summary = "Xem chi tiết set menu")
     @GetMapping("/{setMenuId}")
-    public ApiResponse<SetMenuResponse> viewDetailSetMenu(@PathVariable Integer setMenuId) {
+    public ApiResponse<SetMenuResponse> viewDetailSetMenu(@PathVariable Integer setMenuId) throws Exception {
         SetMenuResponse setMenuResponse = setMenuService.getSetMenuById(setMenuId);
         return ApiResponse.<SetMenuResponse>builder()
                 .data(setMenuResponse)
@@ -62,7 +65,7 @@ public class SetMenuController {
 
     @Operation(summary = "Thay đổi trạng thái set menu")
     @PutMapping("/{setMenuId}/change-status")
-    public ApiResponse<SetMenuResponse> changeStatusSetMenu(@PathVariable Integer setMenuId) {
+    public ApiResponse<SetMenuResponse> changeStatusSetMenu(@PathVariable Integer setMenuId) throws Exception {
         SetMenuResponse setMenuResponse = setMenuService.changeStatusSetMenu(setMenuId);
         return ApiResponse.<SetMenuResponse>builder()
                 .data(setMenuResponse)
@@ -72,8 +75,11 @@ public class SetMenuController {
     @Operation(summary = "Cập nhật set menu")
     @PutMapping("/update")
     public ApiResponse<SetMenuResponse> updateSetMenu(@RequestParam Integer setMenuId,
-                                                      @Valid @RequestBody SetMenuRequest setMenuRequest) {
-        SetMenuResponse setMenuResponse = setMenuService.updateSetMenu(setMenuId, setMenuRequest);
+                                                      @Valid @RequestPart("setMenuRequest")
+                                                      SetMenuRequest setMenuRequest,
+                                                      @RequestPart(value = "imageFile", required = false)
+                                                      MultipartFile imageFile) throws Exception {
+        SetMenuResponse setMenuResponse = setMenuService.updateSetMenu(setMenuId, setMenuRequest, imageFile);
         return ApiResponse.<SetMenuResponse>builder()
                 .data(setMenuResponse)
                 .build();

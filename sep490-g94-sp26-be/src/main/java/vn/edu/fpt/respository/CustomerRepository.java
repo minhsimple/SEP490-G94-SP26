@@ -11,4 +11,5 @@ public interface CustomerRepository extends BaseRepository<Customer, Integer> {
     boolean existsByPhoneAndIdNot(String phone, Integer id);
     boolean existsByEmail(String email);
     boolean existsByEmailAndIdNot(String email, Integer id);
+    boolean existsByIdAndStatus(Integer id, RecordStatus status);
 }

@@ -14,6 +14,12 @@ export interface Hall {
     notes?: string;
     description?: string;
     imageUrl?: string;
+    imageUrls?: {
+        originalUrl?: string;
+        thumbnailUrl?: string;
+        mediumUrl?: string;
+        largeUrl?: string;
+    }[];
     images?: string[];
     status?: string;
     createdAt?: string;
@@ -50,7 +56,7 @@ export interface PageResponse<T> {
 export class HallService {
     private baseUrl = 'http://localhost:8080/api/v1/hall';
 
-    constructor(private http: HttpClient) {}
+    constructor(private http: HttpClient) { }
 
     private getHeaders(): HttpHeaders {
         const token = localStorage.getItem('accessToken');
@@ -91,10 +97,21 @@ export class HallService {
         locationId: number;
         capacity: number;
         notes?: string;
-    }): Observable<ApiResponse<Hall>> {
-        return this.http.post<ApiResponse<Hall>>(`${this.baseUrl}/create`, hall, {
-            headers: this.getHeaders()
+    }, imageFiles?: File[]): Observable<ApiResponse<Hall>> {
+        const formData = new FormData();
+        formData.append('request', new Blob([JSON.stringify(hall)], { type: 'application/json' }));
+        if (imageFiles && imageFiles.length > 0) {
+            imageFiles.forEach(file => {
+                formData.append('imageFiles', file);
+            });
+        }
+
+        const token = localStorage.getItem('accessToken');
+        const headers = new HttpHeaders({
+            Authorization: `Bearer ${token}`
         });
+
+        return this.http.post<ApiResponse<Hall>>(`${this.baseUrl}/create`, formData, { headers });
     }
 
     updateHall(id: any, hall: {

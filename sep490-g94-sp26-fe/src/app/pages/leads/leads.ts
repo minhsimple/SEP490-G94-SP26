@@ -47,7 +47,9 @@ interface Column {
 
       <p-toolbar styleClass="mb-6">
         <ng-template #start>
+          <!-- Ẩn nút Thêm Lead nếu là SALE -->
           <p-button
+            *ngIf="!isSale"
             label="Thêm Lead mới"
             icon="pi pi-plus"
             severity="primary"
@@ -130,7 +132,7 @@ interface Column {
             <th pSortableColumn="state" style="min-width:10rem">
               Trạng thái <p-sortIcon field="state" />
             </th>
-            <th style="min-width:10rem">Thao tác</th>
+            <th *ngIf="!isSale" style="min-width:10rem">Thao tác</th>
           </tr>
         </ng-template>
 
@@ -162,29 +164,28 @@ interface Column {
                 [severity]="getStatusSeverity(lead.status)"
               />
             </td>
-            <!-- <td>{{ lead.updatedAt | date: 'dd/MM/yyyy HH:mm' }}</td> -->
-            <td>
-              <div class="flex gap-2">
-                <p-button
-                  icon="pi pi-pencil"
-                  [rounded]="true"
-                  [outlined]="true"
-                  severity="info"
-                  (click)="editLead(lead)"
-                  pTooltip="Chỉnh sửa"
-                  tooltipPosition="top"
-                />
-                <p-button
-                  icon="pi pi-sync"
-                  [rounded]="true"
-                  [outlined]="true"
-                  severity="warn"
-                  (click)="changeStatus(lead)"
-                  pTooltip="Đổi trạng thái"
-                  tooltipPosition="top"
-                />
-              </div>
-            </td>
+            <td *ngIf="!isSale">
+  <div class="flex gap-2">
+    <p-button
+      icon="pi pi-pencil"
+      [rounded]="true"
+      [outlined]="true"
+      severity="info"
+      (click)="editLead(lead)"
+      pTooltip="Chỉnh sửa"
+      tooltipPosition="top"
+    />
+    <p-button
+      icon="pi pi-sync"
+      [rounded]="true"
+      [outlined]="true"
+      severity="warn"
+      (click)="changeStatus(lead)"
+      pTooltip="Đổi trạng thái"
+      tooltipPosition="top"
+    />
+  </div>
+</td>
           </tr>
         </ng-template>
       </p-table>
@@ -340,6 +341,10 @@ export class Leads implements OnInit {
   locationOptions: { label: string; value: number }[] = [];
   locationName = '';
   selectedLocationId: number | null = null;
+
+  // Kiểm tra role SALE
+  isSale = localStorage.getItem('codeRole') === 'SALE';
+
   @ViewChild('dt') dt!: Table;
 
   constructor(
@@ -367,7 +372,7 @@ export class Leads implements OnInit {
         }
         this.loading = false;
       },
-      error: (err) => {
+      error: () => {
         this.messageService.add({
           severity: 'error',
           summary: 'Lỗi',
@@ -524,7 +529,7 @@ export class Leads implements OnInit {
       : this.leadService.createLead(payload);
 
     request$.subscribe({
-      next: (res) => {
+      next: () => {
         this.messageService.add({
           severity: 'success',
           summary: 'Thành công',

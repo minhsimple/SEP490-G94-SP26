@@ -7,8 +7,6 @@ import { AppConfigurator } from './app.configurator';
 import { LayoutService } from '../service/layout.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { AuthService } from '../../pages/service/auth.service';
-import { RoleService } from '../../pages/service/role.service';
 
 @Component({
   selector: 'app-topbar',
@@ -294,33 +292,17 @@ export class AppTopbar implements OnInit {
   userRole = signal('');
 
   layoutService = inject(LayoutService);
-  private authService = inject(AuthService);
-  private roleService = inject(RoleService);
 
   constructor(
     private http: HttpClient,
     private router: Router,
-  ) { }
+  ) {}
 
   ngOnInit() {
-    this.authService.getMe().subscribe({
-      next: (res) => {
-        this.userName.set(res.data.fullName || 'Người dùng');
-        this.userEmail.set(res.data.email || '');
-        this.loadRoleName(res.data.roleId);
-      },
-      error: () => { }
-    });
-  }
-
-  private loadRoleName(roleId: number) {
-    this.roleService.searchRoles({ size: 100 }).subscribe({
-      next: (res) => {
-        const role = res.data.content.find(r => r.id === roleId);
-        this.userRole.set(role?.name || '');
-      },
-      error: () => { }
-    });
+    // Đọc thẳng từ localStorage — không cần gọi API
+    this.userName.set(localStorage.getItem('fullName') || 'Người dùng');
+    this.userEmail.set(localStorage.getItem('email') || '');
+    this.userRole.set(localStorage.getItem('codeRole') || '');
   }
 
   toggleDarkMode() {
@@ -365,8 +347,10 @@ export class AppTopbar implements OnInit {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('fullName');
-    localStorage.removeItem('userid');
+    localStorage.removeItem('userId');
     localStorage.removeItem('email');
+    localStorage.removeItem('locationId');
+    localStorage.removeItem('codeRole');
     this.router.navigate(['/auth/login']);
   }
 }

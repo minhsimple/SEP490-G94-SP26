@@ -8,11 +8,15 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.setmenu.SetMenuFilterRequest;
 import vn.edu.fpt.dto.request.setmenu.SetMenuRequest;
 import vn.edu.fpt.dto.response.setmenu.SetMenuResponse;
 import vn.edu.fpt.entity.*;
+import vn.edu.fpt.service.ImageAssetService;
+import vn.edu.fpt.util.MediaAssetUtil;
+import vn.edu.fpt.util.enums.MediaAssetOwnerType;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -32,9 +36,12 @@ public class SetMenuServiceImpl implements SetMenuService {
     private final LocationRepository locationRepository;
     private final MenuItemRepository menuItemRepository;
     private final CategoryMenuItemRepository categoryMenuItemRepository;
+    private final ImageAssetService imageAssetService;
+    private final MediaAssetRepository mediaAssetRepository;
 
+    @Transactional
     @Override
-    public SetMenuResponse createNewSetMenu(SetMenuRequest setMenuRequest) {
+    public SetMenuResponse createNewSetMenu(SetMenuRequest setMenuRequest, MultipartFile imageFile) throws Exception {
         Location location = locationRepository
                 .findByIdAndStatus(setMenuRequest.getLocationId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
@@ -57,22 +64,26 @@ public class SetMenuServiceImpl implements SetMenuService {
 
         Integer setMenuId = setMenuRepository.save(setMenu).getId();
 
+        MediaAsset mediaAsset = MediaAssetUtil.uploadImageAsset(imageAssetService, mediaAssetRepository, imageFile, setMenuId, MediaAssetOwnerType.SET_MENU, null);
+
         List<SetMenuItem> setMenuItems = getSetMenuItemList(setMenuRequest, menuItemIdsSet, setMenuId);
 
         setMenuItems = setMenuItemRepository.saveAll(setMenuItems);
 
-        return mapToSetMenuResponse(setMenu, location, setMenuItems);
+        return mapToSetMenuResponse(setMenu, location, setMenuItems, mediaAsset);
     }
 
     @Override
-    public SetMenuResponse getSetMenuById(Integer id) {
+    public SetMenuResponse getSetMenuById(Integer id) throws Exception {
         SetMenu setMenu = setMenuRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
         Location location = locationRepository.findById(setMenu.getLocationId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
         List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
 
-        return mapToSetMenuResponse(setMenu, location, setMenuItemList);
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, setMenu.getId(), MediaAssetOwnerType.SET_MENU);
+
+        return mapToSetMenuResponse(setMenu, location, setMenuItemList, mediaAsset);
     }
 
     @Override
@@ -140,7 +151,12 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .map(setMenu -> {
                     Location location = locationMap.get(setMenu.getLocationId());
                     List<SetMenuItem> setMenuItemList = setMenuItemsMap.getOrDefault(setMenu.getId(), Collections.emptyList());
-                    return mapToSetMenuResponse(setMenu, location, setMenuItemList);
+                    MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, setMenu.getId(), MediaAssetOwnerType.SET_MENU);
+                    try {
+                        return mapToSetMenuResponse(setMenu, location, setMenuItemList, mediaAsset);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 })
                 .toList();
 
@@ -154,7 +170,7 @@ public class SetMenuServiceImpl implements SetMenuService {
 
     @Transactional
     @Override
-    public SetMenuResponse changeStatusSetMenu(Integer id) {
+    public SetMenuResponse changeStatusSetMenu(Integer id) throws Exception {
         SetMenu setMenu = setMenuRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
 
@@ -168,12 +184,14 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
         List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
 
-        return mapToSetMenuResponse(setMenu, location, setMenuItemList);
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, setMenu.getId(), MediaAssetOwnerType.SET_MENU);
+
+        return mapToSetMenuResponse(setMenu, location, setMenuItemList, mediaAsset);
     }
 
     @Transactional
     @Override
-    public SetMenuResponse updateSetMenu(Integer setMenuId, SetMenuRequest setMenuRequest) {
+    public SetMenuResponse updateSetMenu(Integer setMenuId, SetMenuRequest setMenuRequest, MultipartFile imageFile) throws Exception {
         SetMenu setMenu = setMenuRepository.findSetMenuByIdAndStatus(setMenuId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
 
@@ -189,6 +207,15 @@ public class SetMenuServiceImpl implements SetMenuService {
             throw new AppException(ERROR_CODE.SET_MENU_EMPTY_MENU_ITEM);
         }
 
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, setMenuId, MediaAssetOwnerType.SET_MENU);
+
+        if (imageFile != null && !imageFile.isEmpty()) {
+            if (mediaAsset != null) {
+                imageAssetService.deleteFolder(mediaAsset.getImageOrigKey());
+            }
+            mediaAsset = MediaAssetUtil.uploadImageAsset(imageAssetService, mediaAssetRepository, imageFile, setMenuId, MediaAssetOwnerType.SET_MENU, mediaAsset);
+        }
+
         setMenu.setCode(setMenuRequest.getCode());
         setMenu.setName(setMenuRequest.getName());
         setMenu.setDescription(setMenuRequest.getDescription());
@@ -200,7 +227,7 @@ public class SetMenuServiceImpl implements SetMenuService {
 
         setMenuItems = setMenuItemRepository.saveAll(setMenuItems);
 
-        return mapToSetMenuResponse(setMenu, location, setMenuItems);
+        return mapToSetMenuResponse(setMenu, location, setMenuItems, mediaAsset);
     }
 
     private static @NonNull List<SetMenuItem> getSetMenuItemList(SetMenuRequest setMenuRequest,
@@ -217,7 +244,7 @@ public class SetMenuServiceImpl implements SetMenuService {
                 .collect(Collectors.toList());
     }
 
-    private SetMenuResponse mapToSetMenuResponse(SetMenu setMenu, Location location, List<SetMenuItem> setMenuItemList) {
+    private SetMenuResponse mapToSetMenuResponse(SetMenu setMenu, Location location, List<SetMenuItem> setMenuItemList, MediaAsset mediaAsset) throws Exception {
         SetMenuResponse setMenuResponse = new SetMenuResponse();
         setMenuResponse.setId(setMenu.getId());
         setMenuResponse.setCode(setMenu.getCode());
@@ -225,6 +252,7 @@ public class SetMenuServiceImpl implements SetMenuService {
         setMenuResponse.setDescription(setMenu.getDescription());
         setMenuResponse.setLocation(new SetMenuResponse.Location(location.getId(), location.getName()));
         setMenuResponse.setStatus(setMenu.getStatus());
+        setMenuResponse.setImageUrls(MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset));
 
         Set<Integer> menuItemIds = setMenuItemList.stream()
                 .map(SetMenuItem::getMenuItemId)
@@ -250,15 +278,21 @@ public class SetMenuServiceImpl implements SetMenuService {
                     if (setMenuItem == null) {
                         return null;
                     }
-                    return new SetMenuResponse.MenuItem(
-                            menuItem.getId(),
-                            menuItem.getCode(),
-                            menuItem.getName(),
-                            menuItem.getUnitPrice(),
-                            menuItem.getUnit(),
-                            menuItem.getDescription(),
-                            setMenuItem.getQuantity()
-                    );
+                    MediaAsset mediaAssetMenuItem = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
+                    try {
+                        return new SetMenuResponse.MenuItem(
+                                menuItem.getId(),
+                                menuItem.getCode(),
+                                menuItem.getName(),
+                                menuItem.getUnitPrice(),
+                                menuItem.getUnit(),
+                                menuItem.getDescription(),
+                                setMenuItem.getQuantity(),
+                                MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAssetMenuItem)
+                        );
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 })
                 .filter(Objects::nonNull)
                 .collect(Collectors.groupingBy(menuItem -> categoryMenuItemMap

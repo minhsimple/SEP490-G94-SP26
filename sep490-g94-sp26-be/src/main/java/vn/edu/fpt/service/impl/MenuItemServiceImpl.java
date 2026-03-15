@@ -13,27 +13,23 @@ import vn.edu.fpt.dto.request.menuitem.MenuItemFilterRequest;
 import vn.edu.fpt.dto.request.menuitem.MenuItemRequest;
 import vn.edu.fpt.dto.response.image.ImageUrlsResponseDTO;
 import vn.edu.fpt.dto.response.menuitem.MenuItemResponse;
-import vn.edu.fpt.entity.CategoryMenuItem;
-import vn.edu.fpt.entity.Location;
-import vn.edu.fpt.entity.MenuItem;
-import vn.edu.fpt.entity.SetMenuItem;
+import vn.edu.fpt.entity.*;
+import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.ImageAssetService;
-import vn.edu.fpt.util.enums.ImageCategory;
-import vn.edu.fpt.util.enums.ImageVariant;
+import vn.edu.fpt.util.MediaAssetUtil;
+import vn.edu.fpt.util.enums.MediaAssetOwnerType;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.MenuItemMapper;
-import vn.edu.fpt.respository.CategoryMenuItemRepository;
-import vn.edu.fpt.respository.LocationRepository;
-import vn.edu.fpt.respository.MenuItemRepository;
-import vn.edu.fpt.respository.SetMenuItemRepository;
 import vn.edu.fpt.service.MenuItemService;
 import vn.edu.fpt.util.StringUtils;
-import vn.edu.fpt.util.image.ImageStorageResult;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +38,7 @@ public class MenuItemServiceImpl implements MenuItemService {
     private final LocationRepository locationRepository;
     private final CategoryMenuItemRepository categoryMenuItemRepository;
     private final SetMenuItemRepository setMenuItemRepository;
+    private final MediaAssetRepository mediaAssetRepository;
     private final ImageAssetService imageAssetService;
 
     private final MenuItemMapper menuItemMapper;
@@ -64,10 +61,10 @@ public class MenuItemServiceImpl implements MenuItemService {
         MenuItem menuItem = menuItemMapper.toEntity(request);
         menuItem = menuItemRepository.save(menuItem);
 
-        uploadMenuItemImage(imageFile, menuItem);
+        MediaAsset mediaAsset = MediaAssetUtil.uploadImageAsset(imageAssetService, mediaAssetRepository, imageFile, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM, null);
 
         MenuItemResponse menuItemResponse = menuItemMapper.toResponse(menuItem, location, categoryMenuItem);
-        menuItemResponse.setImageUrls(getPresignedImageUrls(menuItem));
+        menuItemResponse.setImageUrls(MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset));
 
         return menuItemResponse;
     }
@@ -90,26 +87,20 @@ public class MenuItemServiceImpl implements MenuItemService {
             throw new AppException(ERROR_CODE.MENU_ITEM_CODE_EXISTED_SAME_LOCATION);
         }
 
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
+
         if (imageFile != null && !imageFile.isEmpty()) {
-            if (!StringUtils.isNullOrEmptyOrBlank(menuItem.getImageOrigKey())) {
-                imageAssetService.deleteFolder(menuItem.getImageOrigKey());
+            if (mediaAsset != null) {
+                imageAssetService.deleteFolder(mediaAsset.getImageOrigKey());
             }
-            uploadMenuItemImage(imageFile, menuItem);
+            mediaAsset = MediaAssetUtil.uploadImageAsset(imageAssetService, mediaAssetRepository, imageFile, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM, mediaAsset);
         }
 
         menuItemMapper.updateEntity(menuItem, request);
         MenuItemResponse menuItemResponse = menuItemMapper.toResponse(menuItem, location, categoryMenuItem);
-        menuItemResponse.setImageUrls(getPresignedImageUrls(menuItem));
+        menuItemResponse.setImageUrls(MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset));
 
         return menuItemResponse;
-    }
-
-    private void uploadMenuItemImage(MultipartFile imageFile, MenuItem menuItem) throws Exception {
-        ImageStorageResult imageStorageResult = imageAssetService.uploadImageSet(ImageCategory.MENU_ITEM, menuItem.getId(), imageFile);
-        menuItem.setImageOrigKey(imageStorageResult.originalKey());
-        menuItem.setImageThumbKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.THUMB, null));
-        menuItem.setImageMediumKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.MEDIUM, null));
-        menuItem.setImageLargeKey(imageStorageResult.variantKeys().getOrDefault(ImageVariant.LARGE, null));
     }
 
     @Override
@@ -125,8 +116,10 @@ public class MenuItemServiceImpl implements MenuItemService {
                 .findById(menuItem.getLocationId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED));
 
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
+
         MenuItemResponse menuItemResponse = menuItemMapper.toResponse(menuItem, location, categoryMenuItem);
-        menuItemResponse.setImageUrls(getPresignedImageUrls(menuItem));
+        menuItemResponse.setImageUrls(MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset));
 
         return menuItemResponse;
     }
@@ -185,20 +178,46 @@ public class MenuItemServiceImpl implements MenuItemService {
         Page<MenuItem> menuItemPage = menuItemRepository.findAll(spec, pageable);
         List<MenuItem> menuItemList = menuItemPage.getContent();
 
+        Set<Integer> menuItemIds = menuItemList.stream()
+                .map(MenuItem::getId)
+                .collect(Collectors.toSet());
+
+        Set<Integer> locationIds = menuItemList.stream()
+                .map(MenuItem::getLocationId)
+                .collect(Collectors.toSet());
+
+        Set<Integer> categoryMenuItemIds = menuItemList.stream()
+                .map(MenuItem::getCategoryMenuItemsId)
+                .collect(Collectors.toSet());
+
+        Map<Integer, Location> locationMap = locationRepository
+                .findAllByIdIn(locationIds)
+                .stream()
+                .collect(Collectors.toMap(Location::getId, location -> location));
+
+        Map<Integer, CategoryMenuItem> categoryMenuItemMap = categoryMenuItemRepository
+                .findAllByIdIn(categoryMenuItemIds)
+                .stream()
+                .collect(Collectors.toMap(CategoryMenuItem::getId, categoryMenuItem -> categoryMenuItem));
+
+        List<MediaAsset> mediaAssetList = mediaAssetRepository.findAllByOwnerIdInAndOwnerType(menuItemIds, MediaAssetOwnerType.MENU_ITEM);
+        Map<Integer, ImageUrlsResponseDTO> mediaAssetMap = mediaAssetList.stream()
+                .collect(Collectors.toMap(MediaAsset::getOwnerId, mediaAsset -> {
+                    try {
+                        return MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset);
+                    } catch (Exception e) {
+                        return new ImageUrlsResponseDTO();
+                    }
+                }));
+
         List<MenuItemResponse> responseList = menuItemList
                 .stream()
                 .map(menuItem -> {
                     MenuItemResponse menuItemResponse = menuItemMapper
                             .toResponse(menuItem,
-                                    locationRepository.findById(menuItem.getLocationId())
-                                            .orElse(null),
-                                    categoryMenuItemRepository.findById(menuItem.getCategoryMenuItemsId())
-                                            .orElse(null));
-                    try {
-                        menuItemResponse.setImageUrls(getPresignedImageUrls(menuItem));
-                    } catch (Exception e) {
-                        menuItemResponse.setImageUrls(null);
-                    }
+                                    locationMap.getOrDefault(menuItem.getLocationId(), null),
+                                    categoryMenuItemMap.getOrDefault(menuItem.getCategoryMenuItemsId(), null));
+                    menuItemResponse.setImageUrls(mediaAssetMap.getOrDefault(menuItem.getId(), null));
                     return menuItemResponse;
                 }).toList();
 
@@ -233,21 +252,11 @@ public class MenuItemServiceImpl implements MenuItemService {
         setMenuItemList.forEach(setMenuItem -> setMenuItem.setStatus(menuItem.getStatus()));
 
         MenuItemResponse menuItemResponse = menuItemMapper.toResponse(menuItem, location, categoryMenuItem);
-        menuItemResponse.setImageUrls(getPresignedImageUrls(menuItem));
+
+        MediaAsset mediaAsset = MediaAssetUtil.getMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, menuItem.getId(), MediaAssetOwnerType.MENU_ITEM);
+
+        menuItemResponse.setImageUrls(MediaAssetUtil.getPresignedImageUrls(imageAssetService, mediaAsset));
 
         return menuItemResponse;
-    }
-
-    private ImageUrlsResponseDTO getPresignedImageUrls(MenuItem menuItem) throws Exception {
-        if (menuItem == null || menuItem.getImageOrigKey() == null) {
-            return null;
-        }
-
-        String originalUrl = imageAssetService.preSignedUrl(menuItem.getImageOrigKey(), 60);
-        String thumbUrl = menuItem.getImageThumbKey() != null ? imageAssetService.preSignedUrl(menuItem.getImageThumbKey(), 60) : null;
-        String mediumUrl = menuItem.getImageMediumKey() != null ? imageAssetService.preSignedUrl(menuItem.getImageMediumKey(), 60) : null;
-        String largeUrl = menuItem.getImageLargeKey() != null ? imageAssetService.preSignedUrl(menuItem.getImageLargeKey(), 60) : null;
-
-        return new ImageUrlsResponseDTO(originalUrl, thumbUrl, mediumUrl, largeUrl);
     }
 }

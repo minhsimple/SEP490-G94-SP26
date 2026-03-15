@@ -95,6 +95,30 @@ interface CategoryGroup {
                             </div>
 
                             <div>
+                                <label class="block text-sm font-medium mb-2">Ảnh màn hình (Tùy chọn)</label>
+                                
+                                <div class="flex items-start gap-4 mb-2" *ngIf="isEditing || selectedImageUrl">
+                                    <div *ngIf="isEditing" class="flex flex-col gap-1 items-center">
+                                        <span class="text-xs text-500 font-medium pb-1">Ảnh hiện tại</span>
+                                        <div class="border-round border-1 surface-border overflow-hidden bg-gray-100 flex items-center justify-center p-1" style="width: 120px; height: 90px; border: 1px dashed #cbd5e1;">
+                                            <img *ngIf="form.currentImageUrl" [src]="form.currentImageUrl" class="w-full h-full" style="object-fit: cover; border-radius: 4px;" alt="Current Image" />
+                                            <i *ngIf="!form.currentImageUrl" class="pi pi-image text-400" style="font-size: 2rem;"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div *ngIf="selectedImageUrl" class="flex flex-col gap-1 items-center">
+                                        <span class="text-xs text-primary font-medium pb-1">Ảnh thay thế mới</span>
+                                        <div class="border-round overflow-hidden bg-gray-100 flex items-center justify-center p-1" style="width: 120px; height: 90px; border: 2px solid #3b82f6;">
+                                            <img [src]="selectedImageUrl" class="w-full h-full" style="object-fit: cover; border-radius: 4px;" alt="New Image Preview" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <input type="file" #fileInput (change)="onFileSelect($event)" accept="image/*" class="w-full p-2 border-1 surface-border border-round" />
+                                <small class="text-red-500" *ngIf="submitted && !isEditing && !selectedImage">Ảnh là bắt buộc khi thêm mới.</small>
+                            </div>
+
+                            <div>
                                 <label class="block text-sm font-medium mb-2">Mô tả</label>
                                 <textarea pTextarea [(ngModel)]="form.description"
                                     rows="3" fluid
@@ -208,9 +232,10 @@ interface CategoryGroup {
                                                 (click)="$event.stopPropagation()"
                                                 (onChange)="toggleItem(item)"
                                             />
-                                            <div class="flex items-center justify-center border-round"
-                                                 style="width:32px;height:32px;background:#f1f5f9;border:1px solid #e2e8f0;">
-                                                <span style="font-size:14px;">🍽️</span>
+                                            <div class="flex items-center justify-center border-round overflow-hidden"
+                                                 style="width:32px;height:32px;background:#f1f5f9;border:1px solid #e2e8f0;flex-shrink:0;">
+                                                <img *ngIf="item.imageUrls?.thumbnailUrl" [src]="item.imageUrls?.thumbnailUrl" class="w-full h-full" style="object-fit:cover;" [alt]="item.name" />
+                                                <i *ngIf="!item.imageUrls?.thumbnailUrl" class="pi pi-image text-300" style="font-size:14px;"></i>
                                             </div>
                                             <div>
                                                 <div class="font-medium text-sm text-900">{{ item.name }}</div>
@@ -285,8 +310,12 @@ export class SetMenuEditComponent implements OnInit {
         locationId: null,
         description: '',
         code: '',
-        currentStatus: 'active'
+        currentStatus: 'active',
+        currentImageUrl: null
     };
+
+    selectedImage: File | null = null;
+    selectedImageUrl: string | null = null;
 
     locationOptions: { label: string; value: number }[] = [];
     categoryGroups: CategoryGroup[] = [];
@@ -339,9 +368,12 @@ export class SetMenuEditComponent implements OnInit {
                         description: data.description ?? '',
                         locationId: data.location?.id ?? data.locationId ?? null,
                         code: data.code ?? this.generateUUID(),
-                        currentStatus: data.status ?? 'active'
+                        currentStatus: data.status ?? 'active',
+                        currentImageUrl: data.imageUrls?.thumbnailUrl || null
                     };
                     this.isActive = data.status !== 'inactive';
+                    this.selectedImage = null;
+                    this.selectedImageUrl = null;
 
                     if (data.menuItemsByCategory) {
                         const allItems: any[] = [];
@@ -485,9 +517,27 @@ export class SetMenuEditComponent implements OnInit {
         }
     }
 
+    onFileSelect(event: any) {
+        const file = event.target.files[0];
+        if (file) {
+            this.selectedImage = file;
+            // Create a preview URL
+            const reader = new FileReader();
+            reader.onload = (e: any) => {
+                this.selectedImageUrl = e.target.result;
+                this.cdr.detectChanges();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            this.selectedImage = null;
+            this.selectedImageUrl = null;
+        }
+    }
+
     save() {
         this.submitted = true;
         if (!this.form.name?.trim()) return;
+        if (!this.isEditing && !this.selectedImage) return;
 
         this.saving = true;
 
@@ -507,7 +557,7 @@ export class SetMenuEditComponent implements OnInit {
 
         if (this.isEditing) {
             const needsStatusChange = this.isActive !== (this.form.currentStatus !== 'inactive');
-            this.setMenuService.updateSetMenu(this.menuId, payload).subscribe({
+            this.setMenuService.updateSetMenu(this.menuId, payload, this.selectedImage || undefined).subscribe({
                 next: () => {
                     if (needsStatusChange) {
                         this.setMenuService.changeStatus(this.menuId).subscribe({
@@ -524,7 +574,7 @@ export class SetMenuEditComponent implements OnInit {
                 }
             });
         } else {
-            this.setMenuService.createSetMenu(payload).subscribe({
+            this.setMenuService.createSetMenu(payload, this.selectedImage || undefined).subscribe({
                 next: () => this.afterSave(),
                 error: () => {
                     this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Tạo thất bại', life: 3000 });
