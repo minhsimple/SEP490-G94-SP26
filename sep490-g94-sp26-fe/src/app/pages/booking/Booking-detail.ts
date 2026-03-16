@@ -448,8 +448,12 @@ export class BookingDetailComponent implements OnInit {
 
     shiftLabel(value?: string): string {
         const map: Record<string, string> = {
-            SLOT_1: 'Trưa (12:00 - 17:00)',
-            SLOT_2: 'Tối (17:00 - 21:00)',
+            SLOT_1: 'Ca sáng (10:00 - 14:00)',
+            SLOT_2: 'Ca chiều (17:00 - 21:00)',
+            SLOT_3: 'Cả ngày (09:00 - 17:00)',
+            AFTERNOON: 'Ca sáng (10:00 - 14:00)',
+            EVENING: 'Ca chiều (17:00 - 21:00)',
+            FULL_DAY: 'Cả ngày (09:00 - 17:00)',
         };
         return map[value ?? ''] ?? (value || '-');
     }

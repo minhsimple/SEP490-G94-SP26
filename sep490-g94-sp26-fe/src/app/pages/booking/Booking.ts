@@ -276,8 +276,9 @@ export class BookingsComponent implements OnInit {
     ];
 
     shiftOptions = [
-        { label: 'Ca Trưa', value: 'SLOT_1' },
-        { label: 'Ca Tối', value: 'SLOT_2' },
+        { label: 'Ca sáng (10:00 - 14:00)', value: 'SLOT_1' },
+        { label: 'Ca chiều (17:00 - 21:00)', value: 'SLOT_2' },
+        { label: 'Cả ngày (09:00 - 17:00)', value: 'SLOT_3' },
     ];
 
     monthOptions = Array.from({ length: 12 }, (_, i) => ({
@@ -517,10 +518,12 @@ export class BookingsComponent implements OnInit {
 
     getShiftLabel(shift?: string): string {
         const m: Record<string, string> = {
-            SLOT_1: 'Ca Trưa',
-            SLOT_2: 'Ca Tối',
-            AFTERNOON: 'Ca Trưa',
-            EVENING:   'Ca Tối',
+            SLOT_1: 'Ca sáng (10:00 - 14:00)',
+            SLOT_2: 'Ca chiều (17:00 - 21:00)',
+            SLOT_3: 'Cả ngày (09:00 - 17:00)',
+            AFTERNOON: 'Ca sáng (10:00 - 14:00)',
+            EVENING:   'Ca chiều (17:00 - 21:00)',
+            FULL_DAY:  'Cả ngày (09:00 - 17:00)',
         };
         return m[shift ?? ''] ?? shift ?? '-';
     }

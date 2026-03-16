@@ -626,8 +626,9 @@ export class BookingCreateComponent implements OnInit {
     selectedCustomer: CustomerOption | null = null;
 
     shiftOptions = [
-        { label: 'Ca trưa', value: 'SLOT_1' },
-        { label: 'Ca tối', value: 'SLOT_2' },
+        { label: 'Ca sáng (10:00 - 14:00)', value: 'SLOT_1' },
+        { label: 'Ca chiều (17:00 - 21:00)', value: 'SLOT_2' },
+        { label: 'Cả ngày (09:00 - 17:00)', value: 'SLOT_3' },
     ];
 
     bookingStateOptions = [
@@ -1293,8 +1294,12 @@ export class BookingCreateComponent implements OnInit {
 
     getShiftLabel(value?: string): string {
         const labels: Record<string, string> = {
-            SLOT_1: 'Ca trưa',
-            SLOT_2: 'Ca tối',
+            SLOT_1: 'Ca sáng (10:00 - 14:00)',
+            SLOT_2: 'Ca chiều (17:00 - 21:00)',
+            SLOT_3: 'Cả ngày (09:00 - 17:00)',
+            AFTERNOON: 'Ca sáng (10:00 - 14:00)',
+            EVENING: 'Ca chiều (17:00 - 21:00)',
+            FULL_DAY: 'Cả ngày (09:00 - 17:00)',
         };
         return labels[value ?? ''] ?? value ?? '-';
     }
