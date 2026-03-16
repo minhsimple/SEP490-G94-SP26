@@ -91,6 +91,10 @@ export class ServicePackageService {
         .set('page', params.page ?? 0)
         .set('size', params.size ?? 20)
         .set('sort', params.sort ?? 'updatedAt,DESC');
+
+    if (params.locationId !== undefined) {
+        httpParams = httpParams.set('locationId', params.locationId);
+    }
         
     if (Object.keys(filterRequest).length > 0) {
         httpParams = httpParams.set('filterRequest', JSON.stringify(filterRequest));

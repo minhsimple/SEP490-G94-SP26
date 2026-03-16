@@ -6,12 +6,17 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
 import { ToastModule } from 'primeng/toast';
 import { TableModule, Table } from 'primeng/table';
 import { MessageService } from 'primeng/api';
-import { BookingService } from '../service/booking.service';
+import { Booking, BookingService } from '../service/booking.service';
+import { HallService } from '../service/hall.service';
+import { CustomerService } from '../service/customer.service';
+import { SetMenuService } from '../service/set-menu';
+import { ServicePackageService } from '../service/service-package.service';
 
 @Component({
     selector: 'app-bookings',
@@ -20,7 +25,7 @@ import { BookingService } from '../service/booking.service';
         CommonModule, FormsModule, RouterModule,
         TableModule, ButtonModule, InputTextModule,
         SelectModule, TagModule, InputIconModule,
-        IconFieldModule, ToastModule,
+        IconFieldModule, ToastModule, TooltipModule,
     ],
     template: `
         <div class="card">
@@ -86,16 +91,6 @@ import { BookingService } from '../service/booking.service';
                         style="width:150px"
                     />
 
-                    <!-- Filter: số bàn -->
-                    <p-select
-                        [options]="tableCountOptions"
-                        [(ngModel)]="filterTableCount"
-                        optionLabel="label" optionValue="value"
-                        placeholder="Tất cả số bàn"
-                        [showClear]="true"
-                        (onChange)="onFilter()"
-                        style="width:160px"
-                    />
                 </div>
 
                 <p-button
@@ -148,7 +143,7 @@ import { BookingService } from '../service/booking.service';
                             <!-- Mã đơn -->
                             <td>
                                 <span class="font-semibold text-primary" style="font-size:0.85rem;">
-                                    {{ booking.code }}
+                                    {{ booking.bookingNo ?? booking.code ?? ('#' + booking.id) }}
                                 </span>
                             </td>
 
@@ -157,14 +152,14 @@ import { BookingService } from '../service/booking.service';
                                 <div class="font-semibold text-900">
                                     {{ booking.groomName }} & {{ booking.brideName }}
                                 </div>
-                                <div class="text-xs text-500 mt-1">{{ booking.customerName }}</div>
+                                <div class="text-xs text-500 mt-1">{{ getCustomerDisplayName(booking) }}</div>
                             </td>
 
                             <!-- Sảnh -->
                             <td>
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-building text-500 text-xs"></i>
-                                    <span class="text-600 text-sm">{{ booking.hallName }}</span>
+                                    <span class="text-600 text-sm">{{ getHallLabel(booking) }}</span>
                                 </div>
                             </td>
 
@@ -173,18 +168,18 @@ import { BookingService } from '../service/booking.service';
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-calendar text-500 text-xs"></i>
                                     <div>
-                                        <div class="text-sm text-900">{{ formatDate(booking.eventDate) }}</div>
+                                        <div class="text-sm text-900">{{ formatDate(booking.bookingDate ?? booking.eventDate) }}</div>
                                         <div class="text-xs text-500">{{ getShiftLabel(booking.shift ?? booking.bookingTime) }}</div>
                                     </div>
                                 </div>
                             </td>
 
                             <!-- Số bàn -->
-                            <td class="text-600 text-sm">{{ booking.tableCount }} bàn</td>
+                            <td class="text-600 text-sm">{{ booking.expectedTables ?? booking.tableCount ?? '-' }} bàn</td>
 
                             <!-- Tổng tiền -->
                             <td class="font-semibold text-900">
-                                {{ formatPrice(booking.totalAmount) }}
+                                {{ formatPrice(getBookingTotalValue(booking)) }}
                             </td>
 
                             <!-- Trạng thái -->
@@ -200,6 +195,15 @@ import { BookingService } from '../service/booking.service';
 
                             <!-- Thao tác -->
                             <td>
+                                <p-button
+                                    icon="pi pi-pencil"
+                                    [rounded]="true"
+                                    [text]="true"
+                                    severity="secondary"
+                                    (click)="editBooking(booking)"
+                                    pTooltip="Chỉnh sửa"
+                                    tooltipPosition="top"
+                                />
                                 <p-button
                                     icon="pi pi-eye"
                                     [rounded]="true"
@@ -249,7 +253,7 @@ import { BookingService } from '../service/booking.service';
 })
 export class BookingsComponent implements OnInit {
 
-    bookings = signal<any[]>([]);
+    bookings = signal<Booking[]>([]);
     loading = false;
     totalRecords = 0;
     pageSize = 20;
@@ -262,19 +266,18 @@ export class BookingsComponent implements OnInit {
     filterHallId: number | null = null;
     filterShift: string | null = null;
     filterMonth: number | null = null;
-    filterTableCount: number | null = null;
-
     statusOptions = [
         { label: 'Nháp',          value: 'DRAFT'     },
-        { label: 'Đã xác nhận',   value: 'CONFIRMED' },
+        { label: 'Hết hạn',       value: 'EXPIRED' },
+        { label: 'Đã duyệt',      value: 'APPROVED' },
+        { label: 'Chưa duyệt',    value: 'UNAPPROVED' },
         { label: 'Đã huỷ',        value: 'CANCELLED' },
-        { label: 'Hoàn thành',    value: 'COMPLETED' },
+        { label: 'Đã chuyển đổi', value: 'CONVERTED' },
     ];
 
     shiftOptions = [
-        { label: 'Ca Sáng', value: 'SLOT_1' },
-        { label: 'Ca Trưa', value: 'SLOT_2' },
-        { label: 'Ca Tối',  value: 'SLOT_3' },
+        { label: 'Ca Trưa', value: 'SLOT_1' },
+        { label: 'Ca Tối', value: 'SLOT_2' },
     ];
 
     monthOptions = Array.from({ length: 12 }, (_, i) => ({
@@ -282,39 +285,43 @@ export class BookingsComponent implements OnInit {
         value: i + 1,
     }));
 
-    tableCountOptions = [
-        { label: '< 20 bàn',    value: 1 },
-        { label: '20 – 30 bàn', value: 2 },
-        { label: '31 – 50 bàn', value: 3 },
-        { label: '> 50 bàn',    value: 4 },
-    ];
-
     // Điền hallOptions từ API hoặc cấu hình tĩnh nếu cần
     hallOptions: { label: string; value: number }[] = [];
+    customerNameMap: Record<number, string> = {};
+    setMenuPriceMap: Record<number, number> = {};
+    packagePriceMap: Record<number, number> = {};
 
     @ViewChild('dt') dt!: Table;
 
     constructor(
         private bookingService: BookingService,
+        private hallService: HallService,
+        private customerService: CustomerService,
+        private setMenuService: SetMenuService,
+        private servicePackageService: ServicePackageService,
         private messageService: MessageService,
         private router: Router,
         private cdr: ChangeDetectorRef,
     ) {}
 
     ngOnInit() {
+        this.loadHallOptions();
         this.loadBookings();
     }
 
-    // ── Map tableCount option → min/max ───────────────────────────────────────
-    private getTableRange(opt: number | null): { tableCountMin?: number; tableCountMax?: number } {
-        if (opt == null) return {};
-        const map: Record<number, { tableCountMin?: number; tableCountMax?: number }> = {
-            1: { tableCountMax: 19 },
-            2: { tableCountMin: 20, tableCountMax: 30 },
-            3: { tableCountMin: 31, tableCountMax: 50 },
-            4: { tableCountMin: 51 },
-        };
-        return map[opt] ?? {};
+    loadHallOptions() {
+        this.hallService.searchHalls({ page: 0, size: 200, sort: 'name,ASC' }).subscribe({
+            next: (res) => {
+                this.hallOptions = (res.data?.content ?? []).map((hall) => ({
+                    label: hall.name ?? `Sảnh #${hall.id}`,
+                    value: Number(hall.id),
+                }));
+                this.cdr.markForCheck();
+            },
+            error: () => {
+                this.hallOptions = [];
+            },
+        });
     }
 
     loadBookings(page = 0, size = this.pageSize) {
@@ -341,11 +348,13 @@ export class BookingsComponent implements OnInit {
             bookingState: this.filterStatus  || undefined,
             bookingDateFrom,
             bookingDateTo,
-            ...this.getTableRange(this.filterTableCount),
         }).subscribe({
-            next: (res: any) => {
+            next: (res) => {
                 if (res?.data) {
-                    this.bookings.set(res.data.content ?? []);
+                    const rows = res.data.content ?? [];
+                    this.bookings.set(rows);
+                    this.resolveMissingCustomerNames(rows);
+                    this.resolveMissingPrices(rows);
                     this.totalRecords = res.data.totalElements ?? 0;
                 }
                 this.loading = false;
@@ -382,7 +391,11 @@ export class BookingsComponent implements OnInit {
     }
 
     viewDetail(booking: any) {
-        this.router.navigate(['/pages/booking', booking.id]);
+        this.router.navigate(['/pages/booking', booking.id, 'view']);
+    }
+
+    editBooking(booking: any) {
+        this.router.navigate(['/pages/booking', booking.id, 'edit']);
     }
 
     goToCreate() {
@@ -400,13 +413,112 @@ export class BookingsComponent implements OnInit {
         return new Date(d).toLocaleDateString('vi-VN');
     }
 
+    getHallLabel(booking: Booking): string {
+        if (booking.hallName) return booking.hallName;
+        const hall = this.hallOptions.find((item) => item.value === booking.hallId);
+        return hall?.label ?? (booking.hallId ? `Sảnh #${booking.hallId}` : '-');
+    }
+
+    getCustomerDisplayName(booking: Booking): string {
+        if (booking.customerName) return booking.customerName;
+
+        const customerId = Number(booking.customerId);
+        if (Number.isFinite(customerId) && this.customerNameMap[customerId]) {
+            return this.customerNameMap[customerId];
+        }
+
+        return 'Chưa có tên khách hàng';
+    }
+
+    private resolveMissingCustomerNames(rows: Booking[]) {
+        const missingIds = Array.from(new Set(
+            rows
+                .filter((booking) => !booking.customerName && booking.customerId != null)
+                .map((booking) => Number(booking.customerId))
+                .filter((id) => Number.isFinite(id) && !this.customerNameMap[id])
+        ));
+
+        missingIds.forEach((id) => {
+            this.customerService.getCustomerById(id).subscribe({
+                next: (res) => {
+                    const fullName = res.data?.fullName?.trim();
+                    if (fullName) {
+                        this.customerNameMap[id] = fullName;
+                        this.cdr.markForCheck();
+                    }
+                },
+                error: () => {
+                    // Skip silent: not all bookings are guaranteed to have resolvable customer records.
+                },
+            });
+        });
+    }
+
+    private resolveMissingPrices(rows: Booking[]) {
+        const setMenuIds = Array.from(new Set(
+            rows
+                .map((booking) => Number(booking.setMenuId))
+                .filter((id) => Number.isFinite(id) && id > 0 && !this.setMenuPriceMap[id])
+        ));
+
+        setMenuIds.forEach((id) => {
+            this.setMenuService.getById(id).subscribe({
+                next: (res) => {
+                    const price = Number(res.data?.setPrice ?? 0);
+                    this.setMenuPriceMap[id] = Number.isFinite(price) ? price : 0;
+                    this.cdr.markForCheck();
+                },
+                error: () => {
+                    this.setMenuPriceMap[id] = 0;
+                },
+            });
+        });
+
+        const packageIds = Array.from(new Set(
+            rows
+                .map((booking) => Number(booking.packageId))
+                .filter((id) => Number.isFinite(id) && id > 0 && !this.packagePriceMap[id])
+        ));
+
+        packageIds.forEach((id) => {
+            this.servicePackageService.getById(id).subscribe({
+                next: (res) => {
+                    const price = Number(res.data?.basePrice ?? 0);
+                    this.packagePriceMap[id] = Number.isFinite(price) ? price : 0;
+                    this.cdr.markForCheck();
+                },
+                error: () => {
+                    this.packagePriceMap[id] = 0;
+                },
+            });
+        });
+    }
+
+    getBookingTotalValue(booking: Booking): number | undefined {
+        const row = booking as any;
+        const direct = Number(row.totalAmount ?? row.totalPrice ?? row.finalAmount ?? row.amount);
+        if (Number.isFinite(direct) && direct > 0) {
+            return direct;
+        }
+
+        const tables = Number(booking.expectedTables ?? booking.tableCount ?? 0);
+        if (!Number.isFinite(tables) || tables <= 0) {
+            return undefined;
+        }
+
+        const setMenuId = Number(booking.setMenuId);
+        const packageId = Number(booking.packageId);
+        const setMenuPrice = Number.isFinite(setMenuId) ? (this.setMenuPriceMap[setMenuId] ?? 0) : 0;
+        const packagePrice = Number.isFinite(packageId) ? (this.packagePriceMap[packageId] ?? 0) : 0;
+        const computed = setMenuPrice * tables + packagePrice;
+
+        return computed > 0 ? computed : undefined;
+    }
+
     getShiftLabel(shift?: string): string {
         const m: Record<string, string> = {
-            SLOT_1: 'Ca Sáng',
-            SLOT_2: 'Ca Trưa',
-            SLOT_3: 'Ca Tối',
-            // fallback cho data cũ
-            MORNING:   'Ca Sáng',
+            SLOT_1: 'Ca Trưa',
+            SLOT_2: 'Ca Tối',
             AFTERNOON: 'Ca Trưa',
             EVENING:   'Ca Tối',
         };
@@ -416,9 +528,11 @@ export class BookingsComponent implements OnInit {
     getStatusLabel(status?: string): string {
         const m: Record<string, string> = {
             DRAFT:     'Nháp',
-            CONFIRMED: 'Đã xác nhận',
+            EXPIRED:   'Hết hạn',
+            APPROVED:  'Đã duyệt',
+            UNAPPROVED:'Chưa duyệt',
             CANCELLED: 'Đã huỷ',
-            COMPLETED: 'Hoàn thành',
+            CONVERTED: 'Đã chuyển đổi',
         };
         return m[status ?? ''] ?? status ?? '-';
     }
@@ -426,9 +540,11 @@ export class BookingsComponent implements OnInit {
     getStatusColor(status?: string): string {
         const m: Record<string, string> = {
             DRAFT:     '#d97706',
-            CONFIRMED: '#16a34a',
+            EXPIRED:   '#b45309',
+            APPROVED:  '#16a34a',
+            UNAPPROVED:'#b91c1c',
             CANCELLED: '#dc2626',
-            COMPLETED: '#2563eb',
+            CONVERTED: '#2563eb',
         };
         return m[status ?? ''] ?? '#64748b';
     }
@@ -436,9 +552,11 @@ export class BookingsComponent implements OnInit {
     getStatusBg(status?: string): string {
         const m: Record<string, string> = {
             DRAFT:     '#fef3c7',
-            CONFIRMED: '#dcfce7',
+            EXPIRED:   '#ffedd5',
+            APPROVED:  '#dcfce7',
+            UNAPPROVED:'#fee2e2',
             CANCELLED: '#fee2e2',
-            COMPLETED: '#dbeafe',
+            CONVERTED: '#dbeafe',
         };
         return m[status ?? ''] ?? '#f1f5f9';
     }
