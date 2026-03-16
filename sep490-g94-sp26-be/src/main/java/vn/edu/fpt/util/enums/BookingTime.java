@@ -4,9 +4,11 @@ import lombok.Getter;
 
 @Getter
 public enum BookingTime {
-    SLOT_1(6, 0, 12, 0),   // Sáng: 06:00 - 12:00
-    SLOT_2(12, 0, 18, 0),  // Chiều: 12:00 - 18:00
-    SLOT_3(6, 0, 18, 0);   // Cả ngày: 06:00 - 18:00
+    //day consists of 2 fixed shifts: Lunch (10:00-14:00) and Dinner (17:00-21:00).
+    // The standard duration is 4 hours per shift.
+    SLOT_1(10, 0, 14, 0),   // Sáng: 10:00 - 14:00
+    SLOT_2(17, 0, 21, 0),  // Chiều: 17:00 - 21:00
+    SLOT_3(9, 0, 17, 0);   // Cả ngày: 9:00 - 17:00
 
     private final int startHour;
     private final int startMinute;
