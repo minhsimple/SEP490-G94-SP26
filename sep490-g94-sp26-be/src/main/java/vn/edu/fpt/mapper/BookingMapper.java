@@ -1,9 +1,6 @@
 package vn.edu.fpt.mapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.Named;
+import org.mapstruct.*;
 import vn.edu.fpt.dto.request.booking.BookingRequest;
 import vn.edu.fpt.dto.response.booking.BookingResponse;
 import vn.edu.fpt.entity.Booking;
@@ -11,7 +8,10 @@ import vn.edu.fpt.entity.Booking;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Mapper(componentModel = "spring")
+@Mapper(
+        componentModel = "spring",
+        builder = @Builder(disableBuilder = true)
+)
 public interface BookingMapper {
 
     @Mapping(target = "id", ignore = true)
