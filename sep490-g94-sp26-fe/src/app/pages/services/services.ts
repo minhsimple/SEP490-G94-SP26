@@ -65,7 +65,7 @@ interface Column {
                             class="w-full"
                         />
                     </p-iconfield>
-                    <p-select
+                    <p-select *ngIf="!isSale"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -78,6 +78,7 @@ interface Column {
                 </div>
 
                 <p-button
+                    *ngIf="!isSale"
                     label="Thêm dịch vụ"
                     icon="pi pi-plus"
                     severity="primary"
@@ -119,7 +120,7 @@ interface Column {
                             </th>
                             <th style="min-width:8rem">Đơn vị</th>
                             <th style="min-width:8rem">Trạng thái</th>
-                            <th style="min-width:6rem">Thao tác</th>
+                            <th *ngIf="!isSale" style="min-width:6rem">Thao tác</th>
                         </tr>
                     </ng-template>
 
@@ -146,7 +147,7 @@ interface Column {
                                     {{ service.status === 'INACTIVE' ? 'Không hoạt động' : 'Hoạt động' }}
                                 </span>
                             </td>
-                            <td>
+                            <td *ngIf="!isSale">
                                 <p-button
                                     icon="pi pi-pencil"
                                     [rounded]="true"
@@ -452,6 +453,7 @@ export class ServicesComponent implements OnInit {
     newServiceActive = true;
     editedService: Partial<Service> = {};
     editedServiceActive = true;
+    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     // Options
     locationOptions: { label: string; value: number }[] = [];
@@ -479,6 +481,10 @@ export class ServicesComponent implements OnInit {
     ) {}
 
     ngOnInit() {
+        if (this.isSale) {
+            const locId = localStorage.getItem('locationId');
+            if (locId) this.selectedLocationId = Number(locId);
+        }
         this.cols = [
             { field: 'name',       header: 'Tên dịch vụ' },
             { field: 'locationId', header: 'Chi nhánh' },

@@ -56,7 +56,7 @@ interface Column {
             class="mr-2"
             (onClick)="openNew()"
           />
-          <p-select
+          <p-select *ngIf="!isSale"
             [options]="locationOptions"
             [(ngModel)]="selectedLocationId"
             optionLabel="label"
@@ -355,9 +355,13 @@ export class Leads implements OnInit {
   ) {}
 
   ngOnInit() {
+    if (this.isSale) {
+      const locId = localStorage.getItem('locationId');
+      if (locId) this.selectedLocationId = Number(locId);
+    }
     this.initializeDropdowns();
     this.loadLocationOptions();
-    this.loadLeads();
+    this.loadLeads(0, this.pageSize, this.selectedLocationId);
   }
 
   loadLeads(page = 0, size = this.pageSize, locationId?: number | null) {

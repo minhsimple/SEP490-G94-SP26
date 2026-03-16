@@ -48,13 +48,14 @@ interface Column {
             <p-toolbar styleClass="mb-6">
                 <ng-template #start>
                     <p-button
+                        *ngIf="!isSale"
                         label="Thêm khách hàng mới"
                         icon="pi pi-plus"
                         severity="primary"
                         class="mr-2"
                         (onClick)="openNew()"
                     />
-                    <p-select
+                    <p-select *ngIf="!isSale"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -130,7 +131,7 @@ interface Column {
                         <th pSortableColumn="status" style="min-width:10rem">
                             Trạng thái <p-sortIcon field="status" />
                         </th>
-                        <th style="min-width:10rem">Thao tác</th>
+                        <th *ngIf="!isSale" style="min-width:10rem">Thao tác</th>
                     </tr>
                 </ng-template>
 
@@ -162,7 +163,7 @@ interface Column {
                                 [severity]="getStatusSeverity(customer.status)"
                             />
                         </td>
-                        <td>
+                        <td *ngIf="!isSale">
                             <div class="flex gap-2">
                                 <p-button
                                     icon="pi pi-pencil"
@@ -331,6 +332,7 @@ export class Customers implements OnInit {
     pageSize = 20;
     selectedLocationId: number | null = null;
     locationOptions: { label: string; value: number }[] = [];
+    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     cols!: Column[];
 
@@ -345,6 +347,10 @@ export class Customers implements OnInit {
     ) { }
 
     ngOnInit() {
+        if (this.isSale) {
+            const locId = localStorage.getItem('locationId');
+            if (locId) this.selectedLocationId = Number(locId);
+        }
         this.cols = [
             { field: 'fullName', header: 'Họ và tên' },
             { field: 'email', header: 'Email' },

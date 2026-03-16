@@ -45,7 +45,7 @@ import { MenuItemService } from '../service/menu-item.service';
                             class="w-full"
                         />
                     </p-iconfield>
-                    <p-select
+                    <p-select *ngIf="!isSale"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -56,7 +56,7 @@ import { MenuItemService } from '../service/menu-item.service';
                         style="width: 200px"
                     />
                 </div>
-                <p-button label="Thêm món ăn" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
+                <p-button *ngIf="!isSale" label="Thêm món ăn" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
             </div>
 
             <!-- Table -->
@@ -128,20 +128,15 @@ import { MenuItemService } from '../service/menu-item.service';
                                 </span>
                             </td>
                             <td>
-                                <div class="flex gap-1">
-                                    <p-button icon="pi pi-eye" [rounded]="true" [text]="true"
-                                        severity="info" (click)="viewItem(item)"
-                                        pTooltip="Xem chi tiết" tooltipPosition="top" />
-                                    <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
-                                        severity="secondary" (click)="editItem(item)"
-                                        pTooltip="Chỉnh sửa" tooltipPosition="top" />
-                                    <p-button
-                                        [icon]="item.status === 'inactive' ? 'pi pi-check-circle' : 'pi pi-ban'"
-                                        [severity]="item.status === 'inactive' ? 'success' : 'warn'"
-                                        [rounded]="true" [text]="true"
-                                        (click)="toggleStatus(item)"
-                                        [pTooltip]="item.status === 'inactive' ? 'Kích hoạt' : 'Vô hiệu hóa'"
-                                        tooltipPosition="top" />
+                                <div class="flex gap-2">
+                                    <p-button icon="pi pi-eye" [rounded]="true" [outlined]="true" severity="info"
+                                        (click)="viewItem(item)" pTooltip="Chi tiết" tooltipPosition="top" />
+                                    <p-button *ngIf="!isSale" icon="pi pi-pencil" [rounded]="true" [outlined]="true" severity="secondary"
+                                        (click)="editItem(item)" pTooltip="Chỉnh sửa" tooltipPosition="top" />
+                                    <p-button *ngIf="!isSale"
+                                        [icon]="item.status === 'ACTIVE' ? 'pi pi-ban' : 'pi pi-check-circle'"
+                                        [severity]="item.status === 'ACTIVE' ? 'warn' : 'success'" [rounded]="true"
+                                        [outlined]="true" (click)="toggleStatus(item)" tooltipPosition="top" />
                                 </div>
                             </td>
                         </tr>
@@ -333,6 +328,7 @@ export class MenuItemComponent implements OnInit {
     searchTimeout: any;
     selectedLocationId: number | null = null;
     locationOptions: { label: string; value: number }[] = [];
+    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     itemDialog = false;
     submitted = false;
@@ -351,6 +347,10 @@ export class MenuItemComponent implements OnInit {
     ) { }
 
     ngOnInit() {
+        if (this.isSale) {
+            const locId = localStorage.getItem('locationId');
+            if (locId) this.selectedLocationId = Number(locId);
+        }
         this.loadDropdowns();
         this.loadItems();
     }
