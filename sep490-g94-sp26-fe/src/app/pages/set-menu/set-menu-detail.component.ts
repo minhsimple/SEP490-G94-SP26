@@ -132,17 +132,16 @@ import { SetMenuService } from '../service/set-menu';
                     </div>
                 </div>
 
-                <!-- Footer buttons -->
                 <div class="flex justify-end gap-2 mt-5">
                     <p-button label="Quay lại" icon="pi pi-arrow-left" [outlined]="true" severity="secondary" (onClick)="goBack()" />
-                    <p-button
+                    <p-button *ngIf="!isSale"
                         [label]="item.status === 'inactive' ? 'Kích hoạt' : 'Vô hiệu hóa'"
                         [icon]="item.status === 'inactive' ? 'pi pi-check-circle' : 'pi pi-ban'"
                         [severity]="item.status === 'inactive' ? 'success' : 'warn'"
                         [outlined]="true"
                         (onClick)="toggleStatus()"
                         [loading]="togglingStatus" />
-                    <p-button label="Chỉnh sửa" icon="pi pi-pencil" severity="primary"
+                    <p-button *ngIf="!isSale" label="Chỉnh sửa" icon="pi pi-pencil" severity="primary"
                         (onClick)="goEdit()" />
                 </div>
             </div>
@@ -268,6 +267,7 @@ import { SetMenuService } from '../service/set-menu';
 export class SetMenuDetailComponent implements OnInit {
     item: any = null;
     loading = true;
+    isSale = localStorage.getItem('codeRole') === 'SALE';
     togglingStatus = false;
 
     heroImage: string | null = null;

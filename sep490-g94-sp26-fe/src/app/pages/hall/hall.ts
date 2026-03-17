@@ -41,7 +41,7 @@ import { LocationService } from '../service/location.service';
                             (input)="onSearch()" placeholder="Tìm kiếm sảnh..." />
                     </p-iconfield>
 
-                    <p-select
+                    <p-select *ngIf="!isSale"
                         [options]="locationFilterOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -66,7 +66,7 @@ import { LocationService } from '../service/location.service';
                     </div>
                 </div>
 
-                <p-button label="Thêm sảnh" icon="pi pi-plus" (onClick)="openNew()" />
+                <p-button *ngIf="!isSale" label="Thêm sảnh" icon="pi pi-plus" (onClick)="openNew()" />
             </div>
 
             <!-- Loading -->
@@ -111,7 +111,7 @@ import { LocationService } from '../service/location.service';
                                         <button class="btn-detail" (click)="viewDetail(hall)">
                                             <i class="pi pi-eye"></i> Chi tiết
                                         </button>
-                                        <button class="btn-edit" (click)="editHall(hall)" pTooltip="Chỉnh sửa">
+                                        <button *ngIf="!isSale" class="btn-edit" (click)="editHall(hall)" pTooltip="Chỉnh sửa">
                                             <i class="pi pi-pencil"></i>
                                         </button>
                                     </div>
@@ -140,9 +140,9 @@ import { LocationService } from '../service/location.service';
                                 <div class="row-actions">
                                     <p-button icon="pi pi-eye" [rounded]="true" [outlined]="true" severity="info"
                                         (click)="viewDetail(hall)" pTooltip="Chi tiết" tooltipPosition="top" />
-                                    <p-button icon="pi pi-pencil" [rounded]="true" [outlined]="true" severity="secondary"
+                                    <p-button *ngIf="!isSale" icon="pi pi-pencil" [rounded]="true" [outlined]="true" severity="secondary"
                                         (click)="editHall(hall)" pTooltip="Chỉnh sửa" tooltipPosition="top" />
-                                    <p-button
+                                    <p-button *ngIf="!isSale"
                                         [icon]="hall.status === 'ACTIVE' ? 'pi pi-ban' : 'pi pi-check-circle'"
                                         [severity]="hall.status === 'ACTIVE' ? 'warn' : 'success'"
                                         [rounded]="true" [outlined]="true"
@@ -567,6 +567,7 @@ export class HallComponent implements OnInit {
     searchName = '';
     selectedLocationId: number | null = null;
     isActive = true;
+    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     editingHall: any = {};
     selectedImages: File[] = [];
@@ -582,6 +583,10 @@ export class HallComponent implements OnInit {
     ) { }
 
     ngOnInit() {
+        if (this.isSale) {
+            const locId = localStorage.getItem('locationId');
+            if (locId) this.selectedLocationId = Number(locId);
+        }
         this.loadLocations();
         this.loadHalls();
     }

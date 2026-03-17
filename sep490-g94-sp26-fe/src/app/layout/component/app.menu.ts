@@ -51,7 +51,8 @@ export class AppMenu implements OnInit, OnDestroy {
   ];
 
   private readonly rolePermissions: Record<string, string[] | 'all'> = {
-    SALE:         ['leads', 'customers'],
+    SALE:         ['leads', 'customers', 'service', 'menu', 'hall', 'booking'],
+    RECEPTION:    ['leads'],
     RECEPTIONIST: ['leads'],
     MANAGER:      'all',
     ADMIN:        'all',
