@@ -28,5 +28,7 @@ public class LeadsFilterRequest {
 
     Integer locationId;
 
+    String address;
+
     RecordStatus status;
 }

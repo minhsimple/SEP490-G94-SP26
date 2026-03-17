@@ -10,6 +10,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.categorymenuitem.CategoryMenuItemFilterRequest;
@@ -28,6 +29,7 @@ public class CategoryMenuItemController {
 
     CategoryMenuItemService categoryMenuItemService;
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Tạo danh mục sản phẩm mới")
     @PostMapping("/create")
     public ApiResponse<CategoryMenuItemResponse> createNewCategoryMenuItem(
@@ -39,6 +41,7 @@ public class CategoryMenuItemController {
                 .build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "cập nhật danh mục món ăn")
     @PutMapping("/update")
     public ApiResponse<CategoryMenuItemResponse> updateCategoryMenuItem(
@@ -75,6 +78,7 @@ public class CategoryMenuItemController {
                 .build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Thay đổi trạng thái của danh mục món ăn")
     @PutMapping("/{id}/change-status")
     public ApiResponse<CategoryMenuItemResponse> changeStatusCategoryMenuItem(@PathVariable Integer id) {

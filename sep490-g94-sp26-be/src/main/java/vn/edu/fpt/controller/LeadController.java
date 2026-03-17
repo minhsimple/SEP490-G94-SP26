@@ -14,7 +14,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
-import vn.edu.fpt.dto.request.lead.LeadAdditionalRequest;
 import vn.edu.fpt.dto.request.lead.LeadRequest;
 import vn.edu.fpt.dto.request.lead.LeadsFilterRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
@@ -80,9 +79,8 @@ public class LeadController {
     @Operation(summary = "Nhân viên Sales nhận khách hàng tiềm năng")
     @PostMapping("/{leadId}/assign-to-sales")
     public ApiResponse<Void> assignLeadToSale(@AuthenticationPrincipal UserDetails userDetails,
-                                              @PathVariable Integer leadId,
-                                              @RequestBody @Valid LeadAdditionalRequest additionalRequest) {
-        leadService.assignLeadToSales(userDetails, leadId, additionalRequest);
+                                              @PathVariable Integer leadId) {
+        leadService.assignLeadToSales(userDetails, leadId);
         return ApiResponse.<Void>builder().build();
     }
 

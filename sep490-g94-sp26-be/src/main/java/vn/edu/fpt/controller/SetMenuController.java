@@ -10,6 +10,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,6 +30,7 @@ import vn.edu.fpt.service.SetMenuService;
 public class SetMenuController {
     SetMenuService setMenuService;
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Transactional
     @Operation(summary = "Tạo set menu mới")
     @PostMapping("/create")
@@ -63,6 +65,7 @@ public class SetMenuController {
                 .build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Thay đổi trạng thái set menu")
     @PutMapping("/{setMenuId}/change-status")
     public ApiResponse<SetMenuResponse> changeStatusSetMenu(@PathVariable Integer setMenuId) throws Exception {
@@ -72,6 +75,7 @@ public class SetMenuController {
                 .build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Cập nhật set menu")
     @PutMapping("/update")
     public ApiResponse<SetMenuResponse> updateSetMenu(@RequestParam Integer setMenuId,
