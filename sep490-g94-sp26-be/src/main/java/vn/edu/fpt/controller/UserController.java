@@ -10,6 +10,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.user.UserFilterRequest;
@@ -28,6 +29,7 @@ public class UserController {
 
     UserService userService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Xem danh sách tai khoan nguoi dung ")
     @GetMapping("/search")
     public ApiResponse<SimplePage<UserResponse>> getAll(
@@ -49,7 +51,7 @@ public class UserController {
                 .data(response)
                 .build();
     }
-
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Thay đổi status (bật tắt) tai khoan nguoi dung ")
     @PatchMapping("/{id}/change-status")
     public ApiResponse<UserResponse> changeStatus(@PathVariable Integer id) {
@@ -58,7 +60,7 @@ public class UserController {
                 .data(response)
                 .build();
     }
-
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Tạo tai khoan nguoi dung")
     @PostMapping("/create")
     public ApiResponse<UserResponse> createUser(@RequestBody @Valid UserRequest request) {
@@ -67,6 +69,7 @@ public class UserController {
                 .data(response)
                 .build();
     }
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật tài khoản người dùng")
     @PutMapping("/{id}/update")
     public ApiResponse<UserResponse> updateUser(@RequestBody UserRequest request,

@@ -10,6 +10,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.role.RoleRequest;
@@ -26,6 +27,7 @@ import vn.edu.fpt.service.RoleService;
 public class RoleController {
     RoleService roleService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Create new role")
     @PostMapping("/create")
     public ApiResponse<RoleResponse> createRole(@RequestBody @Valid RoleRequest request) {
@@ -35,6 +37,7 @@ public class RoleController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update role")
     @PutMapping("/update")
     public ApiResponse<RoleResponse> updateRole(@RequestParam Integer roleId,
@@ -67,6 +70,7 @@ public class RoleController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Toggle role status (activate/deactivate)")
     @PatchMapping("/{id}/change-status")
     public ApiResponse<RoleResponse> changeRoleStatus(@PathVariable Integer id) {
