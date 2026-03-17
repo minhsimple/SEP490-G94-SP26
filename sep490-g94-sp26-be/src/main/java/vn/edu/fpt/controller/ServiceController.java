@@ -10,6 +10,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.service.ServiceFilterRequest;
@@ -27,6 +28,7 @@ import vn.edu.fpt.service.ServiceItemService;
 public class ServiceController {
     ServiceItemService serviceItemService;
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Tạo mới dịch vụ")
     @PostMapping("/create")
     public ApiResponse<ServiceResponse> createServiceItem(@RequestBody @Valid ServiceRequest request) {
@@ -36,6 +38,7 @@ public class ServiceController {
                 .build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Cập nhật dịch vụ")
     @PutMapping("/update")
     public ApiResponse<ServiceResponse> updateService(
@@ -57,6 +60,7 @@ public class ServiceController {
                 .build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Thay đổi trạng thái dich vụ")
     @PutMapping("/{menuItemId}/change-status")
     public ApiResponse<ServiceResponse> changeStatusService(@PathVariable Integer menuItemId) {

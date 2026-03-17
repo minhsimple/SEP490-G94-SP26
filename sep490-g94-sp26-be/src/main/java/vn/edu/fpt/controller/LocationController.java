@@ -10,6 +10,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.location.LocationRequest;
@@ -27,6 +28,7 @@ public class LocationController {
 
     LocationService locationService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Tạo địa điểm mới")
     @PostMapping("/create")
     public ApiResponse<LocationResponse> createLocation(@RequestBody @Valid LocationRequest request) {
@@ -36,6 +38,7 @@ public class LocationController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật địa điểm")
     @PutMapping("/update")
     public ApiResponse<LocationResponse> updateLocation(@RequestParam Integer locationId,
@@ -46,6 +49,7 @@ public class LocationController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Xem chi tiết địa điểm")
     @GetMapping("/{id}")
     public ApiResponse<LocationResponse> viewDetailLocation(@PathVariable Integer id) {
@@ -68,6 +72,7 @@ public class LocationController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Thay đổi status (bật/tắt) địa điểm")
     @PatchMapping("/{id}/change-status")
     public ApiResponse<LocationResponse> changeLocationStatus(@PathVariable Integer id) {

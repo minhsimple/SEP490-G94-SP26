@@ -10,6 +10,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.servicepackage.ServicePackageFilterRequest;
@@ -27,6 +28,7 @@ import vn.edu.fpt.service.ServicePackageService;
 public class ServicePackageController {
     ServicePackageService servicePackageService;
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Tạo mới gói dịch vụ")
     @PostMapping("/create")
     public ApiResponse<ServicePackageResponse> createServicePackage(@RequestBody @Valid ServicePackageRequest request) {
@@ -36,6 +38,7 @@ public class ServicePackageController {
                 .build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Cập nhật gói dịch vụ")
     @PutMapping("/update")
     public ApiResponse<ServicePackageResponse> updateServicePackage(
@@ -57,6 +60,7 @@ public class ServicePackageController {
                 .build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Thay đổi trạng thái gói dịch vụ")
     @PutMapping("/{servicePackageId}/change-status")
     public ApiResponse<ServicePackageResponse> changeStatus(@PathVariable Integer servicePackageId) {

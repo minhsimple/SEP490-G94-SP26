@@ -10,6 +10,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
@@ -30,7 +31,7 @@ import java.util.List;
 public class HallController {
 
     HallService hallService;
-
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Tạo hội trường mới")
     @PostMapping("/create")
     public ApiResponse<HallResponse> createHall(
@@ -42,6 +43,7 @@ public class HallController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật hội trường")
     @PutMapping("/update")
     public ApiResponse<HallResponse> updateHall(
@@ -75,6 +77,7 @@ public class HallController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Thay đổi trạng thái hội trường")
     @PatchMapping("/{id}/change-status")
     public ApiResponse<HallResponse> changeHallStatus(@PathVariable Integer id) {
