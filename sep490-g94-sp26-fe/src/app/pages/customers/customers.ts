@@ -48,7 +48,6 @@ interface Column {
             <p-toolbar styleClass="mb-6">
                 <ng-template #start>
                     <p-button
-                        *ngIf="!isSale"
                         label="Thêm khách hàng mới"
                         icon="pi pi-plus"
                         severity="primary"
@@ -131,7 +130,7 @@ interface Column {
                         <th pSortableColumn="status" style="min-width:10rem">
                             Trạng thái <p-sortIcon field="status" />
                         </th>
-                        <th *ngIf="!isSale" style="min-width:10rem">Thao tác</th>
+                        <th style="min-width:10rem">Thao tác</th>
                     </tr>
                 </ng-template>
 
@@ -163,7 +162,7 @@ interface Column {
                                 [severity]="getStatusSeverity(customer.status)"
                             />
                         </td>
-                        <td *ngIf="!isSale">
+                        <td>
                             <div class="flex gap-2">
                                 <p-button
                                     icon="pi pi-pencil"
@@ -255,6 +254,7 @@ interface Column {
                                 [filter]="true"
                                 filterBy="label"
                                 emptyMessage="Không có dữ liệu"
+                                [disabled]="isSale"
                             />
                         </div>
 
@@ -427,7 +427,9 @@ export class Customers implements OnInit {
     }
 
     openNew() {
-        this.customer = {};
+        this.customer = {
+            locationId: this.isSale && this.selectedLocationId ? this.selectedLocationId : undefined
+        };
         this.newEmail = '';
         this.newPhone = '';
         this.isEditing = false;

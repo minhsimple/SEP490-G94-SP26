@@ -16,6 +16,7 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { LeadService } from '../service/lead.service';
 import { LocationService } from '../service/location.service';
+import { UserService } from '../service/users.service';
 
 interface Column {
   field: string;
@@ -48,15 +49,14 @@ interface Column {
       <p-toolbar styleClass="mb-6">
         <ng-template #start>
           <!-- Ẩn nút Thêm Lead nếu là SALE -->
-          <p-button
-            *ngIf="!isSale"
+          <p-button *ngIf="!isSale"
             label="Thêm Lead mới"
             icon="pi pi-plus"
             severity="primary"
             class="mr-2"
             (onClick)="openNew()"
           />
-          <p-select *ngIf="!isSale"
+          <p-select *ngIf="!isSale && !isReception"
             [options]="locationOptions"
             [(ngModel)]="selectedLocationId"
             optionLabel="label"
@@ -65,6 +65,15 @@ interface Column {
             (onChange)="onLocationChange($event)"
             class="ml-2"
             [showClear]="true"
+            style="width: 200px"
+          />
+          <p-select *ngIf="isSale"
+            [options]="viewOptions"
+            [(ngModel)]="viewType"
+            optionLabel="label"
+            optionValue="value"
+            (onChange)="onViewTypeChange()"
+            class="ml-2"
             style="width: 200px"
           />
         </ng-template>
@@ -87,7 +96,7 @@ interface Column {
         [totalRecords]="totalRecords"
         [lazy]="true"
         (onLazyLoad)="onLazyLoad($event)"
-        [globalFilterFields]="['fullName', 'email', 'phone', 'state']"
+        [globalFilterFields]="['fullName', 'email', 'phone', 'state', 'assignedSalesName']"
         [tableStyle]="{ 'min-width': '75rem' }"
         [(selection)]="selectedLeads"
         [rowHover]="true"
@@ -126,13 +135,13 @@ interface Column {
             <th pSortableColumn="phone" style="min-width:12rem">
               Số điện thoại <p-sortIcon field="phone" />
             </th>
-            <th pSortableColumn="source" style="min-width:10rem">
-              Nguồn <p-sortIcon field="source" />
+            <th pSortableColumn="assignedSalesName" style="min-width:10rem">
+              Phụ trách <p-sortIcon field="assignedSalesName" />
             </th>
             <th pSortableColumn="state" style="min-width:10rem">
               Trạng thái <p-sortIcon field="state" />
             </th>
-            <th *ngIf="!isSale" style="min-width:10rem">Thao tác</th>
+            <th style="min-width:10rem">Thao tác</th>
           </tr>
         </ng-template>
 
@@ -157,16 +166,27 @@ interface Column {
               <i class="pi pi-phone mr-2 text-gray-400"></i>
               {{ lead.phone || '-' }}
             </td>
-            <td>{{ lead.source || '-' }}</td>
+            <td>{{ getSalesName(lead.assignedSalesId) }}</td>
             <td>
               <p-tag
-                [value]="getStatusLabel(lead.status)"
-                [severity]="getStatusSeverity(lead.status)"
+                [value]="getStateLabel(lead.state || lead.leadState)"
+                [severity]="getStateSeverity(lead.state || lead.leadState)"
               />
             </td>
-            <td *ngIf="!isSale">
+            <td>
   <div class="flex gap-2">
+    <!-- Nút Nhận Lead cho SALE khi Lead mới -->
     <p-button
+      *ngIf="isSale && (lead.state === 'NEW' || lead.leadState === 'NEW')"
+      icon="pi pi-user-plus"
+      [rounded]="true"
+      [outlined]="true"
+      severity="success"
+      (click)="takeLead(lead)"
+      pTooltip="Nhận Lead"
+      tooltipPosition="top"
+    />
+    <p-button *ngIf="!isSale"
       icon="pi pi-pencil"
       [rounded]="true"
       [outlined]="true"
@@ -175,7 +195,9 @@ interface Column {
       pTooltip="Chỉnh sửa"
       tooltipPosition="top"
     />
+    <!-- Nút Đổi trạng thái cho Admin/Manager hoặc khi SALE đã nhận lead -->
     <p-button
+      *ngIf="!isSale || (lead.state !== 'NEW' && lead.leadState !== 'NEW')"
       icon="pi pi-sync"
       [rounded]="true"
       [outlined]="true"
@@ -240,6 +262,18 @@ interface Column {
                 [(ngModel)]="lead.phone"
                 fluid
                 placeholder="0901234567"
+              />
+            </div>
+
+            <div>
+              <label for="address" class="block font-bold mb-3">Địa chỉ</label>
+              <input
+                type="text"
+                pInputText
+                id="address"
+                [(ngModel)]="lead.address"
+                fluid
+                placeholder="123 Đường ABC, ..."
               />
             </div>
 
@@ -337,13 +371,21 @@ export class Leads implements OnInit {
   states!: any[];
   cols!: Column[];
   loadingLocations = false;
+  salesNames = signal<Record<number, string>>({});
 
   locationOptions: { label: string; value: number }[] = [];
   locationName = '';
   selectedLocationId: number | null = null;
 
-  // Kiểm tra role SALE
-  isSale = localStorage.getItem('codeRole') === 'SALE';
+  // Kiểm tra role (không phân biệt hoa thường)
+  isSale = localStorage.getItem('codeRole')?.toUpperCase() === 'SALE';
+  isReception = ['RECEPTION', 'RECEPTIONIST'].includes(localStorage.getItem('codeRole')?.toUpperCase() ?? '');
+
+  viewType: 'all' | 'mine' = 'all';
+  viewOptions = [
+    { label: 'Tất cả Leads mới', value: 'all' },
+    { label: 'Leads của tôi', value: 'mine' },
+  ];
 
   @ViewChild('dt') dt!: Table;
 
@@ -352,10 +394,11 @@ export class Leads implements OnInit {
     private messageService: MessageService,
     private confirmationService: ConfirmationService,
     private locationService: LocationService,
-  ) {}
+    private userService: UserService,
+  ) { }
 
   ngOnInit() {
-    if (this.isSale) {
+    if (this.isSale || this.isReception) {
       const locId = localStorage.getItem('locationId');
       if (locId) this.selectedLocationId = Number(locId);
     }
@@ -368,11 +411,25 @@ export class Leads implements OnInit {
     this.loading = true;
     const params: any = { page, size };
     if (locationId) params.locationId = locationId;
+
+    if (this.isSale) {
+      if (this.viewType === 'all') {
+        params.state = 'NEW';
+      } else {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          params.assignedSalesId = Number(userId);
+        }
+      }
+    }
+
     this.leadService.searchLeads(params).subscribe({
       next: (res) => {
         if (res.code === 200 || res.data) {
-          this.leads.set(res.data.content);
+          const content = res.data.content;
+          this.leads.set(content);
           this.totalRecords = res.data.totalElements;
+          this.fetchSalesNames(content);
         }
         this.loading = false;
       },
@@ -388,6 +445,33 @@ export class Leads implements OnInit {
     });
   }
 
+  fetchSalesNames(leads: any[]) {
+    const currentNames = this.salesNames();
+    const newIds = leads
+      .map((l) => l.assignedSalesId)
+      .filter((id) => id && !currentNames[id]);
+
+    const uniqueIds = Array.from(new Set(newIds));
+
+    uniqueIds.forEach((id) => {
+      this.userService.getUser(id).subscribe({
+        next: (res) => {
+          if (res.code === 200) {
+            this.salesNames.update((prev) => ({
+              ...prev,
+              [id]: res.data.fullName as string,
+            }));
+          }
+        },
+      });
+    });
+  }
+
+  getSalesName(id: number | null | undefined): string {
+    if (!id) return '-';
+    return this.salesNames()[id] || 'Đang tải...';
+  }
+
   onLazyLoad(event: any) {
     const page = event.first / event.rows;
     const size = event.rows;
@@ -399,16 +483,17 @@ export class Leads implements OnInit {
   initializeDropdowns() {
     this.states = [
       { label: 'Mới', value: 'NEW' },
-      { label: 'Đang xử lý', value: 'IN_PROGRESS' },
-      { label: 'Đã chuyển đổi', value: 'CONVERTED' },
-      { label: 'Đã đóng', value: 'CLOSED' },
+      { label: 'Đang liên hệ', value: 'CONTACTING' },
+      { label: 'Đã báo giá', value: 'QUOTED' },
+      { label: 'Thành công', value: 'WON' },
+      { label: 'Thất bại', value: 'LOST' },
     ];
 
     this.cols = [
       { field: 'fullName', header: 'Họ và tên' },
       { field: 'email', header: 'Email' },
       { field: 'phone', header: 'Số điện thoại' },
-      { field: 'source', header: 'Nguồn' },
+      { field: 'assignedSalesName', header: 'Phụ trách' },
       { field: 'state', header: 'Trạng thái' },
     ];
   }
@@ -419,6 +504,13 @@ export class Leads implements OnInit {
 
   onLocationChange(event: any) {
     this.selectedLocationId = event.value;
+    this.loadLeads(0, this.pageSize, this.selectedLocationId);
+    if (this.dt) {
+      this.dt.reset();
+    }
+  }
+
+  onViewTypeChange() {
     this.loadLeads(0, this.pageSize, this.selectedLocationId);
     if (this.dt) {
       this.dt.reset();
@@ -449,6 +541,47 @@ export class Leads implements OnInit {
     this.lead = { ...lead };
     this.resolveLocationName(this.lead.locationId);
     this.leadDialog = true;
+  }
+
+  takeLead(lead: any) {
+    this.confirmationService.confirm({
+      message: `Bạn có chắc muốn nhận lead "${lead.fullName}"?`,
+      header: 'Xác nhận',
+      icon: 'pi pi-user-plus',
+      acceptLabel: 'Có',
+      rejectLabel: 'Không',
+      accept: () => {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Lỗi',
+            detail: 'Không tìm thấy thông tin nhân viên',
+          });
+          return;
+        }
+
+        this.leadService.assignToSales(lead.id).subscribe({
+          next: () => {
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Thành công',
+              detail: 'Đã nhận lead thành công',
+              life: 3000,
+            });
+            this.loadLeads(this.currentPage, this.pageSize, this.selectedLocationId);
+          },
+          error: () => {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Lỗi',
+              detail: 'Không thể nhận lead',
+              life: 3000,
+            });
+          },
+        });
+      },
+    });
   }
 
   changeStatus(lead: any) {
@@ -521,6 +654,7 @@ export class Leads implements OnInit {
       phone: this.lead.phone,
       email: this.lead.email,
       source: this.lead.source,
+      address: this.lead.address,
       notes: this.lead.notes,
       state: this.lead.state ?? 'NEW',
       locationId: this.lead.locationId,
@@ -572,9 +706,10 @@ export class Leads implements OnInit {
   getStateLabel(state: string | undefined): string {
     const map: Record<string, string> = {
       NEW: 'Mới',
-      IN_PROGRESS: 'Đang xử lý',
-      CONVERTED: 'Đã chuyển đổi',
-      CLOSED: 'Đã đóng',
+      CONTACTING: 'Đang liên hệ',
+      QUOTED: 'Đã báo giá',
+      WON: 'Thành công',
+      LOST: 'Thất bại',
     };
     return map[state ?? ''] ?? state ?? '-';
   }
@@ -587,12 +722,13 @@ export class Leads implements OnInit {
     return status === 'active' ? 'success' : 'danger';
   }
 
-  getStateSeverity(state: string | undefined): string {
-    const map: Record<string, string> = {
+  getStateSeverity(state: string | undefined): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' | null | undefined {
+    const map: Record<string, 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast'> = {
       NEW: 'info',
-      IN_PROGRESS: 'warn',
-      CONVERTED: 'success',
-      CLOSED: 'secondary',
+      CONTACTING: 'warn',
+      QUOTED: 'info',
+      WON: 'success',
+      LOST: 'danger',
     };
     return map[state ?? ''] ?? 'secondary';
   }

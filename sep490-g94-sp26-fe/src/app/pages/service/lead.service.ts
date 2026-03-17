@@ -9,6 +9,7 @@ export interface Lead {
     email?: string;
     source?: string;
     notes?: string;
+    address?: string;
     state?: string;
     locationId?: number;
     assignedSalesId?: number;
@@ -22,6 +23,7 @@ export interface LeadSearchParams {
     email?: string;
     source?: string;
     notes?: string;
+    address?: string;
     assignedSalesId?: number;
     state?: string;
     locationId?: number;
@@ -90,6 +92,7 @@ export class LeadService {
         phone?: string;
         email?: string;
         source?: string;
+        address?: string;
         notes?: string;
         state?: string;
         locationId?: number;
@@ -104,9 +107,12 @@ export class LeadService {
         phone?: string;
         email?: string;
         source?: string;
+        address?: string;
         notes?: string;
         state?: string;
         locationId?: number;
+        assignedSalesId?: number;
+        salesId?: number;
     }): Observable<ApiResponse<Lead>> {
         return this.http.put<ApiResponse<Lead>>(`${this.baseUrl}/update`, lead, {
             headers: this.getHeaders(),
@@ -116,6 +122,12 @@ export class LeadService {
 
     changeStatus(id: any): Observable<ApiResponse<Lead>> {
         return this.http.patch<ApiResponse<Lead>>(`${this.baseUrl}/${id}/change-status`, {}, {
+            headers: this.getHeaders()
+        });
+    }
+
+    assignToSales(id: any): Observable<ApiResponse<void>> {
+        return this.http.post<ApiResponse<void>>(`${this.baseUrl}/${id}/assign-to-sales`, {}, {
             headers: this.getHeaders()
         });
     }
