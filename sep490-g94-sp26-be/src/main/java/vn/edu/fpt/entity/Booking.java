@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.edu.fpt.util.enums.BookingState;
 import vn.edu.fpt.util.enums.BookingTime;
 
@@ -40,6 +42,7 @@ public class Booking extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "booking_time", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     BookingTime bookingTime;
 
     @Column(name = "expected_tables")
@@ -57,6 +60,7 @@ public class Booking extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "booking_state", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     BookingState bookingState = BookingState.DRAFT;
 
     @Column(name = "sales_id")
