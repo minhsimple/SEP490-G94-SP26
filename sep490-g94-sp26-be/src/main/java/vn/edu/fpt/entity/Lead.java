@@ -47,8 +47,7 @@ public class Lead extends BaseEntity {
     @Column(name = "assigned_sales_id")
     Integer assignedSalesId;
 
-//    @Column(name = "created_from")
-//    String createdFrom;
+    String address;
 
     @Column(name = "location_id")
     @Comment("location id")

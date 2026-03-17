@@ -32,6 +32,8 @@ public class LeadResponse {
 
     String locationName;
 
+    String address;
+
     RecordStatus status;
 
 }
