@@ -51,7 +51,7 @@ interface Column { field: string; header: string; }
                             class="w-full"
                         />
                     </p-iconfield>
-                    <p-select
+                    <p-select *ngIf="!isSale"
                         [options]="locationFilterOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -62,7 +62,7 @@ interface Column { field: string; header: string; }
                         style="width: 200px"
                     />
                 </div>
-                <p-button label="Thêm set menu" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
+                <p-button *ngIf="!isSale" label="Thêm set menu" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
             </div>
 
             <!-- Table -->
@@ -149,11 +149,11 @@ interface Column { field: string; header: string; }
                                         severity="secondary" (click)="viewSetMenu(menu)"
                                         pTooltip="Xem chi tiết" tooltipPosition="top" />
                                     <!-- Bút: chỉnh sửa -->
-                                    <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
+                                    <p-button *ngIf="!isSale" icon="pi pi-pencil" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="editSetMenu(menu)"
                                         pTooltip="Chỉnh sửa" tooltipPosition="top" />
                                     <!-- Toggle status -->
-                                    <p-button
+                                    <p-button *ngIf="!isSale"
                                         [icon]="menu.status === 'inactive' ? 'pi pi-check-circle' : 'pi pi-ban'"
                                         [severity]="menu.status === 'inactive' ? 'success' : 'warn'"
                                         [rounded]="true" [text]="true"
@@ -277,8 +277,10 @@ export class SetMenuComponent implements OnInit {
     currentPage = 0;
     searchKeyword = '';
     searchTimeout: any;
+    searchName = '';
     selectedLocationId: number | null = null;
     locationFilterOptions: { label: string; value: number }[] = [];
+    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     menuDialog = false;
     submitted = false;
@@ -302,6 +304,10 @@ export class SetMenuComponent implements OnInit {
     ) { }
 
     ngOnInit() {
+        if (this.isSale) {
+            const locId = localStorage.getItem('locationId');
+            if (locId) this.selectedLocationId = Number(locId);
+        }
         this.cols = [
             { field: 'name', header: 'Tên set menu' },
             { field: 'location', header: 'Chi nhánh' },

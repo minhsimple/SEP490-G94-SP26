@@ -142,10 +142,9 @@ import { LocationService } from '../service/location.service';
                     </div>
                 </div>
 
-                <!-- Footer actions -->
                 <div class="detail-footer">
                     <p-button label="Quay lại" icon="pi pi-arrow-left" [outlined]="true" (click)="goBack()" />
-                    <p-button label="Chỉnh sửa sảnh" icon="pi pi-pencil" (click)="openEdit()" />
+                    <p-button *ngIf="!isSale" label="Chỉnh sửa sảnh" icon="pi pi-pencil" (click)="openEdit()" />
                 </div>
             </ng-container>
 
@@ -486,6 +485,7 @@ export class HallDetailComponent implements OnInit {
     hallDialog = false;
     submitted = false;
     isActive = true;
+    isSale = localStorage.getItem('codeRole') === 'SALE';
     editingHall: any = {};
     locationOptions: { label: string; value: number }[] = [];
 

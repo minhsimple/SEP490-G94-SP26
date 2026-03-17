@@ -54,7 +54,7 @@ interface Column {
                         class="mr-2"
                         (onClick)="openNew()"
                     />
-                    <p-select
+                    <p-select *ngIf="!isSale"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -254,6 +254,7 @@ interface Column {
                                 [filter]="true"
                                 filterBy="label"
                                 emptyMessage="Không có dữ liệu"
+                                [disabled]="isSale"
                             />
                         </div>
 
@@ -331,6 +332,7 @@ export class Customers implements OnInit {
     pageSize = 20;
     selectedLocationId: number | null = null;
     locationOptions: { label: string; value: number }[] = [];
+    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     cols!: Column[];
 
@@ -345,6 +347,10 @@ export class Customers implements OnInit {
     ) { }
 
     ngOnInit() {
+        if (this.isSale) {
+            const locId = localStorage.getItem('locationId');
+            if (locId) this.selectedLocationId = Number(locId);
+        }
         this.cols = [
             { field: 'fullName', header: 'Họ và tên' },
             { field: 'email', header: 'Email' },
@@ -421,7 +427,9 @@ export class Customers implements OnInit {
     }
 
     openNew() {
-        this.customer = {};
+        this.customer = {
+            locationId: this.isSale && this.selectedLocationId ? this.selectedLocationId : undefined
+        };
         this.newEmail = '';
         this.newPhone = '';
         this.isEditing = false;

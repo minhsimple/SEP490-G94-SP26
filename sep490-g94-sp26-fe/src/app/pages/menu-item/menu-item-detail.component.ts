@@ -132,14 +132,14 @@ import { MenuItemService } from '../service/menu-item.service';
                 <!-- Footer buttons -->
                 <div class="flex justify-end gap-2 mt-5">
                     <p-button label="Quay lại" icon="pi pi-arrow-left" [outlined]="true" severity="secondary" (onClick)="goBack()" />
-                    <p-button
+                    <p-button *ngIf="!isSale"
                         [label]="item.status === 'inactive' ? 'Kích hoạt' : 'Vô hiệu hóa'"
                         [icon]="item.status === 'inactive' ? 'pi pi-check-circle' : 'pi pi-ban'"
                         [severity]="item.status === 'inactive' ? 'success' : 'warn'"
                         [outlined]="true"
                         (onClick)="toggleStatus()"
                         [loading]="togglingStatus" />
-                    <p-button label="Chỉnh sửa món ăn" icon="pi pi-pencil" severity="primary" (onClick)="openEdit()" />
+                    <p-button *ngIf="!isSale" label="Chỉnh sửa món ăn" icon="pi pi-pencil" severity="primary" (onClick)="openEdit()" />
                 </div>
             </div>
 
@@ -461,6 +461,7 @@ export class MenuItemDetailComponent implements OnInit {
     loading = true;
     saving = false;
     togglingStatus = false;
+    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     editDialog = false;
     submitted = false;
