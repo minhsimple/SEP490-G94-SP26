@@ -8,11 +8,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
 import org.springframework.data.domain.Page;
-import vn.edu.fpt.dto.request.lead.LeadAdditionalRequest;
 import vn.edu.fpt.dto.request.lead.LeadRequest;
 import vn.edu.fpt.dto.request.lead.LeadsFilterRequest;
 import vn.edu.fpt.dto.response.lead.LeadResponse;
 import vn.edu.fpt.entity.*;
+import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.LeadState;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
@@ -85,6 +85,13 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
             predicates.add(cb.like(
                     cb.lower(root.get("fullName")),
                     "%" + filter.getFullName().toLowerCase() + "%"
+            ));
+        }
+
+        if(!StringUtils.isNullOrEmptyOrBlank(filter.getAddress())) {
+            predicates.add(cb.like(
+                    cb.lower(root.get("address")),
+                    "%" + filter.getAddress().toLowerCase() + "%"
             ));
         }
 
@@ -189,7 +196,7 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
 
     @Transactional
     @Override
-    public void assignLeadToSales(UserDetails userDetails, Integer leadId, LeadAdditionalRequest additionalRequest) {
+    public void assignLeadToSales(UserDetails userDetails, Integer leadId) {
         Lead lead = leadRepository.findByIdAndStatus(leadId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.LEAD_NOT_EXISTED));
 
@@ -206,7 +213,7 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
                     lead.setAssignedSalesId(user.getId());
                     lead.setLeadState(LeadState.CONTACTING);
 
-                    Customer customer = getCustomer(additionalRequest, lead);
+                    Customer customer = getCustomer(lead);
                     Integer customerId = customerRepository.save(customer).getId();
 
                     LeadConversion leadConversion = new LeadConversion(leadId, customerId);
@@ -216,14 +223,14 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
                 });
     }
 
-    private static @NonNull Customer getCustomer(LeadAdditionalRequest additionalRequest, Lead lead) {
+    private static @NonNull Customer getCustomer(Lead lead) {
         Customer customer = new Customer();
         customer.setFullName(lead.getFullName());
         customer.setPhone(lead.getPhone());
         customer.setEmail(lead.getEmail());
         customer.setLocationId(lead.getLocationId());
         customer.setNotes(lead.getNotes());
-        customer.setAddress(additionalRequest.getAddress());
+        customer.setAddress(lead.getAddress());
         return customer;
     }
 

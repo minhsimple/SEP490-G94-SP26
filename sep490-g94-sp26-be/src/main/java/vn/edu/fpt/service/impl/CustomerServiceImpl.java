@@ -15,6 +15,10 @@ import vn.edu.fpt.dto.request.customer.CustomersFilterRequest;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
 import vn.edu.fpt.entity.Customer;
 import vn.edu.fpt.entity.Location;
+import vn.edu.fpt.entity.Role;
+import vn.edu.fpt.entity.User;
+import vn.edu.fpt.respository.RoleRepository;
+import vn.edu.fpt.respository.UserRepository;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -35,6 +39,8 @@ import java.util.stream.Collectors;
 public class CustomerServiceImpl implements CustomerService {
     private final CustomerRepository customerRepository;
     private final LocationRepository locationRepository;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
 
     private final CustomerMapper customerMapper;
 
@@ -159,8 +165,9 @@ public class CustomerServiceImpl implements CustomerService {
                 predicates.add(cb.equal(root.get("status"), filterRequest.getStatus()));
             }
 
-            predicates.add(cb.equal(root.get("createdBy"), userDetails.getUsername()));
-
+            if(!isAdminOrManager(userDetails)) {
+                predicates.add(cb.equal(root.get("createdBy"), userDetails.getUsername()));
+            }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
@@ -190,5 +197,14 @@ public class CustomerServiceImpl implements CustomerService {
                 customerPage.getTotalElements(),
                 pageable
         );
+    }
+
+    private boolean isAdminOrManager(UserDetails userDetails) {
+        User user = userRepository.findByEmailAndStatus(userDetails.getUsername(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
+        Role role = roleRepository.findById(user.getRole_id())
+                .orElseThrow(() -> new AppException(ERROR_CODE.UNAUTHORIZED));
+
+        return role.getCode().equals("ADMIN") || role.getCode().equals("MANAGER");
     }
 }

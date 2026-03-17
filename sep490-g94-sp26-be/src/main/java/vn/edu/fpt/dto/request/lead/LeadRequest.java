@@ -31,7 +31,8 @@ public class LeadRequest {
 
     LeadState state;
 
-//    String createdFrom;
+    @NotBlank(message = "Địa chỉ ko đc để trống")
+    String address;
 
     @NotNull(message = "Địa điểm không được để trống")
     Integer locationId;
