@@ -197,7 +197,9 @@ public class BookingServiceImpl implements BookingService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
         validateStateTransition(booking.getBookingState(), request.getBookingState());
-
+        if(request.getBookingState().equals(BookingState.CANCELLED)){
+            booking.setStatus(RecordStatus.inactive);
+        }
         booking.setBookingState(request.getBookingState());
         Booking saved = bookingRepository.save(booking);
         return bookingMapper.toResponse(saved);
