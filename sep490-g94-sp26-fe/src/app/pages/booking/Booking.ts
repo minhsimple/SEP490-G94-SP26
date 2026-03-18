@@ -47,12 +47,12 @@ import { ServicePackageService } from '../service/service-package.service';
                         />
                     </p-iconfield>
 
-                    <!-- Filter: trạng thái -->
+                    <!-- Filter: trạng thái xử lý -->
                     <p-select
                         [options]="statusOptions"
                         [(ngModel)]="filterStatus"
                         optionLabel="label" optionValue="value"
-                        placeholder="Tất cả trạng thái"
+                        placeholder="Tất cả trạng thái xử lý"
                         [showClear]="true"
                         (onChange)="onFilter()"
                         style="width:180px"
@@ -133,7 +133,7 @@ import { ServicePackageService } from '../service/service-package.service';
                             <th style="min-width:13rem">Ngày tổ chức</th>
                             <th style="min-width:7rem">Số bàn</th>
                             <th style="min-width:11rem">Tổng tiền</th>
-                            <th style="min-width:10rem">Trạng thái</th>
+                            <th style="min-width:10rem">Trạng thái xử lý</th>
                             <th style="min-width:7rem">Thao tác</th>
                         </tr>
                     </ng-template>
@@ -182,14 +182,14 @@ import { ServicePackageService } from '../service/service-package.service';
                                 {{ formatPrice(getBookingTotalValue(booking)) }}
                             </td>
 
-                            <!-- Trạng thái -->
+                            <!-- Trạng thái xử lý -->
                             <td>
                                 <span
                                     class="text-xs font-semibold px-2 py-1 border-round"
-                                    [style.background]="getStatusBg(booking.status ?? booking.bookingState)"
-                                    [style.color]="getStatusColor(booking.status ?? booking.bookingState)"
+                                    [style.background]="getStatusBg(booking.bookingState)"
+                                    [style.color]="getStatusColor(booking.bookingState)"
                                 >
-                                    {{ getStatusLabel(booking.status ?? booking.bookingState) }}
+                                    {{ getStatusLabel(booking.bookingState) }}
                                 </span>
                             </td>
 
