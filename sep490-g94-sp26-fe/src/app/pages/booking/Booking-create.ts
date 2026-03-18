@@ -18,6 +18,8 @@ import { HallService } from '../service/hall.service';
 import { LocationService } from '../service/location.service';
 import { ServicePackageService } from '../service/service-package.service';
 import { SetMenuService } from '../service/set-menu';
+import { UserService } from '../service/users.service';
+import { RoleService } from '../service/role.service';
 import { forkJoin, Observable, of } from 'rxjs';
 import { catchError, map, mapTo, switchMap, tap } from 'rxjs/operators';
 
@@ -47,6 +49,11 @@ interface ServicePackageOption {
     id: number;
     label: string;
     price: number;
+}
+
+interface SalesOption {
+    id: number;
+    label: string;
 }
 
 @Component({
@@ -150,6 +157,23 @@ interface ServicePackageOption {
             grid-template-columns: 1fr 1fr;
             gap: 0.75rem;
         }
+        .person-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .person-panel {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 1rem;
+            background: #fcfdff;
+        }
+        .person-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.85rem;
+        }
         .menu-card {
             border: 1px solid #e2e8f0;
             border-radius: 8px;
@@ -238,7 +262,8 @@ interface ServicePackageOption {
             }
             .two-col,
             .three-col,
-            .menu-grid {
+            .menu-grid,
+            .person-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -312,11 +337,14 @@ interface ServicePackageOption {
 
                         <div class="field-wrap">
                             <label class="field-label">Sales phụ trách</label>
-                            <p-inputnumber
+                            <p-select
+                                [options]="salesOptions"
                                 [(ngModel)]="form.salesId"
-                                [min]="1"
+                                optionLabel="label"
+                                optionValue="id"
+                                placeholder="Chọn sales phụ trách"
+                                [showClear]="true"
                                 styleClass="w-full"
-                                inputStyleClass="w-full"
                             />
                         </div>
                     </div>
@@ -348,47 +376,45 @@ interface ServicePackageOption {
 
                 <div class="section-card">
                     <div class="section-title">Thông tin cô dâu chú rể</div>
-                    <div class="two-col">
-                        <div class="field-wrap">
-                            <label class="field-label">Họ tên chú rể <span class="req">*</span></label>
-                            <input pInputText [(ngModel)]="form.groomName" placeholder="Nguyễn Văn A" style="width:100%" />
+                    <div class="person-grid">
+                        <div class="person-panel">
+                            <div class="person-title">Thông tin cô dâu</div>
+                            <div class="field-wrap">
+                                <label class="field-label">Họ tên cô dâu <span class="req">*</span></label>
+                                <input pInputText [(ngModel)]="form.brideName" placeholder="Trần Thị B" style="width:100%" />
+                            </div>
+                            <div class="field-wrap">
+                                <label class="field-label">Tuổi cô dâu</label>
+                                <p-inputnumber [(ngModel)]="form.brideAge" [min]="1" [max]="120" styleClass="w-full" inputStyleClass="w-full" />
+                            </div>
+                            <div class="field-wrap">
+                                <label class="field-label">Tên cha cô dâu</label>
+                                <input pInputText [(ngModel)]="form.brideFatherName" placeholder="Trần Văn..." style="width:100%" />
+                            </div>
+                            <div class="field-wrap" style="margin-bottom:0">
+                                <label class="field-label">Tên mẹ cô dâu</label>
+                                <input pInputText [(ngModel)]="form.brideMotherName" placeholder="Lê Thị..." style="width:100%" />
+                            </div>
                         </div>
-                        <div class="field-wrap">
-                            <label class="field-label">Họ tên cô dâu <span class="req">*</span></label>
-                            <input pInputText [(ngModel)]="form.brideName" placeholder="Trần Thị B" style="width:100%" />
-                        </div>
-                    </div>
 
-                    <div class="two-col">
-                        <div class="field-wrap">
-                            <label class="field-label">Tuổi chú rể</label>
-                            <p-inputnumber [(ngModel)]="form.groomAge" [min]="1" [max]="120" styleClass="w-full" inputStyleClass="w-full" />
-                        </div>
-                        <div class="field-wrap">
-                            <label class="field-label">Tuổi cô dâu</label>
-                            <p-inputnumber [(ngModel)]="form.brideAge" [min]="1" [max]="120" styleClass="w-full" inputStyleClass="w-full" />
-                        </div>
-                    </div>
-
-                    <div class="two-col">
-                        <div class="field-wrap">
-                            <label class="field-label">Tên cha chú rể</label>
-                            <input pInputText [(ngModel)]="form.groomFatherName" placeholder="Nguyễn Văn..." style="width:100%" />
-                        </div>
-                        <div class="field-wrap">
-                            <label class="field-label">Tên mẹ chú rể</label>
-                            <input pInputText [(ngModel)]="form.groomMotherName" placeholder="Trần Thị..." style="width:100%" />
-                        </div>
-                    </div>
-
-                    <div class="two-col">
-                        <div class="field-wrap" style="margin-bottom:0">
-                            <label class="field-label">Tên cha cô dâu</label>
-                            <input pInputText [(ngModel)]="form.brideFatherName" placeholder="Trần Văn..." style="width:100%" />
-                        </div>
-                        <div class="field-wrap" style="margin-bottom:0">
-                            <label class="field-label">Tên mẹ cô dâu</label>
-                            <input pInputText [(ngModel)]="form.brideMotherName" placeholder="Lê Thị..." style="width:100%" />
+                        <div class="person-panel">
+                            <div class="person-title">Thông tin chú rể</div>
+                            <div class="field-wrap">
+                                <label class="field-label">Họ tên chú rể <span class="req">*</span></label>
+                                <input pInputText [(ngModel)]="form.groomName" placeholder="Nguyễn Văn A" style="width:100%" />
+                            </div>
+                            <div class="field-wrap">
+                                <label class="field-label">Tuổi chú rể</label>
+                                <p-inputnumber [(ngModel)]="form.groomAge" [min]="1" [max]="120" styleClass="w-full" inputStyleClass="w-full" />
+                            </div>
+                            <div class="field-wrap">
+                                <label class="field-label">Tên cha chú rể</label>
+                                <input pInputText [(ngModel)]="form.groomFatherName" placeholder="Nguyễn Văn..." style="width:100%" />
+                            </div>
+                            <div class="field-wrap" style="margin-bottom:0">
+                                <label class="field-label">Tên mẹ chú rể</label>
+                                <input pInputText [(ngModel)]="form.groomMotherName" placeholder="Trần Thị..." style="width:100%" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -590,7 +616,7 @@ interface ServicePackageOption {
                     <div class="summary-divider"></div>
                     <div class="summary-row" *ngIf="form.salesId">
                         <span>Sales phụ trách</span>
-                        <strong>#{{ form.salesId }}</strong>
+                        <strong>{{ getSalesLabel(form.salesId) }}</strong>
                     </div>
                 </div>
             </div>
@@ -622,8 +648,11 @@ export class BookingCreateComponent implements OnInit {
     hallOptions: HallOption[] = [];
     setMenuOptions: SetMenuOption[] = [];
     packageOptions: ServicePackageOption[] = [];
+    salesOptions: SalesOption[] = [];
     customerSuggestions: CustomerOption[] = [];
     selectedCustomer: CustomerOption | null = null;
+    salesNameMap: Record<number, string> = {};
+    saleRoleIds = new Set<number>();
 
     shiftOptions = [
         { label: 'Ca sáng (10:00 - 14:00)', value: 'SLOT_1' },
@@ -686,12 +715,15 @@ export class BookingCreateComponent implements OnInit {
         private locationService: LocationService,
         private setMenuService: SetMenuService,
         private servicePackageService: ServicePackageService,
+        private userService: UserService,
+        private roleService: RoleService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef,
     ) {}
 
     ngOnInit() {
         this.loadLocations();
+        this.loadSalesOptions();
 
         const id = Number(this.route.snapshot.paramMap.get('id'));
         if (Number.isFinite(id) && id > 0) {
@@ -786,6 +818,9 @@ export class BookingCreateComponent implements OnInit {
         this.form.packageId = this.toNumberOrNull(booking.packageId);
         this.form.setMenuId = this.toNumberOrNull(booking.setMenuId);
         this.form.salesId = this.toNumberOrNull(booking.salesId) ?? this.form.salesId;
+        if (this.form.salesId) {
+            this.ensureSalesName(this.form.salesId);
+        }
         this.form.reservedUntil = booking.reservedUntil ? new Date(booking.reservedUntil) : null;
         this.form.notes = booking.notes ?? '';
         this.form.brideName = booking.brideName ?? '';
@@ -796,6 +831,111 @@ export class BookingCreateComponent implements OnInit {
         this.form.brideMotherName = booking.brideMotherName ?? '';
         this.form.groomFatherName = booking.groomFatherName ?? '';
         this.form.groomMotherName = booking.groomMotherName ?? '';
+    }
+
+    private loadSalesOptions() {
+        this.roleService.searchRoles({ page: 0, size: 100, sort: 'updatedAt,DESC' }).subscribe({
+            next: (res) => {
+                const roles = res.data?.content ?? [];
+                this.saleRoleIds = new Set(
+                    roles
+                        .filter((role: any) => this.isSaleRole(role))
+                        .map((role: any) => Number(role.id))
+                        .filter((id: number) => Number.isFinite(id) && id > 0)
+                );
+                this.fetchSalesUsers();
+            },
+            error: () => {
+                this.saleRoleIds.clear();
+                this.fetchSalesUsers();
+            },
+        });
+    }
+
+    private fetchSalesUsers() {
+        this.userService.searchUsers({ page: 0, size: 200, sort: 'fullName,ASC' }).subscribe({
+            next: (res) => {
+                const users = res.data?.content ?? [];
+                const salesUsers = users.filter((user: any) => this.isSaleUser(user));
+
+                this.salesOptions = salesUsers.map((user: any) => {
+                    const id = Number(user.id);
+                    const label = user.fullName ?? `Sales #${id}`;
+                    this.salesNameMap[id] = label;
+                    return { id, label };
+                });
+
+                if (this.form.salesId && !this.salesOptions.some((item) => item.id === Number(this.form.salesId))) {
+                    this.form.salesId = null;
+                }
+
+                if (this.form.salesId) {
+                    this.ensureSalesName(this.form.salesId);
+                }
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.salesOptions = [];
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    private ensureSalesName(salesId: number) {
+        const id = Number(salesId);
+        if (!Number.isFinite(id) || id <= 0 || this.salesNameMap[id]) {
+            return;
+        }
+
+        this.userService.getUser(id).subscribe({
+            next: (res) => {
+                const fullName = res.data?.fullName?.trim() || `Sales #${id}`;
+                this.salesNameMap[id] = fullName;
+
+                if (this.isSaleUser(res.data) && !this.salesOptions.some((item) => item.id === id)) {
+                    this.salesOptions = [{ id, label: fullName }, ...this.salesOptions];
+                }
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.salesNameMap[id] = `Sales #${id}`;
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    getSalesLabel(salesId?: number | null): string {
+        const id = Number(salesId);
+        if (!Number.isFinite(id) || id <= 0) {
+            return '-';
+        }
+        return this.salesNameMap[id] ?? `Sales #${id}`;
+    }
+
+    private isSaleUser(user: any): boolean {
+        const roleId = Number(user?.roleId ?? user?.role?.id);
+        if (Number.isFinite(roleId) && roleId > 0 && this.saleRoleIds.has(roleId)) {
+            return true;
+        }
+
+        const roleCandidates = [
+            user?.role,
+            user?.roleCode,
+            user?.codeRole,
+            user?.roleName,
+            user?.role?.code,
+            user?.role?.name,
+        ]
+            .filter((value) => value != null)
+            .map((value) => String(value).toUpperCase());
+
+        return roleCandidates.some((value) => value.includes('SALE'));
+    }
+
+    private isSaleRole(role: any): boolean {
+        const code = String(role?.code ?? '').toUpperCase();
+        const name = String(role?.name ?? '').toUpperCase();
+        return code.includes('SALE') || name === 'SALE' || name.includes('SALE');
     }
 
     private loadCustomerById(customerId: number): Observable<void> {
