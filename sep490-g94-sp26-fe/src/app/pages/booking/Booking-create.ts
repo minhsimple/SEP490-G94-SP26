@@ -283,14 +283,6 @@ interface SalesOption {
             <div class="header-actions">
                 <p-button
                     *ngIf="isEditMode"
-                    label="Đổi trạng thái kích hoạt"
-                    icon="pi pi-refresh"
-                    severity="secondary"
-                    [loading]="statusSubmitting"
-                    (onClick)="toggleStatus()"
-                />
-                <p-button
-                    *ngIf="isEditMode"
                     label="Lưu cập nhật"
                     icon="pi pi-save"
                     [loading]="submitting"
@@ -337,41 +329,28 @@ interface SalesOption {
 
                         <div class="field-wrap">
                             <label class="field-label">Sales phụ trách</label>
-                            <p-select
-                                [options]="salesOptions"
-                                [(ngModel)]="form.salesId"
-                                optionLabel="label"
-                                optionValue="id"
-                                placeholder="Chọn sales phụ trách"
-                                [showClear]="true"
-                                styleClass="w-full"
-                            />
-                        </div>
-                    </div>
-
-                    <div class="three-col" *ngIf="isEditMode">
-                        <div class="field-wrap" style="margin-bottom:0">
-                            <label class="field-label">Trạng thái xử lý</label>
-                            <div class="flex gap-2">
+                            <ng-container *ngIf="isSaleCreateMode; else salesSelectTpl">
+                                <input
+                                    pInputText
+                                    [ngModel]="getSalesLabel(form.salesId || loggedInUserId)"
+                                    readonly
+                                    style="width:100%; background:#f8fafc; color:#334155"
+                                />
+                            </ng-container>
+                            <ng-template #salesSelectTpl>
                                 <p-select
-                                    [options]="bookingStateOptions"
-                                    [(ngModel)]="selectedBookingState"
+                                    [options]="salesOptions"
+                                    [(ngModel)]="form.salesId"
                                     optionLabel="label"
-                                    optionValue="value"
+                                    optionValue="id"
+                                    placeholder="Chọn sales phụ trách"
+                                    [showClear]="true"
                                     styleClass="w-full"
                                 />
-                                <p-button
-                                    icon="pi pi-check"
-                                    severity="secondary"
-                                    [loading]="stateSubmitting"
-                                    (onClick)="saveBookingState()"
-                                />
-                            </div>
+                            </ng-template>
                         </div>
-
-                        <div></div>
-                        <div></div>
                     </div>
+
                 </div>
 
                 <div class="section-card">
@@ -429,7 +408,8 @@ interface SalesOption {
                             optionLabel="label"
                             optionValue="id"
                             placeholder="Chọn chi nhánh"
-                            [showClear]="true"
+                            [showClear]="!isSaleCreateMode"
+                            [disabled]="isSaleCreateMode"
                             (onChange)="onLocationChange()"
                             styleClass="w-full"
                         />
@@ -575,10 +555,6 @@ interface SalesOption {
                             </span>
                         </strong>
                     </div>
-                    <div class="summary-row">
-                        <span>Trạng thái xử lý</span>
-                        <strong>{{ getBookingStateLabel(selectedBookingState || loadedBookingState) }}</strong>
-                    </div>
                     <div class="summary-divider"></div>
                     <div class="summary-row" *ngIf="selectedCustomer">
                         <span>Khách hàng</span>
@@ -643,6 +619,11 @@ export class BookingCreateComponent implements OnInit {
     loadedBookingState = 'DRAFT';
     currentStatus = 'ACTIVE';
     selectedBookingState = 'DRAFT';
+    readonly loggedInUserId = Number(localStorage.getItem('userId')) || 0;
+    readonly loggedInFullName = (localStorage.getItem('fullName') ?? '').trim();
+    loggedInLocationId = Number(localStorage.getItem('locationId')) || 0;
+    readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly isSaleAccount = this.codeRole.includes('SALE');
 
     locationOptions: LocationOption[] = [];
     hallOptions: HallOption[] = [];
@@ -705,6 +686,10 @@ export class BookingCreateComponent implements OnInit {
         return this.bookingId !== null;
     }
 
+    get isSaleCreateMode(): boolean {
+        return this.isSaleAccount && !this.isEditMode;
+    }
+
     constructor(
         private http: HttpClient,
         private route: ActivatedRoute,
@@ -722,13 +707,19 @@ export class BookingCreateComponent implements OnInit {
     ) {}
 
     ngOnInit() {
-        this.loadLocations();
-        this.loadSalesOptions();
-
         const id = Number(this.route.snapshot.paramMap.get('id'));
         if (Number.isFinite(id) && id > 0) {
             this.bookingId = id;
-            this.loadBooking(id);
+        }
+
+        this.loadLocations();
+        this.loadCurrentUserContext();
+        this.loadSalesOptions();
+
+        if (this.bookingId) {
+            this.loadBooking(this.bookingId);
+        } else {
+            this.applySaleCreateDefaults();
         }
     }
 
@@ -739,11 +730,62 @@ export class BookingCreateComponent implements OnInit {
                     id: Number(location.id),
                     label: location.name ?? `Chi nhánh #${location.id}`,
                 }));
+
+                this.applySaleCreateDefaults();
             },
             error: () => {
                 this.locationOptions = [];
             },
         });
+    }
+
+    private loadCurrentUserContext() {
+        if (!this.loggedInUserId) {
+            return;
+        }
+
+        this.userService.getUser(this.loggedInUserId).subscribe({
+            next: (res) => {
+                const user = res.data;
+                if (!user) {
+                    return;
+                }
+
+                const locationId = Number(user.locationId);
+                if (Number.isFinite(locationId) && locationId > 0) {
+                    this.loggedInLocationId = locationId;
+                }
+
+                const fullName = user.fullName?.trim();
+                if (fullName) {
+                    this.salesNameMap[this.loggedInUserId] = fullName;
+                }
+
+                this.applySaleCreateDefaults();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                // Keep localStorage fallback values if user profile cannot be loaded.
+            },
+        });
+    }
+
+    private applySaleCreateDefaults() {
+        if (!this.isSaleCreateMode) {
+            return;
+        }
+
+        if (this.loggedInUserId > 0) {
+            this.form.salesId = this.loggedInUserId;
+        }
+
+        if (this.loggedInLocationId > 0) {
+            const needsReload = this.form.locationId !== this.loggedInLocationId || this.hallOptions.length === 0;
+            this.form.locationId = this.loggedInLocationId;
+            if (needsReload) {
+                this.onLocationChange();
+            }
+        }
     }
 
     loadBooking(id: number) {
@@ -858,6 +900,19 @@ export class BookingCreateComponent implements OnInit {
                 const users = res.data?.content ?? [];
                 const salesUsers = users.filter((user: any) => this.isSaleUser(user));
 
+                if (this.isSaleCreateMode && this.loggedInUserId > 0) {
+                    const currentSalesUser = salesUsers.find((user: any) => Number(user.id) === this.loggedInUserId);
+                    const fullName = currentSalesUser?.fullName?.trim()
+                        || this.salesNameMap[this.loggedInUserId]
+                        || `Sales #${this.loggedInUserId}`;
+
+                    this.salesNameMap[this.loggedInUserId] = fullName;
+                    this.salesOptions = [{ id: this.loggedInUserId, label: fullName }];
+                    this.form.salesId = this.loggedInUserId;
+                    this.cdr.detectChanges();
+                    return;
+                }
+
                 this.salesOptions = salesUsers.map((user: any) => {
                     const id = Number(user.id);
                     const label = user.fullName ?? `Sales #${id}`;
@@ -908,6 +963,9 @@ export class BookingCreateComponent implements OnInit {
         const id = Number(salesId);
         if (!Number.isFinite(id) || id <= 0) {
             return '-';
+        }
+        if (id === this.loggedInUserId && this.loggedInFullName) {
+            return this.salesNameMap[id] ?? this.loggedInFullName;
         }
         return this.salesNameMap[id] ?? `Sales #${id}`;
     }
@@ -990,6 +1048,10 @@ export class BookingCreateComponent implements OnInit {
     }
 
     onLocationChange() {
+        if (this.isSaleCreateMode && this.loggedInLocationId > 0 && this.form.locationId !== this.loggedInLocationId) {
+            this.form.locationId = this.loggedInLocationId;
+        }
+
         const locationId = this.form.locationId;
         this.form.hallId = null;
         this.form.setMenuId = null;
@@ -1352,6 +1414,10 @@ export class BookingCreateComponent implements OnInit {
     }
 
     private buildPayload(): BookingUpsertPayload {
+        const enforcedSalesId = this.isSaleCreateMode && this.loggedInUserId > 0
+            ? this.loggedInUserId
+            : this.form.salesId;
+
         return {
             customerId: this.form.customerId!,
             hallId: this.form.hallId!,
@@ -1361,7 +1427,7 @@ export class BookingCreateComponent implements OnInit {
             expectedGuests: this.form.expectedGuests,
             packageId: this.form.packageId,
             setMenuId: this.form.setMenuId,
-            salesId: this.form.salesId,
+            salesId: enforcedSalesId,
             reservedUntil: this.toISOString(this.form.reservedUntil),
             notes: this.form.notes?.trim() || undefined,
             brideName: this.form.brideName.trim(),
