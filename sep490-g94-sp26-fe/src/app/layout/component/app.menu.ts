@@ -26,13 +26,14 @@ export class AppMenu implements OnInit, OnDestroy {
   private sub!: Subscription;
 
   private readonly allMenuItems: MenuItem[] = [
+    { label: 'Đặt tiệc', icon: 'pi pi-fw pi-home', routerLink: ['/pages/booking'], id: 'booking' },
     { label: 'Quản lý vai trò', icon: 'pi pi-fw pi-shield', routerLink: ['/pages/role'], id: 'role' },
     { label: 'Quản lý chi nhánh', icon: 'pi pi-fw pi-building', routerLink: ['/pages/location'], id: 'location' },
     { label: 'Quản lý người dùng', icon: 'pi pi-fw pi-users', routerLink: ['/pages/users'], id: 'users' },
     { label: 'Quản lý leads', icon: 'pi pi-fw pi-users', routerLink: ['/pages/leads'], id: 'leads' },
     { label: 'Quản lý danh sách khách hàng', icon: 'pi pi-fw pi-user-plus', routerLink: ['/pages/customers'], id: 'customers' },
     { label: 'Quản lý sảnh hội trường', icon: 'pi pi-fw pi-home', routerLink: ['/pages/hall'], id: 'hall' },
-    { label: 'Đặt tiệc', icon: 'pi pi-fw pi-home', routerLink: ['/pages/booking'], id: 'booking' },
+    
     {
       label: 'Dịch vụ', icon: 'pi pi-fw pi-shopping-bag', path: '/pages/service', id: 'service',
       items: [
