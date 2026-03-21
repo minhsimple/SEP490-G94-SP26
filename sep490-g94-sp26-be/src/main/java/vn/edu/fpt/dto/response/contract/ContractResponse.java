@@ -1,60 +1,46 @@
-package vn.edu.fpt.dto.request.booking;
+package vn.edu.fpt.dto.response.contract;
 
-import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 import vn.edu.fpt.util.enums.BookingTime;
+import vn.edu.fpt.util.enums.ContractState;
+import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class BookingRequest {
-
-    @NotNull(message = "Mã khách hàng không được để trống")
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class ContractResponse {
+    Integer id;
+    String contractNo;
     Integer customerId;
-
-    @NotNull(message = "Mã hội trường không được để trống")
     Integer hallId;
-
-    @NotNull(message = "Ngày đặt tiệc không được để trống")
     LocalDate bookingDate;
-
-    @NotNull(message = "Khung giờ đặt tiệc không được để trống")
     BookingTime bookingTime;
-
+    LocalDateTime startTime;
+    LocalDateTime endTime;
     Integer expectedTables;
-
     Integer expectedGuests;
-
     Integer packageId;
-
     Integer setMenuId;
-
+    ContractState contractState;
     Integer salesId;
-
     LocalDateTime reservedUntil;
-
     String notes;
-
     String brideName;
-
     Integer brideAge;
-
     String groomName;
-
     Integer groomAge;
-
     String brideFatherName;
-
     String brideMotherName;
-
     String groomFatherName;
-
     String groomMotherName;
+    RecordStatus status;
 }
+
+

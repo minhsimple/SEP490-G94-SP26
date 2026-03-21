@@ -1,4 +1,4 @@
-package vn.edu.fpt.dto.request.booking;
+package vn.edu.fpt.dto.request.contract;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

@@ -13,9 +13,9 @@ public interface ContractRepository extends BaseRepository<Contract, Integer> {
 
     List<Contract> findAllByStatus(RecordStatus status);
 
-    Optional<Contract> findByBookingNo(String bookingNo);
+    Optional<Contract> findByContractNo(String bookingNo);
 
-    Boolean existsByBookingNo(String bookingNo);
+    Boolean existsByContractNo(String bookingNo);
 
     List<Contract> findAllByCustomerId(Integer customerId);
 

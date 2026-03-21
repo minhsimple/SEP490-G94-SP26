@@ -24,8 +24,8 @@ public class Contract extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
-    @Column(name = "booking_no", unique = true, nullable = false)
-    String bookingNo;
+    @Column(name = "contract_no", unique = true, nullable = false)
+    String contractNo;
 
     @Column(name = "customer_id", nullable = false)
     Integer customerId;

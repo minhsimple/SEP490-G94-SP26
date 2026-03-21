@@ -8,15 +8,14 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
-import vn.edu.fpt.dto.request.booking.BookingFilterRequest;
-import vn.edu.fpt.dto.request.booking.BookingRequest;
-import vn.edu.fpt.dto.request.booking.ContractStatusRequest;
-import vn.edu.fpt.dto.response.booking.BookingResponse;
+import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
+import vn.edu.fpt.dto.request.contract.ContractRequest;
+import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
+import vn.edu.fpt.dto.response.contract.ContractResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.ContractMapper;
-import vn.edu.fpt.respository.BookingRepository;
 import vn.edu.fpt.respository.ContractRepository;
 import vn.edu.fpt.respository.CustomerRepository;
 import vn.edu.fpt.respository.HallRepository;
@@ -45,7 +44,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Transactional
     @Override
-    public BookingResponse createContract(BookingRequest request) {
+    public ContractResponse createContract(ContractRequest request) {
         if (request == null) {
             throw new AppException(ERROR_CODE.INVALID_REQUEST);
         }
@@ -60,7 +59,7 @@ public class ContractServiceImpl implements ContractService {
         }
 
         Contract booking = contractMapper.toEntity(request);
-        booking.setBookingNo(generateBookingNo());
+        booking.setContractNo(generateContractNo());
         booking.setContractState(ContractState.DRAFT);
         booking.setStatus(RecordStatus.active);
 
@@ -73,7 +72,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Transactional
     @Override
-    public BookingResponse updateContract(Integer id, BookingRequest request) {
+    public ContractResponse updateContract(Integer id, ContractRequest request) {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
@@ -87,7 +86,7 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
-    public BookingResponse getBookingById(Integer id) {
+    public ContractResponse getContractById(Integer id) {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
@@ -95,14 +94,14 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
-    public SimplePage<BookingResponse> searchContracts(Pageable pageable, BookingFilterRequest filter) {
+    public SimplePage<ContractResponse> searchContracts(Pageable pageable, ContractFilterRequest filter) {
         Specification<Contract> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             if (filter != null) {
-                if (!StringUtils.isNullOrEmptyOrBlank(filter.getBookingNo())) {
+                if (!StringUtils.isNullOrEmptyOrBlank(filter.getContractNo())) {
                     predicates.add(cb.like(cb.lower(root.get("bookingNo")),
-                            "%" + filter.getBookingNo().toLowerCase() + "%"));
+                            "%" + filter.getContractNo().toLowerCase() + "%"));
                 }
 
                 if (filter.getCustomerId() != null) {
@@ -127,8 +126,8 @@ public class ContractServiceImpl implements ContractService {
                     predicates.add(cb.equal(root.get("bookingTime"), filter.getBookingTime()));
                 }
 
-                if (filter.getBookingState() != null) {
-                    predicates.add(cb.equal(root.get("bookingState"), filter.getBookingState()));
+                if (filter.getContractState() != null) {
+                    predicates.add(cb.equal(root.get("bookingState"), filter.getContractState()));
                 }
 
                 if (filter.getSalesId() != null) {
@@ -154,7 +153,7 @@ public class ContractServiceImpl implements ContractService {
         };
 
         Page<Contract> page = bookingRepository.findAll(spec, pageable);
-        List<BookingResponse> responses = page.getContent().stream()
+        List<ContractResponse> responses = page.getContent().stream()
                 .map(contractMapper::toResponse)
                 .toList();
 
@@ -163,7 +162,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Transactional
     @Override
-    public BookingResponse changeBookingStatus(Integer id) {
+    public ContractResponse changeContractStatus(Integer id) {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
@@ -178,7 +177,7 @@ public class ContractServiceImpl implements ContractService {
     }
 
     /**
-     * Tính startTime và endTime từ bookingDate + BookingTime slot
+     * Tính startTime và endTime từ bookingDate + ContractTime slot
      * SLOT_1: Sáng  06:00 - 12:00
      * SLOT_2: Chiều 12:00 - 18:00
      * SLOT_3: Cả ngày 06:00 - 18:00
@@ -193,21 +192,21 @@ public class ContractServiceImpl implements ContractService {
 
     @Transactional
     @Override
-    public BookingResponse updateContractState(ContractStatusRequest request) {
-        Contract booking = bookingRepository.findById(request.getBookingId())
+    public ContractResponse updateContractState(ContractStatusRequest request) {
+        Contract booking = bookingRepository.findById(request.getContractId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        validateStateTransition(booking.getContractState(), request.getBookingState());
+        validateStateTransition(booking.getContractState(), request.getContractState());
         if(request.getContractState().equals(ContractState.CANCELLED)){
             booking.setStatus(RecordStatus.inactive);
         }
-        booking.setContractState(request.getBookingState());
+        booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
-        return bookingMapper.toResponse(saved);
+        return contractMapper.toResponse(saved);
     }
 
     /**
-     * Validate chuyển trạng thái booking:
+     * Validate chuyển trạng thái contract:
      * DRAFT     → CONVERTED, CANCELLED, EXPIRED
      * CONVERTED → (không cho chuyển)
      * CANCELLED → (không cho chuyển)
@@ -232,7 +231,7 @@ public class ContractServiceImpl implements ContractService {
         }
     }
 
-    private String generateBookingNo() {
+    private String generateContractNo() {
         String prefix = "BK";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String random = String.valueOf((int) (Math.random() * 9000) + 1000);
