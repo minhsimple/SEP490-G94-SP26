@@ -122,6 +122,8 @@ public enum ERROR_CODE {
     BOOKING_NOT_EXISTED(14001, "Đặt tiệc không tồn tại", HttpStatus.NOT_FOUND),
     BOOKING_NO_EXISTED(14002, "Mã đặt tiệc đã tồn tại", HttpStatus.BAD_REQUEST),
     BOOKING_INVALID_STATE_TRANSITION(14003, "Không thể chuyển trạng thái đặt tiệc", HttpStatus.BAD_REQUEST),
+    WEDDING_TIME_CONFLICT(14004, "Trùng lịch đặt tiệc", HttpStatus.BAD_REQUEST),
+    BOOKING_INVALID_NUMBER_OF_GUESTS(14005, "Số lượng khách quá lớn", HttpStatus.BAD_REQUEST),
 
     /**
      * Other Error
