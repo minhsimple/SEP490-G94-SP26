@@ -25,7 +25,7 @@ public class ContractRequest {
     @NotNull(message = "Ngày đặt tiệc không được để trống")
     LocalDate bookingDate;
 
-    @NotNull(message = "Khung giờ đặt tiệc không được để trống")
+    @NotNull(message = "Khung giờ tiệc không được để trống")
     BookingTime bookingTime;
 
     Integer expectedTables;

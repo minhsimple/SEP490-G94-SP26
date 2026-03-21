@@ -58,7 +58,7 @@ public class Contract extends BaseEntity {
 
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "booking_state", nullable = false)
+    @Column(name = "contract_state", nullable = false)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     ContractState contractState = ContractState.DRAFT;
 

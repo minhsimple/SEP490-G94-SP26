@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public interface ContractMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "bookingNo", ignore = true)
+    @Mapping(target = "contractNo", ignore = true)
     @Mapping(target = "contractState", ignore = true)
     @Mapping(target = "startTime", ignore = true)
     @Mapping(target = "endTime", ignore = true)
@@ -25,7 +25,7 @@ public interface ContractMapper {
     ContractResponse toResponse(Contract contract);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "bookingNo", ignore = true)
+    @Mapping(target = "contractNo", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "contractState", ignore = true)
     @Mapping(target = "startTime", ignore = true)

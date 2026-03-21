@@ -22,7 +22,7 @@ import vn.edu.fpt.util.enums.Constants;
 
 
 @RestController
-@RequestMapping("/api/v1/booking")
+@RequestMapping("/api/v1/contract")
 @Tag(name = "Booking")
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -39,7 +39,7 @@ public class ContractController {
                 .build();
     }
 
-    @Operation(summary = "Cập nhật đặt tiệc")
+    @Operation(summary = "Cập nhật hợp đồng tiệc")
     @PutMapping("/update")
     public ApiResponse<ContractResponse> updateContract(
             @RequestParam Integer bookingId,
@@ -50,7 +50,7 @@ public class ContractController {
                 .build();
     }
 
-    @Operation(summary = "Xem chi tiết đặt tiệc")
+    @Operation(summary = "Xem chi tiết hợp đồng")
     @GetMapping("/{id}")
     public ApiResponse<ContractResponse> viewDetailContract(@PathVariable Integer id) {
         ContractResponse response = contractService.getContractById(id);
@@ -59,7 +59,7 @@ public class ContractController {
                 .build();
     }
 
-    @Operation(summary = "Tìm kiếm và phân trang đặt tiệc")
+    @Operation(summary = "Tìm kiếm và phân trang hợp đồng")
     @GetMapping("/search")
     public ApiResponse<SimplePage<ContractResponse>> searchContracts(
             @Valid ContractFilterRequest filter,
