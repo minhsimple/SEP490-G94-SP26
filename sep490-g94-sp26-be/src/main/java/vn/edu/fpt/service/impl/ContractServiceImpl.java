@@ -45,18 +45,8 @@ public class ContractServiceImpl implements ContractService {
     @Transactional
     @Override
     public ContractResponse createContract(ContractRequest request) {
-        if (request == null) {
-            throw new AppException(ERROR_CODE.INVALID_REQUEST);
-        }
-        if(!customerRepository.existsByIdAndStatus(request.getCustomerId(), RecordStatus.active)) {
-            throw new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED);
-        }
-        if(!hallRepository.existsByIdAndStatus(request.getHallId(), RecordStatus.active)) {
-            throw new AppException(ERROR_CODE.HALL_NOT_EXISTED);
-        }
-        if(!setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
-            throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
-        }
+        validateContract(request);
+        validateNumberOfGuests(request.getHallId(), request.getExpectedGuests());
 
         Contract booking = contractMapper.toEntity(request);
         booking.setContractNo(generateContractNo());
@@ -75,7 +65,15 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse updateContract(Integer id, ContractRequest request) {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
-
+        validateContract(request);
+        // Nếu hallId hoặc expectedGuests có thay đổi thì validate số lượng khách với sức chứa của hội trường
+        if(request.getHallId() != null && request.getExpectedGuests() != null) {
+            validateNumberOfGuests(request.getHallId(), request.getExpectedGuests());
+        } else if(request.getHallId() != null) {
+            validateNumberOfGuests(request.getHallId(), booking.getExpectedGuests());
+        } else if(request.getExpectedGuests() != null) {
+            validateNumberOfGuests(booking.getHallId(), request.getExpectedGuests());
+        }
         contractMapper.updateEntity(booking, request);
 
         // Tính lại startTime và endTime từ bookingDate + bookingTime slot
@@ -83,6 +81,39 @@ public class ContractServiceImpl implements ContractService {
 
         Contract saved = bookingRepository.save(booking);
         return contractMapper.toResponse(saved);
+    }
+
+    public void validateContract(ContractRequest request){
+        if (request == null) {
+            throw new AppException(ERROR_CODE.INVALID_REQUEST);
+        }
+        if (request.getCustomerId() != null &&
+                !customerRepository.existsByIdAndStatus(request.getCustomerId(), RecordStatus.active)) {
+            throw new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED);
+        }
+        if(request.getHallId() != null &&
+                !hallRepository.existsByIdAndStatus(request.getHallId(), RecordStatus.active)) {
+            throw new AppException(ERROR_CODE.HALL_NOT_EXISTED);
+        }
+        if(request.getSetMenuId() != null &&
+                !setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
+            throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
+        }
+        if(request.getBookingTime() != null && request.getBookingDate() != null) {
+            LocalDateTime startTime = calculateStartTime(request.getBookingDate(), request.getBookingTime());
+            LocalDateTime endTime = calculateEndTime(request.getBookingDate(), request.getBookingTime());
+            if(bookingRepository.existsByStartTimeAndEndTimeAndContractStateAndHallId(startTime, endTime, ContractState.ACTIVE, request.getHallId())) {
+                throw new AppException(ERROR_CODE.WEDDING_TIME_CONFLICT);
+            }
+        }
+    }
+    public void validateNumberOfGuests(Integer hallId, Integer numberOfGuests){
+        Integer hallCapacity = hallRepository.findById(hallId)
+                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED))
+                .getCapacity();
+        if (numberOfGuests > (hallCapacity - hallCapacity / 10) || numberOfGuests <= 0) {
+            throw new AppException(ERROR_CODE.BOOKING_INVALID_NUMBER_OF_GUESTS);
+        }
     }
 
     @Override
@@ -188,6 +219,12 @@ public class ContractServiceImpl implements ContractService {
         booking.setStartTime(startTime);
         booking.setEndTime(endTime);
         booking.setBookingTime(bookingTime);
+    }
+    private LocalDateTime calculateEndTime(LocalDate bookingDate, BookingTime bookingTime) {
+        return bookingDate.atTime(bookingTime.getEndHour(), bookingTime.getEndMinute());
+    }
+    private LocalDateTime calculateStartTime(LocalDate bookingDate, BookingTime bookingTime) {
+        return bookingDate.atTime(bookingTime.getStartHour(), bookingTime.getStartMinute());
     }
 
     @Transactional
