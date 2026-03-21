@@ -1,7 +1,11 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { SelectModule } from 'primeng/select';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 import { Booking, BookingService } from '../service/booking.service';
 import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
@@ -11,8 +15,8 @@ import { ServicePackageService } from '../service/service-package.service';
 @Component({
     selector: 'app-booking-detail',
     standalone: true,
-    imports: [CommonModule, ButtonModule],
-    providers: [BookingService],
+    imports: [CommonModule, FormsModule, ButtonModule, SelectModule, ToastModule],
+    providers: [BookingService, MessageService],
     styles: [`
         .page-title {
             font-size: 1.25rem;
@@ -57,6 +61,21 @@ import { ServicePackageService } from '../service/service-package.service';
             margin-top: 0.2rem;
             font-weight: 500;
             color: #64748b;
+        }
+        .hero-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.35rem;
+            text-align: left;
+        }
+        .state-edit {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .state-select {
+            min-width: 210px;
         }
         .layout {
             display: grid;
@@ -155,9 +174,20 @@ import { ServicePackageService } from '../service/service-package.service';
             .detail-grid {
                 grid-template-columns: 1fr;
             }
+            .hero-right {
+                width: 100%;
+                align-items: flex-start;
+                text-align: left;
+            }
+            .state-select {
+                min-width: 0;
+                width: 100%;
+            }
         }
     `],
     template: `
+        <p-toast />
+
         <div class="card" *ngIf="loading" style="text-align:center; color:#64748b">
             Đang tải thông tin đặt tiệc...
         </div>
@@ -178,9 +208,24 @@ import { ServicePackageService } from '../service/service-package.service';
                             </div>
                         </div>
                     </div>
-                    <span class="chip" [style.background]="statusBg(booking.bookingState)" [style.color]="statusColor(booking.bookingState)">
-                        {{ bookingStateLabel(booking.bookingState) }}
-                    </span>
+                    <div class="hero-right">
+                        <div class="muted">Trạng thái xử lý</div>
+                        <div class="state-edit">
+                            <p-select
+                                class="state-select"
+                                [options]="bookingStateOptions"
+                                [(ngModel)]="selectedBookingState"
+                                optionLabel="label"
+                                optionValue="value"
+                            />
+                            <p-button
+                                icon="pi pi-check"
+                                severity="secondary"
+                                [loading]="stateSubmitting"
+                                (onClick)="saveBookingState()"
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -303,10 +348,21 @@ export class BookingDetailComponent implements OnInit {
     packageName = '';
     packagePrice = 0;
 
+    apiTotalAmount = 0;
     totalAmount = 0;
     paidAmount = 0;
     remainingAmount = 0;
     progressPercent = 0;
+    stateSubmitting = false;
+    selectedBookingState = 'DRAFT';
+    bookingStateOptions = [
+        { label: 'Nháp', value: 'DRAFT' },
+        { label: 'Hết hạn', value: 'EXPIRED' },
+        { label: 'Đã duyệt', value: 'APPROVED' },
+        { label: 'Chưa duyệt', value: 'UNAPPROVED' },
+        { label: 'Đã hủy', value: 'CANCELLED' },
+        { label: 'Đã chuyển đổi', value: 'CONVERTED' },
+    ];
 
     constructor(
         private route: ActivatedRoute,
@@ -316,6 +372,7 @@ export class BookingDetailComponent implements OnInit {
         private hallService: HallService,
         private setMenuService: SetMenuService,
         private servicePackageService: ServicePackageService,
+        private messageService: MessageService,
         private cdr: ChangeDetectorRef,
     ) {}
 
@@ -335,6 +392,7 @@ export class BookingDetailComponent implements OnInit {
         this.bookingService.getById(id).subscribe({
             next: (res) => {
                 this.booking = res.data;
+                this.selectedBookingState = this.booking?.bookingState ?? 'DRAFT';
 
                 if (this.booking?.customerId) {
                     this.loadCustomer(this.booking.customerId);
@@ -349,9 +407,9 @@ export class BookingDetailComponent implements OnInit {
                     this.loadPackage(this.booking.packageId);
                 }
 
-                const rawTotal = Number((this.booking as any)?.totalAmount ?? 0);
+                const rawTotal = Number((this.booking as any)?.totalAmount ?? (this.booking as any)?.totalPrice ?? (this.booking as any)?.finalAmount ?? (this.booking as any)?.amount ?? 0);
                 const rawPaid = Number((this.booking as any)?.paidAmount ?? 0);
-                this.totalAmount = Number.isFinite(rawTotal) ? rawTotal : 0;
+                this.apiTotalAmount = Number.isFinite(rawTotal) ? rawTotal : 0;
                 this.paidAmount = Number.isFinite(rawPaid) ? rawPaid : 0;
                 this.recalculatePaymentSummary();
 
@@ -362,6 +420,43 @@ export class BookingDetailComponent implements OnInit {
                 this.loading = false;
                 this.cdr.detectChanges();
                 this.goBack();
+            },
+        });
+    }
+
+    saveBookingState() {
+        if (!this.booking?.id) {
+            return;
+        }
+
+        this.stateSubmitting = true;
+        this.bookingService.updateState({
+            bookingId: this.booking.id,
+            bookingState: this.selectedBookingState,
+        }).subscribe({
+            next: (res) => {
+                this.stateSubmitting = false;
+                if (this.booking) {
+                    this.booking.bookingState = res.data?.bookingState ?? this.selectedBookingState;
+                    this.selectedBookingState = this.booking.bookingState ?? this.selectedBookingState;
+                }
+                this.messageService.add({
+                    severity: 'success',
+                    summary: 'Thành công',
+                    detail: 'Đã cập nhật trạng thái xử lý',
+                    life: 3000,
+                });
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                this.stateSubmitting = false;
+                this.messageService.add({
+                    severity: 'error',
+                    summary: 'Lỗi',
+                    detail: err?.error?.message ?? 'Không thể cập nhật trạng thái xử lý',
+                    life: 4000,
+                });
+                this.cdr.detectChanges();
             },
         });
     }
@@ -395,7 +490,7 @@ export class BookingDetailComponent implements OnInit {
         this.setMenuService.getById(setMenuId).subscribe({
             next: (res) => {
                 this.setMenuName = res.data?.name ?? '';
-                const price = Number(res.data?.setPrice ?? 0);
+                const price = Number((res.data as any)?.setPrice ?? (res.data as any)?.pricePerTable ?? (res.data as any)?.price ?? 0);
                 this.setMenuPrice = Number.isFinite(price) ? price : 0;
                 this.recalculatePaymentSummary();
                 this.cdr.detectChanges();
@@ -429,12 +524,12 @@ export class BookingDetailComponent implements OnInit {
             return;
         }
 
-        if (this.totalAmount <= 0) {
-            const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
-            if (Number.isFinite(tables) && tables > 0) {
-                this.totalAmount = (this.setMenuPrice * tables) + this.packagePrice;
-            }
-        }
+        const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
+        const computedTotal = Number.isFinite(tables) && tables > 0
+            ? (this.setMenuPrice * tables) + this.packagePrice
+            : 0;
+
+        this.totalAmount = computedTotal > 0 ? computedTotal : this.apiTotalAmount;
 
         this.remainingAmount = Math.max(this.totalAmount - this.paidAmount, 0);
         this.progressPercent = this.totalAmount > 0
