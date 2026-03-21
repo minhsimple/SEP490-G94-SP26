@@ -4,22 +4,22 @@ import org.springframework.data.domain.Pageable;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.booking.BookingFilterRequest;
 import vn.edu.fpt.dto.request.booking.BookingRequest;
-import vn.edu.fpt.dto.request.booking.BookingStatusRequest;
+import vn.edu.fpt.dto.request.booking.ContractStatusRequest;
 import vn.edu.fpt.dto.response.booking.BookingResponse;
 
-public interface BookingService {
+public interface ContractService {
 
-    BookingResponse createBooking(BookingRequest request);
+    BookingResponse createContract(BookingRequest request);
 
-    BookingResponse updateBooking(Integer id, BookingRequest request);
+    BookingResponse updateContract(Integer id, BookingRequest request);
 
-    BookingResponse getBookingById(Integer id);
+    BookingResponse getContractById(Integer id);
 
-    SimplePage<BookingResponse> searchBookings(Pageable pageable, BookingFilterRequest filter);
+    SimplePage<BookingResponse> searchContracts(Pageable pageable, BookingFilterRequest filter);
 
-    BookingResponse changeBookingStatus(Integer id);
+    BookingResponse changeContractStatus(Integer id);
 
-    BookingResponse updateBookingState(BookingStatusRequest request);
+    BookingResponse updateContractState(ContractStatusRequest request);
 }
 
 

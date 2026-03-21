@@ -3,7 +3,7 @@ package vn.edu.fpt.mapper;
 import org.mapstruct.*;
 import vn.edu.fpt.dto.request.booking.BookingRequest;
 import vn.edu.fpt.dto.response.booking.BookingResponse;
-import vn.edu.fpt.entity.Booking;
+import vn.edu.fpt.entity.Contract;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,17 +12,17 @@ import java.time.LocalDateTime;
         componentModel = "spring",
         builder = @Builder(disableBuilder = true)
 )
-public interface BookingMapper {
+public interface ContractMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "bookingNo", ignore = true)
     @Mapping(target = "bookingState", ignore = true)
     @Mapping(target = "startTime", ignore = true)
     @Mapping(target = "endTime", ignore = true)
-    Booking toEntity(BookingRequest request);
+    Contract toEntity(BookingRequest request);
 
     @Mapping(target = "bookingDate", source = "startTime", qualifiedByName = "toLocalDate")
-    BookingResponse toResponse(Booking booking);
+    BookingResponse toResponse(Contract booking);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "bookingNo", ignore = true)
@@ -30,7 +30,7 @@ public interface BookingMapper {
     @Mapping(target = "bookingState", ignore = true)
     @Mapping(target = "startTime", ignore = true)
     @Mapping(target = "endTime", ignore = true)
-    void updateEntity(@MappingTarget Booking booking, BookingRequest request);
+    void updateEntity(@MappingTarget Contract booking, BookingRequest request);
 
     @Named("toLocalDate")
     default LocalDate toLocalDate(LocalDateTime dateTime) {

@@ -1,11 +1,9 @@
 package vn.edu.fpt.util.enums;
 
-public enum BookingState {
+public enum ContractState {
+    ACTIVE,
+    LIQUIDATED,
     DRAFT,
-    EXPIRED,
-    APPROVED,
-    UNAPPROVED,
     CANCELLED,
-    CONVERTED
 }
 
