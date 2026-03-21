@@ -1,10 +1,9 @@
 package vn.edu.fpt.util.enums;
 
 public enum ContractState {
+    ACTIVE,
+    LIQUIDATED,
     DRAFT,
-    PENDING_APPROVAL,
-    APPROVED,
-    SIGNED,
-    VOID
+    CANCELLED,
 }
 

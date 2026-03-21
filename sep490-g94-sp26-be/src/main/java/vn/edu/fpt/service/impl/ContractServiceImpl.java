@@ -8,22 +8,22 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
-import vn.edu.fpt.dto.request.booking.BookingFilterRequest;
-import vn.edu.fpt.dto.request.booking.BookingRequest;
-import vn.edu.fpt.dto.request.booking.BookingStatusRequest;
-import vn.edu.fpt.dto.response.booking.BookingResponse;
-import vn.edu.fpt.entity.Booking;
+import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
+import vn.edu.fpt.dto.request.contract.ContractRequest;
+import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
+import vn.edu.fpt.dto.response.contract.ContractResponse;
+import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
-import vn.edu.fpt.mapper.BookingMapper;
-import vn.edu.fpt.respository.BookingRepository;
+import vn.edu.fpt.mapper.ContractMapper;
+import vn.edu.fpt.respository.ContractRepository;
 import vn.edu.fpt.respository.CustomerRepository;
 import vn.edu.fpt.respository.HallRepository;
 import vn.edu.fpt.respository.SetMenuRepository;
-import vn.edu.fpt.service.BookingService;
+import vn.edu.fpt.service.ContractService;
 import vn.edu.fpt.util.StringUtils;
-import vn.edu.fpt.util.enums.BookingState;
 import vn.edu.fpt.util.enums.BookingTime;
+import vn.edu.fpt.util.enums.ContractState;
 import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.time.LocalDate;
@@ -34,17 +34,17 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class BookingServiceImpl implements BookingService {
+public class ContractServiceImpl implements ContractService {
 
-    private final BookingRepository bookingRepository;
-    private final BookingMapper bookingMapper;
+    private final ContractRepository bookingRepository;
+    private final ContractMapper contractMapper;
     private final CustomerRepository customerRepository;
     private final HallRepository hallRepository;
     private final SetMenuRepository setMenuRepository;
 
     @Transactional
     @Override
-    public BookingResponse createBooking(BookingRequest request) {
+    public ContractResponse createContract(ContractRequest request) {
         if (request == null) {
             throw new AppException(ERROR_CODE.INVALID_REQUEST);
         }
@@ -58,50 +58,50 @@ public class BookingServiceImpl implements BookingService {
             throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
         }
 
-        Booking booking = bookingMapper.toEntity(request);
-        booking.setBookingNo(generateBookingNo());
-        booking.setBookingState(BookingState.DRAFT);
+        Contract booking = contractMapper.toEntity(request);
+        booking.setContractNo(generateContractNo());
+        booking.setContractState(ContractState.DRAFT);
         booking.setStatus(RecordStatus.active);
 
         // Tính startTime và endTime từ bookingDate + bookingTime slot
         calculateAndSetTimes(booking, request.getBookingDate(), request.getBookingTime());
 
-        Booking saved = bookingRepository.save(booking);
-        return bookingMapper.toResponse(saved);
+        Contract saved = bookingRepository.save(booking);
+        return contractMapper.toResponse(saved);
     }
 
     @Transactional
     @Override
-    public BookingResponse updateBooking(Integer id, BookingRequest request) {
-        Booking booking = bookingRepository.findById(id)
+    public ContractResponse updateContract(Integer id, ContractRequest request) {
+        Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        bookingMapper.updateEntity(booking, request);
+        contractMapper.updateEntity(booking, request);
 
         // Tính lại startTime và endTime từ bookingDate + bookingTime slot
         calculateAndSetTimes(booking, request.getBookingDate(), request.getBookingTime());
 
-        Booking saved = bookingRepository.save(booking);
-        return bookingMapper.toResponse(saved);
+        Contract saved = bookingRepository.save(booking);
+        return contractMapper.toResponse(saved);
     }
 
     @Override
-    public BookingResponse getBookingById(Integer id) {
-        Booking booking = bookingRepository.findById(id)
+    public ContractResponse getContractById(Integer id) {
+        Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        return bookingMapper.toResponse(booking);
+        return contractMapper.toResponse(booking);
     }
 
     @Override
-    public SimplePage<BookingResponse> searchBookings(Pageable pageable, BookingFilterRequest filter) {
-        Specification<Booking> spec = (root, query, cb) -> {
+    public SimplePage<ContractResponse> searchContracts(Pageable pageable, ContractFilterRequest filter) {
+        Specification<Contract> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             if (filter != null) {
-                if (!StringUtils.isNullOrEmptyOrBlank(filter.getBookingNo())) {
+                if (!StringUtils.isNullOrEmptyOrBlank(filter.getContractNo())) {
                     predicates.add(cb.like(cb.lower(root.get("bookingNo")),
-                            "%" + filter.getBookingNo().toLowerCase() + "%"));
+                            "%" + filter.getContractNo().toLowerCase() + "%"));
                 }
 
                 if (filter.getCustomerId() != null) {
@@ -126,8 +126,8 @@ public class BookingServiceImpl implements BookingService {
                     predicates.add(cb.equal(root.get("bookingTime"), filter.getBookingTime()));
                 }
 
-                if (filter.getBookingState() != null) {
-                    predicates.add(cb.equal(root.get("bookingState"), filter.getBookingState()));
+                if (filter.getContractState() != null) {
+                    predicates.add(cb.equal(root.get("bookingState"), filter.getContractState()));
                 }
 
                 if (filter.getSalesId() != null) {
@@ -152,9 +152,9 @@ public class BookingServiceImpl implements BookingService {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        Page<Booking> page = bookingRepository.findAll(spec, pageable);
-        List<BookingResponse> responses = page.getContent().stream()
-                .map(bookingMapper::toResponse)
+        Page<Contract> page = bookingRepository.findAll(spec, pageable);
+        List<ContractResponse> responses = page.getContent().stream()
+                .map(contractMapper::toResponse)
                 .toList();
 
         return new SimplePage<>(responses, page.getTotalElements(), pageable);
@@ -162,8 +162,8 @@ public class BookingServiceImpl implements BookingService {
 
     @Transactional
     @Override
-    public BookingResponse changeBookingStatus(Integer id) {
-        Booking booking = bookingRepository.findById(id)
+    public ContractResponse changeContractStatus(Integer id) {
+        Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
         if (booking.getStatus() == RecordStatus.active) {
@@ -172,17 +172,17 @@ public class BookingServiceImpl implements BookingService {
             booking.setStatus(RecordStatus.active);
         }
 
-        Booking saved = bookingRepository.save(booking);
-        return bookingMapper.toResponse(saved);
+        Contract saved = bookingRepository.save(booking);
+        return contractMapper.toResponse(saved);
     }
 
     /**
-     * Tính startTime và endTime từ bookingDate + BookingTime slot
+     * Tính startTime và endTime từ bookingDate + ContractTime slot
      * SLOT_1: Sáng  06:00 - 12:00
      * SLOT_2: Chiều 12:00 - 18:00
      * SLOT_3: Cả ngày 06:00 - 18:00
      */
-    private void calculateAndSetTimes(Booking booking, LocalDate bookingDate, BookingTime bookingTime) {
+    private void calculateAndSetTimes(Contract booking, LocalDate bookingDate, BookingTime bookingTime) {
         LocalDateTime startTime = bookingDate.atTime(bookingTime.getStartHour(), bookingTime.getStartMinute());
         LocalDateTime endTime = bookingDate.atTime(bookingTime.getEndHour(), bookingTime.getEndMinute());
         booking.setStartTime(startTime);
@@ -192,40 +192,38 @@ public class BookingServiceImpl implements BookingService {
 
     @Transactional
     @Override
-    public BookingResponse updateBookingState(BookingStatusRequest request) {
-        Booking booking = bookingRepository.findById(request.getBookingId())
+    public ContractResponse updateContractState(ContractStatusRequest request) {
+        Contract booking = bookingRepository.findById(request.getContractId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        validateStateTransition(booking.getBookingState(), request.getBookingState());
-        if(request.getBookingState().equals(BookingState.CANCELLED)){
+        validateStateTransition(booking.getContractState(), request.getContractState());
+        if(request.getContractState().equals(ContractState.CANCELLED)){
             booking.setStatus(RecordStatus.inactive);
         }
-        booking.setBookingState(request.getBookingState());
-        Booking saved = bookingRepository.save(booking);
-        return bookingMapper.toResponse(saved);
+        booking.setContractState(request.getContractState());
+        Contract saved = bookingRepository.save(booking);
+        return contractMapper.toResponse(saved);
     }
 
     /**
-     * Validate chuyển trạng thái booking:
+     * Validate chuyển trạng thái contract:
      * DRAFT     → CONVERTED, CANCELLED, EXPIRED
      * CONVERTED → (không cho chuyển)
      * CANCELLED → (không cho chuyển)
      * EXPIRED   → (không cho chuyển)
      */
-    private void validateStateTransition(BookingState currentState, BookingState newState) {
+    private void validateStateTransition(ContractState currentState, ContractState newState) {
         if (currentState == newState) {
             return;
         }
 
         boolean valid = switch (currentState) {
-            case DRAFT -> newState == BookingState.CONVERTED
-                    || newState == BookingState.CANCELLED
-                    || newState == BookingState.EXPIRED
-                    || newState == BookingState.APPROVED
-                    || newState == BookingState.UNAPPROVED;
-            case APPROVED -> false;
-            case UNAPPROVED -> false;
-            case CONVERTED, CANCELLED, EXPIRED -> false;
+            case DRAFT -> newState == ContractState.ACTIVE
+                    || newState == ContractState.CANCELLED
+                    || newState == ContractState.LIQUIDATED;
+            case ACTIVE -> false;
+            case CANCELLED -> false;
+            case LIQUIDATED -> false;
         };
 
         if (!valid) {
@@ -233,7 +231,7 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
-    private String generateBookingNo() {
+    private String generateContractNo() {
         String prefix = "BK";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String random = String.valueOf((int) (Math.random() * 9000) + 1000);

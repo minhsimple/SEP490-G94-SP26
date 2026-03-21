@@ -1,11 +1,11 @@
-package vn.edu.fpt.dto.request.booking;
+package vn.edu.fpt.dto.request.contract;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import vn.edu.fpt.util.enums.BookingState;
 import vn.edu.fpt.util.enums.BookingTime;
+import vn.edu.fpt.util.enums.ContractState;
 import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.time.LocalDate;
@@ -14,14 +14,14 @@ import java.time.LocalDate;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BookingFilterRequest {
-    private String bookingNo;
+public class ContractFilterRequest {
+    private String contractNo;
     private Integer customerId;
     private Integer hallId;
     private LocalDate bookingDateFrom;
     private LocalDate bookingDateTo;
     private BookingTime bookingTime;
-    private BookingState bookingState;
+    private ContractState contractState;
     private Integer salesId;
     private String brideName;
     private String groomName;
