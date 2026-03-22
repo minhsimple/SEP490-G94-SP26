@@ -1,1 +1,17 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* Keep all PrimeNG dialogs accessible even when opened near the bottom of long pages. */
+.p-dialog-mask {
+	align-items: flex-start !important;
+	padding: 1rem 0.75rem;
+	overflow-y: auto;
+}
+
+.p-dialog {
+	max-height: calc(100vh - 2rem);
+	margin: auto;
+}
+
+.p-dialog .p-dialog-content {
+	overflow-y: auto;
+}

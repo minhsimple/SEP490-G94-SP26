@@ -616,9 +616,9 @@ export class BookingCreateComponent implements OnInit {
     stateSubmitting = false;
     statusSubmitting = false;
     today = new Date();
-    loadedBookingState = 'DRAFT';
+    loadedBookingState = 'ACTIVE';
     currentStatus = 'ACTIVE';
-    selectedBookingState = 'DRAFT';
+    selectedBookingState = 'ACTIVE';
     readonly loggedInUserId = Number(localStorage.getItem('userId')) || 0;
     readonly loggedInFullName = (localStorage.getItem('fullName') ?? '').trim();
     loggedInLocationId = Number(localStorage.getItem('locationId')) || 0;
@@ -642,6 +642,8 @@ export class BookingCreateComponent implements OnInit {
     ];
 
     bookingStateOptions = [
+        { label: 'Đang hiệu lực', value: 'ACTIVE' },
+        { label: 'Ngưng hiệu lực', value: 'INACTIVE' },
         { label: 'Nháp', value: 'DRAFT' },
         { label: 'Hết hạn', value: 'EXPIRED' },
         { label: 'Đã duyệt', value: 'APPROVED' },
@@ -802,10 +804,10 @@ export class BookingCreateComponent implements OnInit {
                 }
 
                 this.patchFormFromBooking(booking);
-                this.bookingCode = booking.bookingNo ?? '';
+                this.bookingCode = booking.contractNo ?? booking.bookingNo ?? '';
                 this.currentStatus = booking.status ?? 'ACTIVE';
-                this.loadedBookingState = booking.bookingState ?? 'DRAFT';
-                this.selectedBookingState = booking.bookingState ?? 'DRAFT';
+                this.loadedBookingState = booking.contractState ?? booking.bookingState ?? 'ACTIVE';
+                this.selectedBookingState = booking.contractState ?? booking.bookingState ?? 'ACTIVE';
 
                 const requests: Observable<void>[] = [];
 
@@ -1297,10 +1299,10 @@ export class BookingCreateComponent implements OnInit {
                     setTimeout(() => this.router.navigate(['/pages/booking', booking.id]), 800);
                 } else if (booking) {
                     this.patchFormFromBooking(booking);
-                    this.bookingCode = booking.bookingNo ?? this.bookingCode;
+                    this.bookingCode = booking.contractNo ?? booking.bookingNo ?? this.bookingCode;
                     this.currentStatus = booking.status ?? this.currentStatus;
-                    this.loadedBookingState = booking.bookingState ?? this.loadedBookingState;
-                    this.selectedBookingState = booking.bookingState ?? this.selectedBookingState;
+                    this.loadedBookingState = booking.contractState ?? booking.bookingState ?? this.loadedBookingState;
+                    this.selectedBookingState = booking.contractState ?? booking.bookingState ?? this.selectedBookingState;
                 }
             },
             error: (err) => {
@@ -1322,12 +1324,12 @@ export class BookingCreateComponent implements OnInit {
 
         this.stateSubmitting = true;
         this.bookingService.updateState({
-            bookingId: this.bookingId,
-            bookingState: this.selectedBookingState,
+            contractId: this.bookingId,
+            contractState: this.selectedBookingState,
         }).subscribe({
             next: (res) => {
                 this.stateSubmitting = false;
-                this.loadedBookingState = res.data?.bookingState ?? this.selectedBookingState;
+                this.loadedBookingState = res.data?.contractState ?? res.data?.bookingState ?? this.selectedBookingState;
                 this.selectedBookingState = this.loadedBookingState;
                 this.messageService.add({
                     severity: 'success',
@@ -1512,6 +1514,8 @@ export class BookingCreateComponent implements OnInit {
 
     getBookingStateLabel(value?: string): string {
         const labels: Record<string, string> = {
+            ACTIVE: 'Đang hiệu lực',
+            INACTIVE: 'Ngưng hiệu lực',
             DRAFT: 'Nháp',
             EXPIRED: 'Hết hạn',
             APPROVED: 'Đã duyệt',

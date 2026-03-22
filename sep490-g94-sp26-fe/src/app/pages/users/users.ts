@@ -208,9 +208,14 @@ interface Column {
       <!-- Dialog thêm/sửa người dùng -->
       <p-dialog
         [(visible)]="userDialog"
-        [style]="{ width: '500px' }"
-        [header]="user?.id ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'"
+        [style]="{ width: '500px', maxHeight: '90vh' }"
+        [contentStyle]="{ overflow: 'auto', maxHeight: 'calc(90vh - 9rem)' }"
+        [header]="user && user.id ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'"
         [modal]="true"
+        appendTo="body"
+        [draggable]="false"
+        [resizable]="false"
+        [breakpoints]="{ '960px': '92vw', '640px': '96vw' }"
         styleClass="p-fluid"
       >
         <ng-template #content>
@@ -320,9 +325,14 @@ interface Column {
     <!-- Dialog xem chi tiết người dùng -->
     <p-dialog
       [(visible)]="viewDialog"
-      [style]="{ width: '500px' }"
+      [style]="{ width: '500px', maxHeight: '90vh' }"
+      [contentStyle]="{ overflow: 'auto', maxHeight: 'calc(90vh - 9rem)' }"
       header="Chi tiết người dùng"
       [modal]="true"
+      appendTo="body"
+      [draggable]="false"
+      [resizable]="false"
+      [breakpoints]="{ '960px': '92vw', '640px': '96vw' }"
       styleClass="p-fluid"
     >
       <ng-template #content>
