@@ -6,6 +6,7 @@ const BASE = 'http://localhost:8080/api/v1';
 
 export interface Booking {
     id: number;
+    contractNo?: string;
     bookingNo?: string;
     customerId?: number;
     customerName?: string;
@@ -23,6 +24,7 @@ export interface Booking {
     guestCount?: number;
     packageId?: number | null;
     setMenuId?: number | null;
+    contractState?: string;
     bookingState?: string;
     salesId?: number | null;
     reservedUntil?: string | null;
@@ -43,12 +45,14 @@ export interface Booking {
 export interface BookingSearchParams {
     page?: number;
     size?: number;
+    contractNo?: string;
     bookingNo?: string;
     customerId?: number;
     hallId?: number;
     bookingDateFrom?: string;
     bookingDateTo?: string;
     bookingTime?: string;
+    contractState?: string;
     bookingState?: string;
     salesId?: number;
     brideName?: string;
@@ -80,8 +84,8 @@ export interface BookingUpsertPayload {
 }
 
 export interface UpdateBookingStatePayload {
-    bookingId: number;
-    bookingState: string;
+    contractId: number;
+    contractState: string;
 }
 
 export interface ApiResponse<T> {
@@ -112,56 +116,59 @@ export class BookingService {
     }
 
     searchBookings(params: BookingSearchParams = {}): Observable<ApiResponse<PageResponse<Booking>>> {
+        const contractNo = params.contractNo ?? params.bookingNo;
+        const contractState = params.contractState ?? params.bookingState;
+
         let p = new HttpParams()
             .set('page', params.page ?? 0)
             .set('size', params.size ?? 20)
             .set('sort', params.sort ?? 'updatedAt,DESC');
 
-        if (params.bookingNo)       p = p.set('bookingNo',       params.bookingNo);
+        if (contractNo)             p = p.set('contractNo',      contractNo);
         if (params.customerId)      p = p.set('customerId',      params.customerId);
         if (params.hallId)          p = p.set('hallId',          params.hallId);
         if (params.bookingDateFrom) p = p.set('bookingDateFrom', params.bookingDateFrom);
         if (params.bookingDateTo)   p = p.set('bookingDateTo',   params.bookingDateTo);
         if (params.bookingTime)     p = p.set('bookingTime',     params.bookingTime);
-        if (params.bookingState)    p = p.set('bookingState',    params.bookingState);
+        if (contractState)          p = p.set('contractState',   contractState);
         if (params.salesId)         p = p.set('salesId',         params.salesId);
         if (params.brideName)       p = p.set('brideName',       params.brideName);
         if (params.groomName)       p = p.set('groomName',       params.groomName);
         if (params.status)          p = p.set('status',          params.status);
 
-        return this.http.get<ApiResponse<PageResponse<Booking>>>(`${BASE}/booking/search`, {
+        return this.http.get<ApiResponse<PageResponse<Booking>>>(`${BASE}/contract/search`, {
             headers: this.getHeaders(),
             params: p,
         });
     }
 
     getById(id: number): Observable<ApiResponse<Booking>> {
-        return this.http.get<ApiResponse<Booking>>(`${BASE}/booking/${id}`, {
+        return this.http.get<ApiResponse<Booking>>(`${BASE}/contract/${id}`, {
             headers: this.getHeaders(),
         });
     }
 
     create(payload: BookingUpsertPayload): Observable<ApiResponse<Booking>> {
-        return this.http.post<ApiResponse<Booking>>(`${BASE}/booking/create`, payload, {
+        return this.http.post<ApiResponse<Booking>>(`${BASE}/contract/create`, payload, {
             headers: this.getHeaders(),
         });
     }
 
     update(id: number, payload: BookingUpsertPayload): Observable<ApiResponse<Booking>> {
-        return this.http.put<ApiResponse<Booking>>(`${BASE}/booking/update`, payload, {
+        return this.http.put<ApiResponse<Booking>>(`${BASE}/contract/update`, payload, {
             headers: this.getHeaders(),
-            params: new HttpParams().set('bookingId', id),
+            params: new HttpParams().set('contractId', id),
         });
     }
 
     updateState(payload: UpdateBookingStatePayload): Observable<ApiResponse<Booking>> {
-        return this.http.put<ApiResponse<Booking>>(`${BASE}/booking/update-state`, payload, {
+        return this.http.put<ApiResponse<Booking>>(`${BASE}/contract/update-state`, payload, {
             headers: this.getHeaders(),
         });
     }
 
     changeStatus(id: number): Observable<ApiResponse<Booking>> {
-        return this.http.patch<ApiResponse<Booking>>(`${BASE}/booking/${id}/change-status`, {}, {
+        return this.http.patch<ApiResponse<Booking>>(`${BASE}/contract/${id}/change-status`, {}, {
             headers: this.getHeaders(),
         });
     }
