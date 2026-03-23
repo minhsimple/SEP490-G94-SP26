@@ -189,9 +189,14 @@ interface Column {
 
             <p-dialog
                 [(visible)]="customerDialog"
-                [style]="{ width: '540px' }"
+                [style]="{ width: '540px', maxHeight: '90vh' }"
+                [contentStyle]="{ overflow: 'auto', maxHeight: 'calc(90vh - 9rem)' }"
                 [header]="isEditing ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng mới'"
                 [modal]="true"
+                appendTo="body"
+                [draggable]="false"
+                [resizable]="false"
+                [breakpoints]="{ '960px': '92vw', '640px': '96vw' }"
                 styleClass="p-fluid"
             >
                 <ng-template #content>

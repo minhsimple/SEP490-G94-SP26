@@ -202,7 +202,7 @@ import { ServicePackageService } from '../service/service-package.service';
                     <div class="hero-left">
                         <p-button icon="pi pi-arrow-left" [text]="true" severity="secondary" (onClick)="goBack()" />
                         <div>
-                            <div class="booking-no">{{ booking.bookingNo || ('BK-' + booking.id) }}</div>
+                            <div class="booking-no">{{ booking.contractNo || booking.bookingNo || ('BK-' + booking.id) }}</div>
                             <div class="couple-line">
                                 {{ booking.brideName || '-' }} & {{ booking.groomName || '-' }}
                             </div>
@@ -354,8 +354,10 @@ export class BookingDetailComponent implements OnInit {
     remainingAmount = 0;
     progressPercent = 0;
     stateSubmitting = false;
-    selectedBookingState = 'DRAFT';
+    selectedBookingState = 'ACTIVE';
     bookingStateOptions = [
+        { label: 'Đang hiệu lực', value: 'ACTIVE' },
+        { label: 'Ngưng hiệu lực', value: 'INACTIVE' },
         { label: 'Nháp', value: 'DRAFT' },
         { label: 'Hết hạn', value: 'EXPIRED' },
         { label: 'Đã duyệt', value: 'APPROVED' },
@@ -392,7 +394,7 @@ export class BookingDetailComponent implements OnInit {
         this.bookingService.getById(id).subscribe({
             next: (res) => {
                 this.booking = res.data;
-                this.selectedBookingState = this.booking?.bookingState ?? 'DRAFT';
+                this.selectedBookingState = this.booking?.contractState ?? this.booking?.bookingState ?? 'ACTIVE';
 
                 if (this.booking?.customerId) {
                     this.loadCustomer(this.booking.customerId);
@@ -431,14 +433,14 @@ export class BookingDetailComponent implements OnInit {
 
         this.stateSubmitting = true;
         this.bookingService.updateState({
-            bookingId: this.booking.id,
-            bookingState: this.selectedBookingState,
+            contractId: this.booking.id,
+            contractState: this.selectedBookingState,
         }).subscribe({
             next: (res) => {
                 this.stateSubmitting = false;
                 if (this.booking) {
-                    this.booking.bookingState = res.data?.bookingState ?? this.selectedBookingState;
-                    this.selectedBookingState = this.booking.bookingState ?? this.selectedBookingState;
+                    this.booking.contractState = res.data?.contractState ?? res.data?.bookingState ?? this.selectedBookingState;
+                    this.selectedBookingState = this.booking.contractState ?? this.selectedBookingState;
                 }
                 this.messageService.add({
                     severity: 'success',
@@ -555,6 +557,8 @@ export class BookingDetailComponent implements OnInit {
 
     bookingStateLabel(value?: string): string {
         const map: Record<string, string> = {
+            ACTIVE: 'Đang hiệu lực',
+            INACTIVE: 'Ngưng hiệu lực',
             DRAFT: 'Nháp',
             EXPIRED: 'Hết hạn',
             APPROVED: 'Đã duyệt',
@@ -567,6 +571,8 @@ export class BookingDetailComponent implements OnInit {
 
     statusBg(value?: string): string {
         const map: Record<string, string> = {
+            ACTIVE: '#dcfce7',
+            INACTIVE: '#fee2e2',
             DRAFT: '#fef3c7',
             EXPIRED: '#ffedd5',
             APPROVED: '#dcfce7',
@@ -579,6 +585,8 @@ export class BookingDetailComponent implements OnInit {
 
     statusColor(value?: string): string {
         const map: Record<string, string> = {
+            ACTIVE: '#166534',
+            INACTIVE: '#b91c1c',
             DRAFT: '#92400e',
             EXPIRED: '#9a3412',
             APPROVED: '#166534',

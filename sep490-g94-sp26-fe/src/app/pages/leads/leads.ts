@@ -215,9 +215,14 @@ interface Column {
       <!-- Dialog thêm/sửa lead -->
       <p-dialog
         [(visible)]="leadDialog"
-        [style]="{ width: '500px' }"
+        [style]="{ width: '500px', maxHeight: '90vh' }"
+        [contentStyle]="{ overflow: 'auto', maxHeight: 'calc(90vh - 9rem)' }"
         [header]="lead?.id ? 'Chỉnh sửa Lead' : 'Thêm Lead mới'"
         [modal]="true"
+        appendTo="body"
+        [draggable]="false"
+        [resizable]="false"
+        [breakpoints]="{ '960px': '92vw', '640px': '96vw' }"
         styleClass="p-fluid"
       >
         <ng-template #content>

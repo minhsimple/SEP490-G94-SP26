@@ -143,7 +143,7 @@ import { ServicePackageService } from '../service/service-package.service';
                             <!-- Mã đơn -->
                             <td>
                                 <span class="font-semibold text-primary" style="font-size:0.85rem;">
-                                    {{ booking.bookingNo ?? booking.code ?? ('#' + booking.id) }}
+                                    {{ booking.contractNo ?? booking.bookingNo ?? booking.code ?? ('#' + booking.id) }}
                                 </span>
                             </td>
 
@@ -186,10 +186,10 @@ import { ServicePackageService } from '../service/service-package.service';
                             <td>
                                 <span
                                     class="text-xs font-semibold px-2 py-1 border-round"
-                                    [style.background]="getStatusBg(booking.bookingState)"
-                                    [style.color]="getStatusColor(booking.bookingState)"
+                                    [style.background]="getStatusBg(booking.contractState ?? booking.bookingState)"
+                                    [style.color]="getStatusColor(booking.contractState ?? booking.bookingState)"
                                 >
-                                    {{ getStatusLabel(booking.bookingState) }}
+                                    {{ getStatusLabel(booking.contractState ?? booking.bookingState) }}
                                 </span>
                             </td>
 
@@ -267,6 +267,8 @@ export class BookingsComponent implements OnInit {
     filterShift: string | null = null;
     filterMonth: number | null = null;
     statusOptions = [
+        { label: 'Đang hiệu lực', value: 'ACTIVE' },
+        { label: 'Ngưng hiệu lực', value: 'INACTIVE' },
         { label: 'Nháp',          value: 'DRAFT'     },
         { label: 'Hết hạn',       value: 'EXPIRED' },
         { label: 'Đã duyệt',      value: 'APPROVED' },
@@ -343,10 +345,10 @@ export class BookingsComponent implements OnInit {
             page,
             size,
             sort: 'updatedAt,DESC',
-            bookingNo:    this.searchKeyword || undefined,
+            contractNo:   this.searchKeyword || undefined,
             hallId:       this.filterHallId  || undefined,
             bookingTime:  this.filterShift   || undefined,
-            bookingState: this.filterStatus  || undefined,
+            contractState:this.filterStatus  || undefined,
             bookingDateFrom,
             bookingDateTo,
         }).subscribe({
@@ -530,6 +532,8 @@ export class BookingsComponent implements OnInit {
 
     getStatusLabel(status?: string): string {
         const m: Record<string, string> = {
+            ACTIVE:    'Đang hiệu lực',
+            INACTIVE:  'Ngưng hiệu lực',
             DRAFT:     'Nháp',
             EXPIRED:   'Hết hạn',
             APPROVED:  'Đã duyệt',
@@ -542,6 +546,8 @@ export class BookingsComponent implements OnInit {
 
     getStatusColor(status?: string): string {
         const m: Record<string, string> = {
+            ACTIVE:    '#16a34a',
+            INACTIVE:  '#dc2626',
             DRAFT:     '#d97706',
             EXPIRED:   '#b45309',
             APPROVED:  '#16a34a',
@@ -554,6 +560,8 @@ export class BookingsComponent implements OnInit {
 
     getStatusBg(status?: string): string {
         const m: Record<string, string> = {
+            ACTIVE:    '#dcfce7',
+            INACTIVE:  '#fee2e2',
             DRAFT:     '#fef3c7',
             EXPIRED:   '#ffedd5',
             APPROVED:  '#dcfce7',
