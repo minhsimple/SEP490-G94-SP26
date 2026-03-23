@@ -37,6 +37,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/api/payos/**",
                                 "/api/v1/auth/**",
                                 "/api/v1/public/**",
                                 "/error",
