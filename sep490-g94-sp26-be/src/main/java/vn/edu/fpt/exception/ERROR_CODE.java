@@ -126,6 +126,14 @@ public enum ERROR_CODE {
     BOOKING_INVALID_NUMBER_OF_GUESTS(14005, "Số lượng khách quá lớn", HttpStatus.BAD_REQUEST),
 
     /**
+     * Payment Error
+     */
+    PAYMENT_CONFIG_MISSING(15001, "Payment configuration is missing", HttpStatus.BAD_REQUEST),
+    PAYMENT_PROVIDER_ERROR(15002, "Payment provider error", HttpStatus.BAD_GATEWAY),
+    PAYMENT_INVALID_SIGNATURE(15003, "Payment webhook signature is invalid", HttpStatus.BAD_REQUEST),
+    PAYMENT_INVALID_STATE(15004, "Contract state is not valid for payment", HttpStatus.BAD_REQUEST),
+
+    /**
      * Other Error
      */
     INVALID_REQUEST(30000, "Request không hợp lệ", HttpStatus.BAD_REQUEST);
