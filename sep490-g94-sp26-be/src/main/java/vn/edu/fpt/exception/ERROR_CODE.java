@@ -131,7 +131,7 @@ public enum ERROR_CODE {
     PAYMENT_CONFIG_MISSING(15001, "Payment configuration is missing", HttpStatus.BAD_REQUEST),
     PAYMENT_PROVIDER_ERROR(15002, "Payment provider error", HttpStatus.BAD_GATEWAY),
     PAYMENT_INVALID_SIGNATURE(15003, "Payment webhook signature is invalid", HttpStatus.BAD_REQUEST),
-    PAYMENT_INVALID_STATE(15004, "Contract state is not valid for payment", HttpStatus.BAD_REQUEST),
+    PAYMENT_INVALID_STATE(15004, "Contract state is not valid for payos", HttpStatus.BAD_REQUEST),
 
     /**
      * Other Error
