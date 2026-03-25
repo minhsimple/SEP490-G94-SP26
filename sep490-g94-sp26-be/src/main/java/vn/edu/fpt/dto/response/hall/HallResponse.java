@@ -5,6 +5,7 @@ import lombok.experimental.FieldDefaults;
 import vn.edu.fpt.dto.response.image.ImageUrlsResponseDTO;
 import vn.edu.fpt.util.enums.RecordStatus;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Getter
@@ -22,6 +23,7 @@ public class HallResponse {
     Integer capacity;
     String notes;
     RecordStatus status;
+    BigDecimal basePrice;
     List<ImageUrlsResponseDTO> imageUrls;
 }
 

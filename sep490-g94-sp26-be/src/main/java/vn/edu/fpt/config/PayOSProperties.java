@@ -12,7 +12,7 @@ public class PayOSProperties {
     private String checksumKey;
 
     private String baseUrl;
-    private String createPaymentPath = "/v2/payment-requests";
+    private String createPaymentPath = "/v2/payos-requests";
     private String returnUrl;
     private String cancelUrl;
 }

@@ -1,4 +1,4 @@
-package vn.edu.fpt.dto.request.payment;
+package vn.edu.fpt.dto.request.payos;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

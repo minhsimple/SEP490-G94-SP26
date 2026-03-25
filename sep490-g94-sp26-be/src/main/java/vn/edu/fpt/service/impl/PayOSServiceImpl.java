@@ -1,6 +1,5 @@
 package vn.edu.fpt.service.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,10 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import vn.edu.fpt.config.PayOSProperties;
-import vn.edu.fpt.dto.request.payment.CreatePayOSPaymentRequest;
-import vn.edu.fpt.dto.request.payment.PayOSWebhookRequest;
-import vn.edu.fpt.dto.response.payment.PayOSCheckoutResponse;
-import vn.edu.fpt.dto.response.payment.WebhookAcknowledgeResponse;
+import vn.edu.fpt.dto.request.payos.CreatePayOSPaymentRequest;
+import vn.edu.fpt.dto.response.payos.PayOSCheckoutResponse;
+import vn.edu.fpt.dto.response.payos.WebhookAcknowledgeResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -89,7 +87,7 @@ public class PayOSServiceImpl implements PayOSService {
         body.put("signature", hmacSha256(signatureData, payOSProperties.getChecksumKey()));
 
         String endpoint = payOSProperties.getBaseUrl() + payOSProperties.getCreatePaymentPath();
-        log.info("Creating PayOS payment link at: {}", endpoint);
+        log.info("Creating PayOS payos link at: {}", endpoint);
         log.info("Request body: {}", body);
 
         try {
@@ -133,7 +131,7 @@ public class PayOSServiceImpl implements PayOSService {
         } catch (AppException ex) {
             throw ex;
         } catch (Exception ex) {
-            log.error("Failed to create PayOS payment link", ex);
+            log.error("Failed to create PayOS payos link", ex);
             throw new AppException(ERROR_CODE.PAYMENT_PROVIDER_ERROR, ": " + ex.getMessage());
         }
     }

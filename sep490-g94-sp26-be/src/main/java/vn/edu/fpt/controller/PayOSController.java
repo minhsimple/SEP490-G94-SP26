@@ -6,16 +6,14 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import vn.edu.fpt.dto.request.payment.CreatePayOSPaymentRequest;
-import vn.edu.fpt.dto.request.payment.PayOSWebhookRequest;
+import vn.edu.fpt.dto.request.payos.CreatePayOSPaymentRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
-import vn.edu.fpt.dto.response.payment.PayOSCheckoutResponse;
-import vn.edu.fpt.dto.response.payment.WebhookAcknowledgeResponse;
+import vn.edu.fpt.dto.response.payos.PayOSCheckoutResponse;
+import vn.edu.fpt.dto.response.payos.WebhookAcknowledgeResponse;
 import vn.edu.fpt.service.PayOSService;
 
 @RestController
@@ -27,7 +25,7 @@ public class PayOSController {
 
     PayOSService payOSService;
 
-    @Operation(summary = "Create PayOS payment link")
+    @Operation(summary = "Create PayOS payos link")
     @PostMapping("/payment/payos/create")
     public ApiResponse<PayOSCheckoutResponse> createPaymentLink(@RequestBody @Valid CreatePayOSPaymentRequest request) {
         return ApiResponse.<PayOSCheckoutResponse>builder()
@@ -42,10 +40,7 @@ public class PayOSController {
     }
 
 
-
-
-
-//    @PostMapping("confirm-payment")
+//    @PostMapping("confirm-payos")
 //    public ResponseEntity<?> webhook(@RequestBody(required = false) String body) {
 //        System.out.println("Webhook hit: " + body);
 //        return ResponseEntity.ok().build();

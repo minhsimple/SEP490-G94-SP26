@@ -30,9 +30,9 @@ public class ContractController {
 
     ContractService contractService;
 
-    @Operation(summary = "Tạo mới đặt tiệc")
+    @Operation(summary = "Tạo mới hợp đồng tiệc")
     @PostMapping("/create")
-    public ApiResponse<ContractResponse> createContract(@RequestBody @Valid ContractRequest request) {
+    public ApiResponse<ContractResponse> createContract(@RequestBody @Valid ContractRequest request) throws Exception {
         ContractResponse response = contractService.createContract(request);
         return ApiResponse.<ContractResponse>builder()
                 .data(response)

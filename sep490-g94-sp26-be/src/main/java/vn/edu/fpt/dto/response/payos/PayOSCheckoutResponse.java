@@ -1,4 +1,4 @@
-package vn.edu.fpt.dto.response.payment;
+package vn.edu.fpt.dto.response.payos;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,6 +1,9 @@
 package vn.edu.fpt.service.impl;
 
 import jakarta.persistence.criteria.Predicate;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,21 +14,18 @@ import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
+import vn.edu.fpt.dto.request.payment.PaymentRequest;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.ContractMapper;
-import vn.edu.fpt.respository.ContractRepository;
-import vn.edu.fpt.respository.CustomerRepository;
-import vn.edu.fpt.respository.HallRepository;
-import vn.edu.fpt.respository.SetMenuRepository;
+import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.ContractService;
 import vn.edu.fpt.util.StringUtils;
-import vn.edu.fpt.util.enums.BookingTime;
-import vn.edu.fpt.util.enums.ContractState;
-import vn.edu.fpt.util.enums.RecordStatus;
+import vn.edu.fpt.util.enums.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -41,10 +41,14 @@ public class ContractServiceImpl implements ContractService {
     private final CustomerRepository customerRepository;
     private final HallRepository hallRepository;
     private final SetMenuRepository setMenuRepository;
+    private final ServicePackageRepository servicePackageRepository;
+    PaymentServiceImpl paymentServiceImpl;
+    SetMenuServiceImpl setMenuServiceImpl;
+
 
     @Transactional
     @Override
-    public ContractResponse createContract(ContractRequest request) {
+    public ContractResponse createContract(ContractRequest request) throws Exception {
         validateContract(request);
         validateNumberOfGuests(request.getHallId(), request.getExpectedGuests());
 
@@ -57,6 +61,7 @@ public class ContractServiceImpl implements ContractService {
         calculateAndSetTimes(booking, request.getBookingDate(), request.getBookingTime());
 
         Contract saved = bookingRepository.save(booking);
+        createPaymentForContract(saved);
         return contractMapper.toResponse(saved);
     }
 
@@ -240,6 +245,68 @@ public class ContractServiceImpl implements ContractService {
         booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
         return contractMapper.toResponse(saved);
+    }
+
+    // tạo 3 payment mới với thông tin từ contract
+    // payment đầu tiên: 40% tổng tiền, trạng thái PENDING
+    // payment thứ 2:  30% tổng tiền, trạng thái PENDING
+    // payment thứ 3: 30% tổng tiền +  penalty (nếu có) với số tiền phạt, trạng thái PENDING
+    public void createPaymentForContract(Contract contract) throws Exception {
+        BigDecimal totalAmount = getTotalAmountForContract(contract);
+
+        BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(0.4));
+        BigDecimal secondAmount = totalAmount.multiply(BigDecimal.valueOf(0.3));
+
+        BigDecimal thirdAmount = totalAmount
+                .subtract(firstAmount)
+                .subtract(secondAmount);
+
+        //todo: tính penalty nếu có và cộng vào thirdAmount
+//        BigDecimal penalty = contract.getPenaltyAmount() != null
+//                ? contract.getPenaltyAmount()
+//                : BigDecimal.ZERO;
+
+//        thirdAmount = thirdAmount.add(penalty);
+
+        PaymentRequest request1 = PaymentRequest.builder()
+                .contractId(contract.getId())
+                .amount(firstAmount)
+                .method(PaymentMethod.BANK_TRANSFER)
+                .paymentState(PaymentState.PENDING)
+                .note("Thanh toán đợt 1 - 40%")
+                .build();
+
+        PaymentRequest request2 = PaymentRequest.builder()
+                .contractId(contract.getId())
+                .amount(secondAmount)
+                .method(PaymentMethod.BANK_TRANSFER)
+                .paymentState(PaymentState.PENDING)
+                .note("Thanh toán đợt 2 - 30%")
+                .build();
+
+        PaymentRequest request3 = PaymentRequest.builder()
+                .contractId(contract.getId())
+                .amount(thirdAmount)
+                .method(PaymentMethod.BANK_TRANSFER)
+                .paymentState(PaymentState.PENDING)
+                .note("Thanh toán đợt 3 - 30% + penalty")
+                .build();
+
+        paymentServiceImpl.createPayment(request1);
+        paymentServiceImpl.createPayment(request2);
+        paymentServiceImpl.createPayment(request3);
+
+    }
+    public BigDecimal getTotalAmountForContract(Contract contract) throws Exception {
+        BigDecimal setMenuPrice = setMenuServiceImpl.getSetMenuById(contract.getSetMenuId()).getSetPrice();
+        BigDecimal servicePrice = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND))
+                .getBasePrice();
+         BigDecimal totalPrice = setMenuPrice.multiply(BigDecimal.valueOf(contract.getExpectedTables()));
+         BigDecimal hallPrice = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
+                 .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED))
+                 .getBasePrice();
+        return totalPrice.add(servicePrice).add(hallPrice);
     }
 
     /**

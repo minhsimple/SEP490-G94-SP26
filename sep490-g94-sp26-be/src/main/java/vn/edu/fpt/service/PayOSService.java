@@ -1,9 +1,8 @@
 package vn.edu.fpt.service;
 
-import vn.edu.fpt.dto.request.payment.CreatePayOSPaymentRequest;
-import vn.edu.fpt.dto.request.payment.PayOSWebhookRequest;
-import vn.edu.fpt.dto.response.payment.PayOSCheckoutResponse;
-import vn.edu.fpt.dto.response.payment.WebhookAcknowledgeResponse;
+import vn.edu.fpt.dto.request.payos.CreatePayOSPaymentRequest;
+import vn.edu.fpt.dto.response.payos.PayOSCheckoutResponse;
+import vn.edu.fpt.dto.response.payos.WebhookAcknowledgeResponse;
 
 public interface PayOSService {
 
