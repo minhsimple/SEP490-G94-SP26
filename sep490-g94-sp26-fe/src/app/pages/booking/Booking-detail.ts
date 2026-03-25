@@ -172,19 +172,83 @@ import { ServicePackageService } from '../service/service-package.service';
             border-radius: 10px;
             background: #ffffff;
             overflow: hidden;
+            padding: 1rem;
+        }
+        .contract-summary {
+            color: #64748b;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+        .contract-actions {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: nowrap;
+            align-items: center;
+            overflow-x: auto;
+        }
+        .contract-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            z-index: 1200;
+            padding: 1rem;
+        }
+        .contract-modal {
+            width: min(95vw, 980px);
+            max-height: calc(100vh - 2rem);
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.35);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .contract-modal-header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.8rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .contract-modal-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .contract-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
         }
         .contract-content {
-            max-height: 640px;
-            overflow: auto;
             padding: 1rem;
-            background: #f8fafc;
+            overflow: auto;
+            background: #e2e8f0;
+            display: flex;
+            justify-content: center;
+        }
+        .contract-zoom-wrap {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
         }
         .contract-paper {
-            max-width: 900px;
-            margin: 0 auto;
+            width: 210mm;
+            min-height: 297mm;
             background: #fff;
             border: 1px solid #dbe2ea;
-            padding: 1.1rem;
+            padding: 18mm 16mm;
+            box-sizing: border-box;
+            transition: transform 0.16s ease;
         }
         .contract-paper table {
             width: 100%;
@@ -217,6 +281,15 @@ import { ServicePackageService } from '../service/service-package.service';
             .state-select {
                 min-width: 0;
                 width: 100%;
+            }
+            .contract-modal {
+                width: 100%;
+                max-height: calc(100vh - 1rem);
+            }
+            .contract-paper {
+                width: 100%;
+                min-height: auto;
+                padding: 1rem;
             }
         }
     `],
@@ -366,9 +439,37 @@ import { ServicePackageService } from '../service/service-package.service';
                     <div class="card">
                         <h2 class="section-title">Hợp đồng</h2>
                         <div class="contract-shell">
-                            <div class="contract-content">
-                                <div class="contract-paper" [innerHTML]="contractPreviewHtml"></div>
+                            <div class="contract-summary">Xem hợp đồng đã điền thông tin đặt tiệc theo khổ giấy A4.</div>
+                            <div class="contract-actions">
+                                <p-button label="Xem hợp đồng" icon="pi pi-file" (onClick)="openContractDialog()" />
+                                <p-button label="In hợp đồng" icon="pi pi-print" severity="secondary" (onClick)="printContract()" />
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="contract-overlay" *ngIf="contractDialogVisible" (click)="closeContractDialog()">
+                <div class="contract-modal" (click)="$event.stopPropagation()">
+                    <div class="contract-modal-header">
+                        <div class="contract-modal-title">Hợp đồng dịch vụ - Khổ A4</div>
+                        <div class="contract-toolbar">
+                            <span class="muted" style="font-size:0.82rem">Zoom: {{ zoomPercent }}%</span>
+                            <p-button icon="pi pi-search-minus" [rounded]="true" [text]="true" severity="secondary" (onClick)="zoomOut()" />
+                            <p-button icon="pi pi-search-plus" [rounded]="true" [text]="true" severity="secondary" (onClick)="zoomIn()" />
+                            <p-button label="100%" [text]="true" severity="secondary" (onClick)="resetZoom()" />
+                            <p-button icon="pi pi-print" label="In" severity="secondary" [text]="true" (onClick)="printContract()" />
+                            <p-button icon="pi pi-times" [rounded]="true" [text]="true" severity="secondary" (onClick)="closeContractDialog()" />
+                        </div>
+                    </div>
+                    <div class="contract-content">
+                        <div class="contract-zoom-wrap">
+                            <div
+                                class="contract-paper"
+                                [style.transform]="'scale(' + contractZoom + ')'"
+                                [style.transformOrigin]="'top center'"
+                                [innerHTML]="contractPreviewHtml"
+                            ></div>
                         </div>
                     </div>
                 </div>
@@ -395,6 +496,10 @@ export class BookingDetailComponent implements OnInit {
     stateSubmitting = false;
     selectedBookingState = 'ACTIVE';
     contractPreviewHtml: SafeHtml = '';
+    contractPreviewRawHtml = '';
+    contractDialogVisible = false;
+    contractZoom = 1;
+    zoomPercent = 100;
     bookingStateOptions = [
         { label: 'Đang hiệu lực', value: 'ACTIVE' },
         { label: 'Ngưng hiệu lực', value: 'INACTIVE' },
@@ -587,7 +692,8 @@ export class BookingDetailComponent implements OnInit {
     }
 
     private updateContractPreview() {
-        this.contractPreviewHtml = this.sanitizer.bypassSecurityTrustHtml(this.buildContractHtml());
+        this.contractPreviewRawHtml = this.buildContractHtml();
+        this.contractPreviewHtml = this.sanitizer.bypassSecurityTrustHtml(this.contractPreviewRawHtml);
     }
 
     private buildContractHtml(): string {
@@ -619,7 +725,7 @@ export class BookingDetailComponent implements OnInit {
         const guests = Number(this.booking.expectedGuests ?? this.booking.guestCount ?? 0);
         const amount = this.totalAmount > 0 ? this.totalAmount : this.apiTotalAmount;
         const deposit1 = Math.round(amount * 0.3);
-        const deposit2 = Math.round(amount * 0.5);
+        const deposit2 = Math.round(amount * 0.4);
         const deposit3 = Math.max(amount - deposit1 - deposit2, 0);
 
         return `
@@ -653,7 +759,7 @@ export class BookingDetailComponent implements OnInit {
             </table>
 
             <p style="margin-top:10px"><strong>BÊN CUNG CẤP DỊCH VỤ CƯỚI (BÊN B)</strong></p>
-            <p><strong>Đơn vị:</strong> DIANTHUS WEDDING DECOR</p>
+            <p><strong>Đơn vị:</strong> WEDDINGLINK</p>
 
             <p style="margin-top:10px"><strong>ĐIỀU I: NỘI DUNG CÔNG VIỆC</strong></p>
             <p>Bên B cung cấp dịch vụ tiệc cưới theo phụ lục đính kèm cho sự kiện của Bên A.</p>
@@ -675,8 +781,99 @@ export class BookingDetailComponent implements OnInit {
             <p><strong>ĐIỀU V: ĐIỀU KHOẢN CHUNG</strong></p>
             <p>Hợp đồng có hiệu lực từ ngày ký đến khi hai bên hoàn tất trách nhiệm.</p>
 
-            <p style="margin-top:16px"><strong>ĐẠI DIỆN BÊN A</strong><span style="display:inline-block; width:180px"></span><strong>ĐẠI DIỆN BÊN B</strong></p>
+            <table style="margin-top:20px; border:none; width:100%">
+                <tr>
+                    <td style="width:50%; border:none; text-align:center; vertical-align:top">
+                        <p><strong>ĐẠI DIỆN BÊN A</strong></p>
+                    </td>
+                    <td style="width:50%; border:none; text-align:center; vertical-align:top">
+                        <p><strong>ĐẠI DIỆN BÊN B</strong></p>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="height:95px; border:none"></td>
+                    <td style="height:95px; border:none"></td>
+                </tr>
+            </table>
         `;
+    }
+
+    openContractDialog() {
+        this.contractDialogVisible = true;
+    }
+
+    closeContractDialog() {
+        this.contractDialogVisible = false;
+    }
+
+    zoomIn() {
+        this.setZoom(this.contractZoom + 0.1);
+    }
+
+    zoomOut() {
+        this.setZoom(this.contractZoom - 0.1);
+    }
+
+    resetZoom() {
+        this.setZoom(1);
+    }
+
+    private setZoom(value: number) {
+        this.contractZoom = Math.min(2, Math.max(0.5, Number(value.toFixed(2))));
+        this.zoomPercent = Math.round(this.contractZoom * 100);
+    }
+
+    printContract() {
+        const printWindow = window.open('', '_blank', 'width=1000,height=900');
+        if (!printWindow) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Không thể in',
+                detail: 'Trình duyệt đang chặn cửa sổ in. Vui lòng cho phép popup.',
+                life: 3500,
+            });
+            return;
+        }
+
+        const docHtml = `
+            <!doctype html>
+            <html lang="vi">
+            <head>
+                <meta charset="utf-8" />
+                <title>Hợp đồng dịch vụ</title>
+                <style>
+                    @page { size: A4; margin: 12mm; }
+                    body { margin: 0; font-family: 'Times New Roman', serif; background: #fff; }
+                    .paper {
+                        width: 210mm;
+                        min-height: 297mm;
+                        margin: 0 auto;
+                        box-sizing: border-box;
+                        padding: 18mm 16mm;
+                    }
+                    table { width: 100%; border-collapse: collapse; }
+                    td, th { border: 1px solid #d1d5db; padding: 6px; vertical-align: top; }
+                    p { margin: 0 0 6px; line-height: 1.45; font-size: 10pt; }
+                    @media print {
+                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .paper { margin: 0; padding: 0; width: auto; min-height: auto; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="paper">${this.contractPreviewRawHtml}</div>
+                <script>
+                    window.onload = function () {
+                        window.print();
+                    };
+                <\/script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.open();
+        printWindow.document.write(docHtml);
+        printWindow.document.close();
     }
 
     goBack() {
