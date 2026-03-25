@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "halls", schema = "wedding")
 @Getter
@@ -32,5 +34,8 @@ public class Hall extends BaseEntity {
 
     @Column(columnDefinition = "text")
     String notes;
+
+    @Column(precision = 14, scale = 2)
+    BigDecimal basePrice;
 }
 

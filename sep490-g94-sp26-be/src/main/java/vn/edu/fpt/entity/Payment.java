@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
+import vn.edu.fpt.util.enums.PaymentMethod;
 import vn.edu.fpt.util.enums.PaymentState;
 
 import java.math.BigDecimal;
@@ -21,11 +22,11 @@ import java.util.UUID;
 public class Payment extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    Integer id;
 
     @Column(name = "contract_id", nullable = false)
-    UUID contractId;
+    Integer contractId;
 
     @Column(nullable = false, precision = 14, scale = 2)
     BigDecimal amount;
@@ -33,8 +34,9 @@ public class Payment extends BaseEntity {
     @Column(name = "paid_at", nullable = false)
     LocalDateTime paidAt = LocalDateTime.now();
 
-    @Column(nullable = false)
-    String method;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", nullable = false)
+    PaymentMethod method = PaymentMethod.PENDING;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_state", nullable = false)

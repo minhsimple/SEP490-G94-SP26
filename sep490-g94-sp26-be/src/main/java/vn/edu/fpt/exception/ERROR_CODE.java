@@ -34,9 +34,9 @@ public enum ERROR_CODE {
     INVALID_DATE_FORMAT(2008, "Định dạng ngày tháng sai - ", HttpStatus.BAD_REQUEST),
     OUT_OF_RANGE_DATE(2009, "Ngày vượt quá phạm vi cho phép", HttpStatus.BAD_REQUEST),
     EXCEEDS_THE_CURRENT_DATE(2010, "Ngày vượt quá ngày hiện tại", HttpStatus.BAD_REQUEST),
-    INVALID_PASSWORD(20011, "Sai mật khẩu", HttpStatus.BAD_REQUEST),
-    EMAIL_INVALID(20012, "Username không đúng định dạng email", HttpStatus.BAD_REQUEST),
-    ROLE_NOT_NULL(20013, "Role không được để trống", HttpStatus.BAD_REQUEST),
+    INVALID_PASSWORD(2011, "Sai mật khẩu", HttpStatus.BAD_REQUEST),
+    EMAIL_INVALID(2012, "Username không đúng định dạng email", HttpStatus.BAD_REQUEST),
+    ROLE_NOT_NULL(2013, "Role không được để trống", HttpStatus.BAD_REQUEST),
 
 
     /**
@@ -133,6 +133,10 @@ public enum ERROR_CODE {
     PAYMENT_INVALID_SIGNATURE(15003, "Payment webhook signature is invalid", HttpStatus.BAD_REQUEST),
     PAYMENT_INVALID_STATE(15004, "Contract state is not valid for payos", HttpStatus.BAD_REQUEST),
 
+    /**
+     * Payment Error
+     */
+    PAYMENT_NOT_FOUND(16001, "Payment configuration is missing", HttpStatus.NOT_FOUND),
     /**
      * Other Error
      */

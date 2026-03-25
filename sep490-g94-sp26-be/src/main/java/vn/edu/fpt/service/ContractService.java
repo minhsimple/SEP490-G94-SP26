@@ -9,7 +9,7 @@ import vn.edu.fpt.dto.response.contract.ContractResponse;
 
 public interface ContractService {
 
-    ContractResponse createContract(ContractRequest request);
+    ContractResponse createContract(ContractRequest request) throws Exception;
 
     ContractResponse updateContract(Integer id, ContractRequest request);
 
