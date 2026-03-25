@@ -2,6 +2,7 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
@@ -165,6 +166,40 @@ import { ServicePackageService } from '../service/service-package.service';
             grid-template-columns: 1fr 1fr;
             gap: 0.85rem;
             margin-top: 0.65rem;
+        }
+        .contract-shell {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #ffffff;
+            overflow: hidden;
+        }
+        .contract-content {
+            max-height: 640px;
+            overflow: auto;
+            padding: 1rem;
+            background: #f8fafc;
+        }
+        .contract-paper {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #dbe2ea;
+            padding: 1.1rem;
+        }
+        .contract-paper table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .contract-paper td,
+        .contract-paper th {
+            border: 1px solid #d1d5db;
+            padding: 6px;
+            vertical-align: top;
+        }
+        .contract-paper p {
+            margin: 0 0 6px;
+            line-height: 1.45;
+            font-size: 10pt;
         }
         @media (max-width: 992px) {
             .layout {
@@ -330,7 +365,11 @@ import { ServicePackageService } from '../service/service-package.service';
 
                     <div class="card">
                         <h2 class="section-title">Hợp đồng</h2>
-                        <div style="padding:1.6rem 0; text-align:center" class="muted">Chưa có hợp đồng</div>
+                        <div class="contract-shell">
+                            <div class="contract-content">
+                                <div class="contract-paper" [innerHTML]="contractPreviewHtml"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -355,6 +394,7 @@ export class BookingDetailComponent implements OnInit {
     progressPercent = 0;
     stateSubmitting = false;
     selectedBookingState = 'ACTIVE';
+    contractPreviewHtml: SafeHtml = '';
     bookingStateOptions = [
         { label: 'Đang hiệu lực', value: 'ACTIVE' },
         { label: 'Ngưng hiệu lực', value: 'INACTIVE' },
@@ -376,6 +416,7 @@ export class BookingDetailComponent implements OnInit {
         private servicePackageService: ServicePackageService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef,
+        private sanitizer: DomSanitizer,
     ) {}
 
     ngOnInit() {
@@ -414,6 +455,7 @@ export class BookingDetailComponent implements OnInit {
                 this.apiTotalAmount = Number.isFinite(rawTotal) ? rawTotal : 0;
                 this.paidAmount = Number.isFinite(rawPaid) ? rawPaid : 0;
                 this.recalculatePaymentSummary();
+                this.updateContractPreview();
 
                 this.loading = false;
                 this.cdr.detectChanges();
@@ -468,6 +510,7 @@ export class BookingDetailComponent implements OnInit {
             next: (res) => {
                 this.customer = res.data;
                 this.customerName = res.data?.fullName ?? '';
+                this.updateContractPreview();
                 this.cdr.detectChanges();
             },
             error: () => {
@@ -480,6 +523,7 @@ export class BookingDetailComponent implements OnInit {
         this.hallService.getHallById(hallId).subscribe({
             next: (res) => {
                 this.hallName = res.data?.name ?? '';
+                this.updateContractPreview();
                 this.cdr.detectChanges();
             },
             error: () => {
@@ -510,6 +554,7 @@ export class BookingDetailComponent implements OnInit {
                 const price = Number(res.data?.basePrice ?? 0);
                 this.packagePrice = Number.isFinite(price) ? price : 0;
                 this.recalculatePaymentSummary();
+                this.updateContractPreview();
                 this.cdr.detectChanges();
             },
             error: () => {
@@ -537,6 +582,101 @@ export class BookingDetailComponent implements OnInit {
         this.progressPercent = this.totalAmount > 0
             ? Math.min(100, Math.max(0, Math.round((this.paidAmount / this.totalAmount) * 100)))
             : 0;
+
+        this.updateContractPreview();
+    }
+
+    private updateContractPreview() {
+        this.contractPreviewHtml = this.sanitizer.bypassSecurityTrustHtml(this.buildContractHtml());
+    }
+
+    private buildContractHtml(): string {
+        if (!this.booking) {
+            return '<p style="text-align:center; color:#64748b">Chưa có dữ liệu hợp đồng</p>';
+        }
+
+        const esc = (value?: string | number | null) => {
+            const raw = String(value ?? '-');
+            return raw
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+
+        const bookingDate = this.formatDate(this.booking.bookingDate ?? this.booking.eventDate);
+        const signDate = this.formatDate(this.booking.updatedAt ?? this.booking.bookingDate ?? this.booking.eventDate);
+        const contractNo = this.booking.contractNo || this.booking.bookingNo || `HD-${this.booking.id}`;
+        const groomName = this.booking.groomName || '-';
+        const brideName = this.booking.brideName || '-';
+        const customerName = this.customer?.fullName || this.customerName || '-';
+        const customerPhone = this.customer?.phone || '-';
+        const customerEmail = this.customer?.email || '-';
+        const customerAddress = this.customer?.address || '-';
+        const hallName = this.hallName || (this.booking.hallId ? `Sảnh #${this.booking.hallId}` : '-');
+        const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
+        const guests = Number(this.booking.expectedGuests ?? this.booking.guestCount ?? 0);
+        const amount = this.totalAmount > 0 ? this.totalAmount : this.apiTotalAmount;
+        const deposit1 = Math.round(amount * 0.3);
+        const deposit2 = Math.round(amount * 0.5);
+        const deposit3 = Math.max(amount - deposit1 - deposit2, 0);
+
+        return `
+            <p style="text-align:center; margin:0; font-size:10pt">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
+            <p style="text-align:center; margin:0; font-size:10pt">Độc Lập - Tự Do - Hạnh Phúc</p>
+            <p style="text-align:center; margin:8px 0 0; font-size:16pt"><strong>HỢP ĐỒNG DỊCH VỤ</strong></p>
+            <p style="text-align:center; margin:4px 0 10px; font-size:10pt">Số: <span style="color:#dc2626">${esc(contractNo)}</span></p>
+
+            <p>Hợp đồng được lập ngày <span style="color:#dc2626">${esc(signDate)}</span>, gồm có:</p>
+
+            <p><strong>BÊN SỬ DỤNG DỊCH VỤ (BÊN A)</strong></p>
+            <p><strong>Ông/Bà:</strong> <span style="color:#dc2626">${esc(customerName)}</span></p>
+
+            <table>
+                <tr>
+                    <td><strong>CÔ DÂU: ${esc(brideName)}</strong></td>
+                    <td><strong>CHÚ RỂ: ${esc(groomName)}</strong></td>
+                </tr>
+                <tr>
+                    <td>
+                        <p><strong>Địa chỉ:</strong> ${esc(customerAddress)}</p>
+                        <p><strong>Số điện thoại:</strong> ${esc(customerPhone)}</p>
+                        <p><strong>Email:</strong> ${esc(customerEmail)}</p>
+                    </td>
+                    <td>
+                        <p><strong>Ngày tổ chức:</strong> ${esc(bookingDate)}</p>
+                        <p><strong>Sảnh:</strong> ${esc(hallName)}</p>
+                        <p><strong>Ca tiệc:</strong> ${esc(this.shiftLabel(this.booking.bookingTime ?? this.booking.shift))}</p>
+                    </td>
+                </tr>
+            </table>
+
+            <p style="margin-top:10px"><strong>BÊN CUNG CẤP DỊCH VỤ CƯỚI (BÊN B)</strong></p>
+            <p><strong>Đơn vị:</strong> DIANTHUS WEDDING DECOR</p>
+
+            <p style="margin-top:10px"><strong>ĐIỀU I: NỘI DUNG CÔNG VIỆC</strong></p>
+            <p>Bên B cung cấp dịch vụ tiệc cưới theo phụ lục đính kèm cho sự kiện của Bên A.</p>
+
+            <p><strong>ĐIỀU II: GIÁ TRỊ HỢP ĐỒNG VÀ THANH TOÁN</strong></p>
+            <p><strong>Tổng giá trị hợp đồng:</strong> <span style="color:#dc2626">${esc(this.formatPrice(amount))}</span></p>
+            <p><strong>Số bàn dự kiến:</strong> ${esc(tables > 0 ? `${tables} bàn` : '-')}</p>
+            <p><strong>Số khách dự kiến:</strong> ${esc(guests > 0 ? `${guests} khách` : '-')}</p>
+            <p><strong>Đợt 1 (đặt cọc):</strong> ${esc(this.formatPrice(deposit1))}</p>
+            <p><strong>Đợt 2:</strong> ${esc(this.formatPrice(deposit2))}</p>
+            <p><strong>Đợt 3:</strong> ${esc(this.formatPrice(deposit3))}</p>
+
+            <p><strong>ĐIỀU III: TRÁCH NHIỆM HAI BÊN</strong></p>
+            <p>Hai bên cam kết thực hiện đúng nội dung đã thỏa thuận trong hợp đồng và phụ lục.</p>
+
+            <p><strong>ĐIỀU IV: THAY ĐỔI HỢP ĐỒNG</strong></p>
+            <p>Mọi thay đổi phải được hai bên thống nhất bằng văn bản và có thể làm thay đổi giá trị hợp đồng.</p>
+
+            <p><strong>ĐIỀU V: ĐIỀU KHOẢN CHUNG</strong></p>
+            <p>Hợp đồng có hiệu lực từ ngày ký đến khi hai bên hoàn tất trách nhiệm.</p>
+
+            <p style="margin-top:16px"><strong>ĐẠI DIỆN BÊN A</strong><span style="display:inline-block; width:180px"></span><strong>ĐẠI DIỆN BÊN B</strong></p>
+        `;
     }
 
     goBack() {
