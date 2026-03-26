@@ -26,29 +26,38 @@ export class AppMenu implements OnInit, OnDestroy {
   private sub!: Subscription;
 
   private readonly allMenuItems: MenuItem[] = [
-    { label: 'Quản lý vai trò', icon: 'pi pi-fw pi-shield', routerLink: ['/pages/role'], id: 'role' },
-    { label: 'Quản lý chi nhánh', icon: 'pi pi-fw pi-building', routerLink: ['/pages/location'], id: 'location' },
-    { label: 'Quản lý người dùng', icon: 'pi pi-fw pi-users', routerLink: ['/pages/users'], id: 'users' },
-    { label: 'Quản lý leads', icon: 'pi pi-fw pi-users', routerLink: ['/pages/leads'], id: 'leads' },
-    { label: 'Quản lý danh sách khách hàng', icon: 'pi pi-fw pi-user-plus', routerLink: ['/pages/customers'], id: 'customers' },
-    { label: 'Quản lý sảnh hội trường', icon: 'pi pi-fw pi-home', routerLink: ['/pages/hall'], id: 'hall' },
-    { label: 'Đặt tiệc', icon: 'pi pi-fw pi-home', routerLink: ['/pages/booking'], id: 'booking' },
-    {
-      label: 'Dịch vụ', icon: 'pi pi-fw pi-shopping-bag', path: '/pages/service', id: 'service',
-      items: [
-        { label: 'Quản lý dịch vụ', icon: 'pi pi-fw pi-cog', routerLink: ['/pages/service'] },
-        { label: 'Quản lý combo-dịch vụ', icon: 'pi pi-fw pi-box', routerLink: ['/pages/combo-services'] },
-      ],
-    },
-    {
-      label: 'Thực đơn', icon: 'pi pi-fw pi-book', path: '/pages/menu', id: 'menu',
-      items: [
-        { label: 'Món ăn', icon: 'pi pi-fw pi-receipt', routerLink: ['/pages/menu-item'] },
-        { label: 'Danh mục món ăn', icon: 'pi pi-fw pi-list', routerLink: ['/pages/category-menu-item'] },
-        { label: 'Set Menu', icon: 'pi pi-fw pi-box', routerLink: ['/pages/set-menu'] },
-      ],
-    },
-  ];
+  { label: 'Hợp đồng', icon: 'pi pi-file', routerLink: ['/pages/booking'], id: 'booking' },
+  { label: 'Thanh Toán', icon: 'pi pi-credit-card', routerLink: ['/pages/payment'], id: 'payment' },
+  { label: 'Hóa Đơn', icon: 'pi pi-dollar', routerLink: ['/pages/invoice'], id: 'invoice' },
+  { label: 'Quản lý vai trò', icon: 'pi pi-shield', routerLink: ['/pages/role'], id: 'role' },
+  { label: 'Quản lý chi nhánh', icon: 'pi pi-sitemap', routerLink: ['/pages/location'], id: 'location' },
+  { label: 'Quản lý người dùng', icon: 'pi pi-users', routerLink: ['/pages/users'], id: 'users' },
+  { label: 'Quản lý leads', icon: 'pi pi-user-plus', routerLink: ['/pages/leads'], id: 'leads' },
+  { label: 'Quản lý danh sách khách hàng', icon: 'pi pi-id-card', routerLink: ['/pages/customers'], id: 'customers' },
+  { label: 'Quản lý sảnh hội trường', icon: 'pi pi-building', routerLink: ['/pages/hall'], id: 'hall' },
+
+  {
+    label: 'Dịch vụ',
+    icon: 'pi pi-cog',
+    path: '/pages/service',
+    id: 'service',
+    items: [
+      { label: 'Quản lý dịch vụ', icon: 'pi pi-cog', routerLink: ['/pages/service'] },
+      { label: 'Quản lý combo-dịch vụ', icon: 'pi pi-box', routerLink: ['/pages/combo-services'] },
+    ],
+  },
+  {
+    label: 'Thực đơn',
+    icon: 'pi pi-book',
+    path: '/pages/menu',
+    id: 'menu',
+    items: [
+      { label: 'Món ăn', icon: 'pi pi-receipt', routerLink: ['/pages/menu-item'] },
+      { label: 'Danh mục món ăn', icon: 'pi pi-list', routerLink: ['/pages/category-menu-item'] },
+      { label: 'Set Menu', icon: 'pi pi-box', routerLink: ['/pages/set-menu'] },
+    ],
+  },
+];
 
   private readonly rolePermissions: Record<string, string[] | 'all'> = {
     SALE:         ['leads', 'customers', 'service', 'menu', 'hall', 'booking'],

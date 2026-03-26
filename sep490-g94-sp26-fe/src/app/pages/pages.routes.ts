@@ -20,6 +20,10 @@ import { BookingsComponent } from './booking/Booking';
 import { BookingCreateComponent } from './booking/Booking-create';
 import { BookingDetailComponent } from './booking/Booking-detail';
 import { ComboServiceDetailComponent } from './services/combo-service-detail.component';
+import { PaymentsComponent } from './payment/Payment';
+import { InvoicesComponent } from './invoice/Invoice';
+import { InvoiceDetailComponent } from './invoice/Invoice-detail';
+
 
 export default [
     { path: 'crud', component: Crud },
@@ -48,5 +52,9 @@ export default [
     { path: 'booking/:id/view', component: BookingDetailComponent },
     { path: 'booking/:id', component: BookingDetailComponent },
     { path: 'booking', component: BookingsComponent },
+    // ⚠️ invoice route cụ thể phải đứng trước route chung
+    { path: 'invoice/:id', component: InvoiceDetailComponent },
+    { path: 'invoice', component: InvoicesComponent },
+    { path: 'payment', component: PaymentsComponent },
     { path: '**', redirectTo: '/notfound' }
 ] as Routes;
