@@ -11,18 +11,18 @@ import java.util.UUID;
 public interface PaymentService {
     PaymentResponse createPayment(PaymentRequest request);
 
-    PaymentResponse updatePayment(UUID id, PaymentRequest request);
+    PaymentResponse updatePayment(Integer id, PaymentRequest request);
 
-    PaymentResponse getPaymentById(UUID id);
+    PaymentResponse getPaymentById(Integer id);
 
     SimplePage<PaymentResponse> getAllPayments(Pageable pageable);
 
-    SimplePage<PaymentResponse> getPaymentsByContract(UUID contractId, Pageable pageable);
+    SimplePage<PaymentResponse> getPaymentsByContract(Integer contractId, Pageable pageable);
 
-    SimplePage<PaymentResponse> filterPayments(UUID contractId, PaymentState paymentState, Pageable pageable);
+    SimplePage<PaymentResponse> filterPayments(Integer contractId, PaymentState paymentState, Pageable pageable);
 
-    PaymentResponse changePaymentStatus(UUID id, PaymentState status);
+    PaymentResponse changePaymentStatus(Integer id, PaymentState status);
 
-    void deletePayment(UUID id);
+    void deletePayment(Integer id);
 }
 

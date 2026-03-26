@@ -11,13 +11,13 @@ import vn.edu.fpt.util.enums.RecordStatus;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface PaymentRepository extends BaseRepository<Payment, UUID> {
+public interface PaymentRepository extends BaseRepository<Payment, Integer> {
 
-    Optional<Payment> findByIdAndStatus(UUID id, RecordStatus status);
+    Optional<Payment> findByIdAndStatus(Integer id, RecordStatus status);
 
     Page<Payment> findAllByStatus(RecordStatus status, Pageable pageable);
 
-    Page<Payment> findByContractIdAndStatus(UUID contractId, RecordStatus status, Pageable pageable);
+    Page<Payment> findByContractIdAndStatus(Integer contractId, RecordStatus status, Pageable pageable);
 
     @Query("""
             SELECT p FROM Payment p
@@ -27,7 +27,7 @@ public interface PaymentRepository extends BaseRepository<Payment, UUID> {
             ORDER BY p.createdAt DESC
             """)
     Page<Payment> filterPayments(
-            @Param("contractId") UUID contractId,
+            @Param("contractId") Integer contractId,
             @Param("paymentState") PaymentState paymentState,
             @Param("status") RecordStatus status,
             Pageable pageable

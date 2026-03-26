@@ -42,8 +42,8 @@ public class ContractServiceImpl implements ContractService {
     private final HallRepository hallRepository;
     private final SetMenuRepository setMenuRepository;
     private final ServicePackageRepository servicePackageRepository;
-    PaymentServiceImpl paymentServiceImpl;
-    SetMenuServiceImpl setMenuServiceImpl;
+    private final PaymentServiceImpl paymentServiceImpl;
+    private final SetMenuServiceImpl setMenuServiceImpl;
 
 
     @Transactional
