@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import vn.edu.fpt.util.enums.PaymentMethod;
 import vn.edu.fpt.util.enums.PaymentState;
 
@@ -36,10 +38,12 @@ public class Payment extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     PaymentMethod method = PaymentMethod.PENDING;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_state", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     PaymentState paymentState = PaymentState.PENDING;
 
     @Column(name = "reference_no")

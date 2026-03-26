@@ -17,9 +17,9 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class PaymentResponse {
 
-    UUID id;
+    Integer id;
 
-    UUID contractId;
+    Integer contractId;
 
     BigDecimal amount;
 

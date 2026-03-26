@@ -42,7 +42,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponse updatePayment(UUID id, PaymentRequest request) {
+    public PaymentResponse updatePayment(Integer id, PaymentRequest request) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
 
@@ -52,7 +52,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public PaymentResponse getPaymentById(UUID id) {
+    public PaymentResponse getPaymentById(Integer id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
         return paymentMapper.toResponse(payment);
@@ -72,7 +72,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public SimplePage<PaymentResponse> getPaymentsByContract(UUID contractId, Pageable pageable) {
+    public SimplePage<PaymentResponse> getPaymentsByContract(Integer contractId, Pageable pageable) {
         Page<Payment> payments = paymentRepository.findByContractIdAndStatus(contractId, RecordStatus.active, pageable);
         return new SimplePage<>(
                 payments.getContent().stream()
@@ -85,7 +85,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public SimplePage<PaymentResponse> filterPayments(UUID contractId, PaymentState paymentState, Pageable pageable) {
+    public SimplePage<PaymentResponse> filterPayments(Integer contractId, PaymentState paymentState, Pageable pageable) {
         Specification<Payment> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -117,7 +117,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponse changePaymentStatus(UUID id, PaymentState status) {
+    public PaymentResponse changePaymentStatus(Integer id, PaymentState status) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
 
@@ -128,7 +128,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public void deletePayment(UUID id) {
+    public void deletePayment(Integer id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
 

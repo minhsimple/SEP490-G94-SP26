@@ -42,7 +42,7 @@ public class PaymentController {
     @Operation(summary = "Cập nhật thanh toán")
     @PutMapping("/{id}")
     public ApiResponse<PaymentResponse> updatePayment(
-            @PathVariable UUID id,
+            @PathVariable Integer id,
             @RequestBody @Valid PaymentRequest request) {
         PaymentResponse response = paymentService.updatePayment(id, request);
         return ApiResponse.<PaymentResponse>builder()
@@ -52,7 +52,7 @@ public class PaymentController {
 
     @Operation(summary = "Xem chi tiết thanh toán")
     @GetMapping("/{id}")
-    public ApiResponse<PaymentResponse> getPaymentById(@PathVariable UUID id) {
+    public ApiResponse<PaymentResponse> getPaymentById(@PathVariable Integer id) {
         PaymentResponse response = paymentService.getPaymentById(id);
         return ApiResponse.<PaymentResponse>builder()
                 .data(response)
@@ -76,7 +76,7 @@ public class PaymentController {
     @Operation(summary = "Xem danh sách thanh toán theo hợp đồng")
     @GetMapping("/contract/{contractId}")
     public ApiResponse<SimplePage<PaymentResponse>> getPaymentsByContract(
-            @PathVariable UUID contractId,
+            @PathVariable Integer contractId,
             @ParameterObject @PageableDefault(
                     size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,
@@ -91,7 +91,7 @@ public class PaymentController {
     @Operation(summary = "Lọc thanh toán theo hợp đồng và trạng thái")
     @GetMapping("/filter")
     public ApiResponse<SimplePage<PaymentResponse>> filterPayments(
-            @RequestParam(required = false) UUID contractId,
+            @RequestParam(required = false) Integer contractId,
             @RequestParam(required = false) PaymentState paymentState,
             @ParameterObject @PageableDefault(
                     size = Constants.PAGE.DEFAULT_PAGE_SIZE,
@@ -107,7 +107,7 @@ public class PaymentController {
     @Operation(summary = "Thay đổi trạng thái thanh toán")
     @PatchMapping("/{id}/status")
     public ApiResponse<PaymentResponse> changePaymentStatus(
-            @PathVariable UUID id,
+            @PathVariable Integer id,
             @RequestParam PaymentState status) {
         PaymentResponse response = paymentService.changePaymentStatus(id, status);
         return ApiResponse.<PaymentResponse>builder()
@@ -117,7 +117,7 @@ public class PaymentController {
 
     @Operation(summary = "Xóa thanh toán (soft delete)")
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> deletePayment(@PathVariable UUID id) {
+    public ApiResponse<Void> deletePayment(@PathVariable Integer id) {
         paymentService.deletePayment(id);
         return ApiResponse.<Void>builder()
                 .build();
