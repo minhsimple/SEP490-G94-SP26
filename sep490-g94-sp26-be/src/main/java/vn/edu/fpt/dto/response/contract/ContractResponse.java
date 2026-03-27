@@ -41,6 +41,8 @@ public class ContractResponse {
     String groomFatherName;
     String groomMotherName;
     RecordStatus status;
+    Integer assignCoordinatorId;
+    String assignCoordinatorName;
 }
 
 

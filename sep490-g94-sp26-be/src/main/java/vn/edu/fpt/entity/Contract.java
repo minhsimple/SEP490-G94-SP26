@@ -94,5 +94,8 @@ public class Contract extends BaseEntity {
 
     @Column(name = "groom_mother_name")
     String groomMotherName;
+
+    @Column(name = "assign_coordinator_id")
+    Integer assignCoordinatorId;
 }
 

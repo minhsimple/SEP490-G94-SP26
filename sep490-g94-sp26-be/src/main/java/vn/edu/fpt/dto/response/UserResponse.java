@@ -16,7 +16,7 @@ public class UserResponse {
     private String phone;
     private Integer roleId;
     private Integer locationId;
-    private RecordStatus status;;
+    private RecordStatus status;
     private String roleCode;
 
 }

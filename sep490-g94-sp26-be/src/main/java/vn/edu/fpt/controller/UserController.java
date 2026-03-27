@@ -27,12 +27,12 @@ import vn.edu.fpt.service.UserService;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserController {
 
-    UserService userService;
+    private UserService userService;
 
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Xem danh sách tai khoan nguoi dung ")
     @GetMapping("/search")
-    public ApiResponse<SimplePage<UserResponse>> getAll(
+    public ApiResponse<SimplePage<UserResponse>> getAllUsers(
             @Valid UserFilterRequest filter,
             @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
                     sort = Constants.SORT.SORT_BY,

@@ -32,6 +32,8 @@ public class ContractRequest {
 
     Integer expectedGuests;
 
+    Integer assignCoordinatorId;
+
     Integer packageId;
 
     Integer setMenuId;
