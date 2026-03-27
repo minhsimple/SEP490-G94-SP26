@@ -76,7 +76,6 @@ import { LocationService, Location } from '../service/location.service';
                     </div>
                 </div>
 
-                <!-- Services list -->
                 <div class="detail-card mt-4">
                     <div class="flex items-center gap-2 mb-4">
                         <i class="pi pi-sparkles" style="color: #3b82f6; font-size: 1.1rem;"></i>
@@ -116,8 +115,6 @@ import { LocationService, Location } from '../service/location.service';
                         (onClick)="goEdit()" />
                 </div>
             </div>
-
-            <!-- Not found -->
             <div *ngIf="!item" class="text-center py-8 text-500">
                 <i class="pi pi-info-circle text-4xl mb-3 block"></i>
                 Không tìm thấy combo dịch vụ
