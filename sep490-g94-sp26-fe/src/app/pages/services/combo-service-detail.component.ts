@@ -80,6 +80,8 @@ import { LocationService, Location } from '../service/location.service';
                 <div class="detail-card mt-4">
                     <div class="flex items-center gap-2 mb-4">
                         <i class="pi pi-sparkles" style="color: #3b82f6; font-size: 1.1rem;"></i>
+
+                        
                         <span class="font-semibold text-900 text-lg">Danh sách dịch vụ</span>
                     </div>
 
