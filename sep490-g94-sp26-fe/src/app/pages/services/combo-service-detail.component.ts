@@ -30,7 +30,6 @@ import { LocationService, Location } from '../service/location.service';
             </div>
 
             <div *ngIf="item">
-                <!-- Hero Header (no image) -->
                 <div class="detail-hero">
                     <div class="detail-hero-overlay">
                         <h2 class="detail-hero-title">{{ item.name }}</h2>
@@ -47,7 +46,6 @@ import { LocationService, Location } from '../service/location.service';
                     </div>
                 </div>
 
-                <!-- Stats cards -->
                 <div class="stats-grid mt-4">
                     <div class="stat-card">
                         <div class="stat-icon" style="color: #3b82f6;">
@@ -64,8 +62,6 @@ import { LocationService, Location } from '../service/location.service';
                         <div class="stat-label">Tổng dịch vụ</div>
                     </div>
                 </div>
-
-                <!-- Description -->
                 <div class="detail-card mt-4" *ngIf="item.description">
                     <div class="flex items-center gap-2 mb-3">
                         <i class="pi pi-align-left" style="color: #3b82f6;"></i>
