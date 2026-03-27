@@ -185,7 +185,6 @@ import { ServicePackageService } from '../service/service-package.service';
             flex-wrap: nowrap;
             align-items: center;
             overflow-x: auto;
-            
         }
         .contract-overlay {
             position: fixed;
