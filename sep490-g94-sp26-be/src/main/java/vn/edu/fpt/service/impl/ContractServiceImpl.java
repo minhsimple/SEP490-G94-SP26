@@ -262,11 +262,6 @@ public class ContractServiceImpl implements ContractService {
                 .subtract(secondAmount);
 
         //todo: tính penalty nếu có và cộng vào thirdAmount
-//        BigDecimal penalty = contract.getPenaltyAmount() != null
-//                ? contract.getPenaltyAmount()
-//                : BigDecimal.ZERO;
-
-//        thirdAmount = thirdAmount.add(penalty);
 
         PaymentRequest request1 = PaymentRequest.builder()
                 .contractId(contract.getId())
@@ -281,20 +276,11 @@ public class ContractServiceImpl implements ContractService {
                 .amount(secondAmount)
                 .method(PaymentMethod.BANK_TRANSFER)
                 .paymentState(PaymentState.PENDING)
-                .note("Thanh toán đợt 2 - 30%")
-                .build();
-
-        PaymentRequest request3 = PaymentRequest.builder()
-                .contractId(contract.getId())
-                .amount(thirdAmount)
-                .method(PaymentMethod.BANK_TRANSFER)
-                .paymentState(PaymentState.PENDING)
-                .note("Thanh toán đợt 3 - 30% + penalty")
+                .note("Thanh toán đợt 2 - 60% + chi phí phát sinh (nếu có)")
                 .build();
 
         paymentServiceImpl.createPayment(request1);
         paymentServiceImpl.createPayment(request2);
-        paymentServiceImpl.createPayment(request3);
 
     }
     public BigDecimal getTotalAmountForContract(Contract contract) throws Exception {
