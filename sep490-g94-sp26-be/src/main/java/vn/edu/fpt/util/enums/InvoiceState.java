@@ -1,8 +1,8 @@
 package vn.edu.fpt.util.enums;
 
 public enum InvoiceState {
-    DRAFT,
-    ISSUED,
-    CANCELLED
+    UNPAID,
+    PARTIALLY_PAID,
+    PAID
 }
 
