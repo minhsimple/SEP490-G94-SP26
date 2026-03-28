@@ -5,9 +5,12 @@ import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface HallRepository extends BaseRepository<Hall, Integer> {
     List<Hall> findAllByStatus(RecordStatus status);
+
+    List<Hall> findAllByIdIn(Set<Integer> ids);
 
     Optional<Hall> findByIdAndStatus(Integer id, RecordStatus status);
     Boolean existsByIdAndStatus(Integer id, RecordStatus status);

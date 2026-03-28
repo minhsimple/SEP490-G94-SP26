@@ -137,6 +137,12 @@ public enum ERROR_CODE {
      * Payment Error
      */
     PAYMENT_NOT_FOUND(16001, "Payment configuration is missing", HttpStatus.NOT_FOUND),
+
+    /**
+     * Invoice Error
+     */
+    INVOICE_NOT_FOUND(17001, "Hóa đơn ko tồn tại", HttpStatus.NOT_FOUND),
+
     /**
      * Other Error
      */

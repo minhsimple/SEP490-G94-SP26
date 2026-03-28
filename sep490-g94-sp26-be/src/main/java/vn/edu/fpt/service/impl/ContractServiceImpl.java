@@ -22,6 +22,7 @@ import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.ContractMapper;
 import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.ContractService;
+import vn.edu.fpt.service.InvoiceService;
 import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.*;
 
@@ -44,6 +45,7 @@ public class ContractServiceImpl implements ContractService {
     private final ServicePackageRepository servicePackageRepository;
     private final PaymentServiceImpl paymentServiceImpl;
     private final SetMenuServiceImpl setMenuServiceImpl;
+    private final InvoiceService invoiceService;
 
 
     @Transactional
@@ -62,6 +64,8 @@ public class ContractServiceImpl implements ContractService {
 
         Contract saved = bookingRepository.save(booking);
         createPaymentForContract(saved);
+        invoiceService.createInvoice(saved.getId());
+
         return contractMapper.toResponse(saved);
     }
 
