@@ -7,11 +7,13 @@ import vn.edu.fpt.util.enums.RecordStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface ContractRepository extends BaseRepository<Contract, Integer> {
 
     Optional<Contract> findByIdAndStatus(Integer id, RecordStatus status);
 
+    List<Contract> findAllByIdIn(Set<Integer> ids);
 
     List<Contract> findAllByStatus(RecordStatus status);
 

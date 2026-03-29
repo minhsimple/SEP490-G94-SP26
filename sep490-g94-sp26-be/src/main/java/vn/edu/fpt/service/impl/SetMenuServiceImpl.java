@@ -304,7 +304,7 @@ public class SetMenuServiceImpl implements SetMenuService {
         return setMenuResponse;
     }
 
-    public BigDecimal calculateSetPrice(List<SetMenuItem> setMenuItemList, List<MenuItem> menuItemList) {
+    public static BigDecimal calculateSetPrice(List<SetMenuItem> setMenuItemList, List<MenuItem> menuItemList) {
         Map<Integer, MenuItem> menuItemMap = menuItemList.stream()
                 .collect(Collectors.toMap(MenuItem::getId, menuItem -> menuItem));
 
