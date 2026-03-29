@@ -21,7 +21,7 @@ import java.math.BigDecimal;
 public class Invoice extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
     @Column(name = "contract_id", nullable = false)
