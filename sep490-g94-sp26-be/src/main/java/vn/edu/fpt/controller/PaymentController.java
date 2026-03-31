@@ -19,8 +19,6 @@ import vn.edu.fpt.service.PaymentService;
 import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.util.enums.PaymentState;
 
-import java.util.UUID;
-
 @RestController
 @RequestMapping("/api/v1/payments")
 @Tag(name = "Payment")

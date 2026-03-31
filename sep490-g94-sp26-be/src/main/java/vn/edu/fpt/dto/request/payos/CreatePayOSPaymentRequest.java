@@ -27,4 +27,7 @@ public class CreatePayOSPaymentRequest {
     String returnUrl;
 
     String cancelUrl;
+
+    @NotNull
+    Integer paymentId;
 }

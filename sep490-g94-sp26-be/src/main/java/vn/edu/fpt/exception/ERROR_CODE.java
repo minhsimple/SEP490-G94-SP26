@@ -132,17 +132,12 @@ public enum ERROR_CODE {
     PAYMENT_PROVIDER_ERROR(15002, "Payment provider error", HttpStatus.BAD_GATEWAY),
     PAYMENT_INVALID_SIGNATURE(15003, "Payment webhook signature is invalid", HttpStatus.BAD_REQUEST),
     PAYMENT_INVALID_STATE(15004, "Contract state is not valid for payos", HttpStatus.BAD_REQUEST),
-
-    /**
-     * Payment Error
-     */
     PAYMENT_NOT_FOUND(16001, "Payment configuration is missing", HttpStatus.NOT_FOUND),
 
     /**
      * Invoice Error
      */
     INVOICE_NOT_FOUND(17001, "Hóa đơn ko tồn tại", HttpStatus.NOT_FOUND),
-
     /**
      * Other Error
      */
