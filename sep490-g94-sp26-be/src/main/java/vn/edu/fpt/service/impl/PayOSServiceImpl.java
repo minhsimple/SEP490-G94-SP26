@@ -16,11 +16,14 @@ import vn.edu.fpt.dto.request.payos.CreatePayOSPaymentRequest;
 import vn.edu.fpt.dto.response.payos.PayOSCheckoutResponse;
 import vn.edu.fpt.dto.response.payos.WebhookAcknowledgeResponse;
 import vn.edu.fpt.entity.Contract;
+import vn.edu.fpt.entity.Payment;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.respository.ContractRepository;
+import vn.edu.fpt.respository.PaymentRepository;
 import vn.edu.fpt.service.PayOSService;
 import vn.edu.fpt.util.enums.ContractState;
+import vn.edu.fpt.util.enums.PaymentState;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.payos.PayOS;
 import vn.payos.model.webhooks.WebhookData;
@@ -38,9 +41,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class PayOSServiceImpl implements PayOSService {
 
-    private static final long ORDER_CODE_FACTOR = 1_000_000L;
+    private static final long SUFFIX_FACTOR = 100_000L;      // 5 digits
+    private static final long PAYMENT_FACTOR = 10_000L;      // 4 digits
+    private static final long ORDER_CODE_FACTOR = PAYMENT_FACTOR * SUFFIX_FACTOR;
 
     private final ContractRepository contractRepository;
+    private final PaymentRepository paymentRepository;
     private final PayOSProperties payOSProperties;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -71,7 +77,7 @@ public class PayOSServiceImpl implements PayOSService {
 
 
 
-        long orderCode = buildOrderCode(contract.getId());
+        long orderCode = buildOrderCode(contract.getId(), request.getPaymentId());
         String signatureData = "amount=" + request.getAmount()
                 + "&cancelUrl=" + cancelUrl
                 + "&description=" + request.getDescription()
@@ -170,8 +176,15 @@ public class PayOSServiceImpl implements PayOSService {
                     .build();
         }
 
-        // 4. BUSINESS LOGIC
         int contractId = parseContractId(orderCode);
+        Integer paymentId = parsePaymentId(orderCode);
+
+        Payment payment = paymentRepository.findByIdAndStatus(paymentId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
+        if (payment.getPaymentState() == PaymentState.PENDING) {
+            payment.setPaymentState(PaymentState.SUCCESS);
+            paymentRepository.save(payment);
+        }
         Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
@@ -179,57 +192,28 @@ public class PayOSServiceImpl implements PayOSService {
             contract.setContractState(ContractState.ACTIVE);
             contractRepository.save(contract);
         }
-
-        log.info("webhook complete");
-
         return WebhookAcknowledgeResponse.builder()
                 .processed(true)
                 .message("Webhook processed")
                 .build();
     }
 
-//    private boolean verifyWebhookSignature(PayOSWebhookRequest request) {
-//        if (!org.springframework.util.StringUtils.hasText(payOSProperties.getChecksumKey())) {
-//            return true;
-//        }
-//
-//        String providedSignature = request.getSignature();
-//        if (!org.springframework.util.StringUtils.hasText(providedSignature) && request.getData() != null) {
-//            providedSignature = request.getData().getSignature();
-//        }
-//        if (!org.springframework.util.StringUtils.hasText(providedSignature)) {
-//            return false;
-//        }
-//
-//        String dataToSign = "amount=" + request.getData().getAmount()
-//                + "&description=" + request.getData().getDescription()
-//                + "&orderCode=" + request.getData().getOrderCode();
-//
-//        String expectedSignature = hmacSha256(dataToSign, payOSProperties.getChecksumKey());
-//        return expectedSignature.equalsIgnoreCase(providedSignature);
-//    }
-//
-//    private boolean isWebhookSuccess(PayOSWebhookRequest request) {
-//        if (Boolean.TRUE.equals(request.getSuccess())) {
-//            return true;
-//        }
-//        if ("00".equals(request.getCode())) {
-//            return true;
-//        }
-//        return request.getData() != null && "PAID".equalsIgnoreCase(request.getData().getStatus());
-//    }
 
     private int parseContractId(long orderCode) {
-        long contractId = orderCode / ORDER_CODE_FACTOR;
-        if (contractId <= 0 || contractId > Integer.MAX_VALUE) {
-            throw new AppException(ERROR_CODE.INVALID_REQUEST, ": invalid orderCode");
-        }
-        return (int) contractId;
+        return (int) (orderCode / ORDER_CODE_FACTOR);
     }
 
-    private long buildOrderCode(int contractId) {
-        long suffix = System.currentTimeMillis() % ORDER_CODE_FACTOR;
-        return contractId * ORDER_CODE_FACTOR + suffix;
+    private int parsePaymentId(long orderCode) {
+        long remain = orderCode % ORDER_CODE_FACTOR;
+        return (int) (remain / SUFFIX_FACTOR);
+    }
+
+    private long buildOrderCode(int contractId, Integer paymentId) {
+        long suffix = System.currentTimeMillis() % SUFFIX_FACTOR;
+
+        return ((long) contractId) * ORDER_CODE_FACTOR
+                + ((long) paymentId) * SUFFIX_FACTOR
+                + suffix;
     }
 
     private void validatePayOSConfig() {
