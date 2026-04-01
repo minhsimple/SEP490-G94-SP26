@@ -174,6 +174,7 @@ import { Invoice, InvoiceService } from '../service/invoice.service';
             background: #ffffff;
             overflow: hidden;
             padding: 1rem;
+            
         }
         .contract-summary {
             color: #64748b;
