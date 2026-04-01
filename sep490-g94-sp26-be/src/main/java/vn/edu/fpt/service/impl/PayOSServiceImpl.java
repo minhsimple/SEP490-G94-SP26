@@ -59,11 +59,11 @@ public class PayOSServiceImpl implements PayOSService {
         // validate request
         validatePayOSConfig();
 
-        Contract contract = contractRepository.findByIdAndStatus(request.getContractId(), RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
-
         Payment payment = paymentRepository.findByIdAndStatus(request.getPaymentId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
+
+        Contract contract = contractRepository.findByIdAndStatus(payment.getContractId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
         if (contract.getContractState() == ContractState.CANCELLED || contract.getContractState() == ContractState.LIQUIDATED) {
             throw new AppException(ERROR_CODE.PAYMENT_INVALID_STATE);
@@ -78,10 +78,8 @@ public class PayOSServiceImpl implements PayOSService {
             throw new AppException(ERROR_CODE.PAYMENT_CONFIG_MISSING, ": returnUrl/cancelUrl");
         }
 
-
-
         long orderCode = buildOrderCode(contract.getId(), request.getPaymentId());
-        String signatureData = "amount=" + payment.getAmount()
+        String signatureData = "amount=" + payment.getAmount().longValue()
                 + "&cancelUrl=" + cancelUrl
                 + "&description=" + request.getDescription()
                 + "&orderCode=" + orderCode
@@ -89,7 +87,7 @@ public class PayOSServiceImpl implements PayOSService {
 
         Map<String, Object> body = new HashMap<>();
         body.put("orderCode", orderCode);
-        body.put("amount", payment.getAmount());
+        body.put("amount", payment.getAmount().longValue());
         body.put("description", request.getDescription());
         body.put("returnUrl", returnUrl);
         body.put("cancelUrl", cancelUrl);
@@ -98,6 +96,8 @@ public class PayOSServiceImpl implements PayOSService {
         String endpoint = payOSProperties.getBaseUrl() + payOSProperties.getCreatePaymentPath();
         log.info("Creating PayOS payos link at: {}", endpoint);
         log.info("Request body: {}", body);
+        log.info("CHECKSUM KEY LENGTH: {}", payOSProperties.getChecksumKey().length());
+        log.info("SIGNATURE RAW: {}", signatureData);
 
         try {
             HttpHeaders headers = new HttpHeaders();

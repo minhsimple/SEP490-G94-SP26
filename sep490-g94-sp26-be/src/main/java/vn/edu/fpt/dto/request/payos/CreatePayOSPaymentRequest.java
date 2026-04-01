@@ -14,8 +14,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreatePayOSPaymentRequest {
 
-    @NotNull(message = "Contract id must not be null")
-    Integer contractId;
 
     @NotBlank(message = "Payment description must not be blank")
     String description = "Thanh toán hợp đồng tiệc cưới";
