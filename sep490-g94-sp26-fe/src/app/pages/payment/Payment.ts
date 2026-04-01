@@ -13,6 +13,11 @@ import { TableModule, Table } from 'primeng/table';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { Payment, PaymentService } from '../service/payment.service';
+import { Invoice, InvoiceService } from '../service/invoice.service';
+import { Booking, BookingService } from '../service/booking.service';
+import { Customer, CustomerService } from '../service/customer.service';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 interface Column { field: string; header: string; }
 
@@ -56,6 +61,15 @@ interface Column { field: string; header: string; }
                         />
                     </p-iconfield>
                     <p-select
+                        [options]="methodOptions"
+                        [(ngModel)]="filterMethod"
+                        optionLabel="label" optionValue="value"
+                        placeholder="Phương thức"
+                        [showClear]="true"
+                        (onChange)="onFilter()"
+                        style="width:200px"
+                    />
+                    <p-select
                         [options]="statusOptions"
                         [(ngModel)]="filterStatus"
                         optionLabel="label" optionValue="value"
@@ -63,6 +77,14 @@ interface Column { field: string; header: string; }
                         [showClear]="true"
                         (onChange)="onFilter()"
                         style="width:180px"
+                    />
+                    <p-button
+                        label="Xóa lọc"
+                        icon="pi pi-refresh"
+                        severity="secondary"
+                        [text]="true"
+                        size="small"
+                        (onClick)="clearFilters()"
                     />
                 </div>
 
@@ -89,8 +111,7 @@ interface Column { field: string; header: string; }
                             <th style="min-width:12rem">Mã TT</th>
                             <th style="min-width:12rem">Hoá đơn</th>
                             <th style="min-width:10rem">Khách hàng</th>
-                            <th style="min-width:9rem">Ngày</th>
-                            <th style="min-width:8rem">Đợt</th>
+                            <th style="min-width:14rem">Cập nhật lúc</th>
                             <th style="min-width:12rem">Phương thức</th>
                             <th style="min-width:10rem">Trạng thái</th>
                             <th style="min-width:10rem; text-align:right">Số tiền</th>
@@ -123,13 +144,8 @@ interface Column { field: string; header: string; }
                             <!-- Khách hàng -->
                             <td class="text-600 text-sm">{{ payment.customerName ?? '-' }}</td>
 
-                            <!-- Ngày -->
-                            <td class="text-600 text-sm">{{ formatDate(payment.paymentDate) }}</td>
-
-                            <!-- Đợt -->
-                            <td class="text-600 text-sm">
-                                {{ formatRound(payment.round) }}
-                            </td>
+                            <!-- Thời gian cập nhật -->
+                            <td class="text-600 text-sm">{{ formatDateTime(payment.updatedAt || payment.paidAt || payment.paymentDate) }}</td>
 
                             <!-- Phương thức -->
                             <td class="text-600 text-sm">
@@ -143,10 +159,10 @@ interface Column { field: string; header: string; }
                             <td>
                                 <span
                                     class="text-xs font-bold px-3 py-1 border-round-xl"
-                                    [style.background]="getStatusBg(payment.status)"
-                                    [style.color]="getStatusColor(payment.status)"
+                                    [style.background]="getStatusBg(payment.paymentState || payment.status)"
+                                    [style.color]="getStatusColor(payment.paymentState || payment.status)"
                                 >
-                                    {{ getStatusLabel(payment.status) }}
+                                    {{ getStatusLabel(payment.paymentState || payment.status) }}
                                 </span>
                             </td>
 
@@ -158,16 +174,6 @@ interface Column { field: string; header: string; }
                             <!-- Thao tác -->
                             <td style="text-align:center;">
                                 <div class="flex items-center justify-center gap-1">
-                                    <!-- Nút xem chỉ hiện khi có invoiceId -->
-                                    <p-button
-                                        *ngIf="payment.invoiceId"
-                                        icon="pi pi-eye"
-                                        [rounded]="true" [text]="true"
-                                        severity="secondary"
-                                        (click)="goToInvoice(payment)"
-                                        pTooltip="Xem hoá đơn"
-                                        tooltipPosition="top"
-                                    />
                                     <p-button
                                         icon="pi pi-trash"
                                         [rounded]="true" [text]="true"
@@ -183,7 +189,7 @@ interface Column { field: string; header: string; }
 
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="9" class="text-center py-8 text-500">
+                            <td colspan="8" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
                                 Không có thanh toán nào
                             </td>
@@ -213,7 +219,7 @@ interface Column { field: string; header: string; }
             .p-datatable .p-datatable-tbody > tr:last-child > td { border-bottom: none; }
         }
     `],
-    providers: [MessageService, ConfirmationService, PaymentService]
+    providers: [MessageService, ConfirmationService, PaymentService, InvoiceService, BookingService, CustomerService]
 })
 export class PaymentsComponent implements OnInit {
 
@@ -224,12 +230,20 @@ export class PaymentsComponent implements OnInit {
     currentPage = 0;
     searchKeyword = '';
     searchTimeout: any;
-    filterStatus: string | null = null;
+    filterStatus: string | null = 'SUCCESS';
+    filterMethod: string | null = null;
+
+    methodOptions = [
+        { label: 'Chuyển khoản', value: 'BANK_TRANSFER' },
+        { label: 'Tiền mặt', value: 'CASH' },
+        { label: 'Thẻ tín dụng', value: 'CREDIT_CARD' },
+        { label: 'Ví điện tử', value: 'E_WALLET' },
+    ];
 
     statusOptions = [
         { label: 'Thành công',      value: 'SUCCESS'   },
         { label: 'Chờ thanh toán',  value: 'PENDING'   },
-        { label: 'Đã huỷ',          value: 'CANCELLED' },
+        { label: 'Thất bại',        value: 'FAILED'    },
     ];
 
     cols: Column[] = [];
@@ -237,6 +251,9 @@ export class PaymentsComponent implements OnInit {
 
     constructor(
         private paymentService: PaymentService,
+        private invoiceService: InvoiceService,
+        private bookingService: BookingService,
+        private customerService: CustomerService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private router: Router,
@@ -248,8 +265,7 @@ export class PaymentsComponent implements OnInit {
             { field: 'code',         header: 'Mã TT'        },
             { field: 'invoiceCode',  header: 'Hoá đơn'      },
             { field: 'customerName', header: 'Khách hàng'   },
-            { field: 'paymentDate',  header: 'Ngày'         },
-            { field: 'round',        header: 'Đợt'          },
+            { field: 'updatedAt',    header: 'Cập nhật lúc' },
             { field: 'method',       header: 'Phương thức'  },
             { field: 'status',       header: 'Trạng thái'   },
             { field: 'amount',       header: 'Số tiền'      },
@@ -262,12 +278,15 @@ export class PaymentsComponent implements OnInit {
         this.paymentService.searchPayments({
             page, size,
             keyword: this.searchKeyword || undefined,
-            status:  this.filterStatus  || undefined,
+            paymentState: this.filterStatus || undefined,
+            method:  this.filterMethod  || undefined,
         }).subscribe({
             next: (res) => {
                 if (res?.data) {
-                    this.payments.set(res.data.content);
+                    const rows = res.data.content ?? [];
+                    this.payments.set(rows);
                     this.totalRecords = res.data.totalElements;
+                    this.enrichPaymentRows(rows);
                 }
                 this.loading = false;
             },
@@ -278,6 +297,81 @@ export class PaymentsComponent implements OnInit {
                 });
                 this.loading = false;
             }
+        });
+    }
+
+    private enrichPaymentRows(rows: Payment[]) {
+        const contractIds = [...new Set(
+            rows
+                .filter((p) => (!p.invoiceCode || !p.customerName) && !!p.contractId)
+                .map((p) => Number(p.contractId))
+        )];
+
+        if (!contractIds.length && !rows.some((p) => !p.customerName && !!p.customerId)) return;
+
+        const requests = contractIds.map((contractId) =>
+            forkJoin({
+                invoice: this.invoiceService.searchInvoices({ contractId, page: 0, size: 1, sort: 'id,DESC' }).pipe(
+                    map((res) => res?.data?.content?.[0] ?? null),
+                    catchError(() => of(null))
+                ),
+                booking: this.bookingService.getById(contractId).pipe(
+                    map((res) => res?.data ?? null),
+                    catchError(() => of(null))
+                )
+            }).pipe(map((value) => ({ contractId, ...value })))
+        );
+
+        (requests.length ? forkJoin(requests) : of([])).subscribe((refs) => {
+            const refMap = new Map<number, { invoice: Invoice | null; booking: Booking | null }>();
+            refs.forEach((r) => refMap.set(r.contractId, { invoice: r.invoice, booking: r.booking }));
+
+            const customerIds = [...new Set(
+                rows
+                    .map((p) => {
+                        const ref = refMap.get(Number(p.contractId));
+                        return Number(p.customerId ?? ref?.booking?.customerId ?? ref?.invoice?.customerId);
+                    })
+                    .filter((id) => Number.isFinite(id) && id > 0)
+            )];
+
+            const customerRequests = customerIds.map((customerId) =>
+                this.customerService.getCustomerById(customerId).pipe(
+                    map((res) => ({ customerId, customer: res?.data ?? null })),
+                    catchError(() => of({ customerId, customer: null }))
+                )
+            );
+
+            const customerSource$ = customerRequests.length ? forkJoin(customerRequests) : of([]);
+            customerSource$.subscribe((customers) => {
+                const customerMap = new Map<number, Customer | null>();
+                customers.forEach((r) => customerMap.set(r.customerId, r.customer));
+
+                const enriched = rows.map((p) => {
+                    const ref = refMap.get(Number(p.contractId));
+                    const resolvedCustomerId = Number(p.customerId ?? ref?.booking?.customerId ?? ref?.invoice?.customerId);
+                    const customer = customerMap.get(resolvedCustomerId);
+
+                    return {
+                        ...p,
+                        customerId: p.customerId ?? (Number.isFinite(resolvedCustomerId) ? resolvedCustomerId : undefined),
+                        invoiceId: p.invoiceId ?? ref?.invoice?.id,
+                        invoiceCode:
+                            p.invoiceCode ??
+                            ref?.invoice?.code ??
+                            ref?.invoice?.contractNo ??
+                            (ref?.invoice?.id ? `#${ref.invoice.id}` : undefined),
+                        customerName:
+                            p.customerName ??
+                            customer?.fullName ??
+                            ref?.invoice?.customerName ??
+                            ref?.booking?.customerName,
+                    };
+                });
+
+                this.payments.set(enriched);
+                this.cdr.detectChanges();
+            });
         });
     }
 
@@ -296,6 +390,14 @@ export class PaymentsComponent implements OnInit {
     }
 
     onFilter() {
+        if (this.dt) this.dt.reset();
+        this.loadPayments();
+    }
+
+    clearFilters() {
+        this.filterStatus = null;
+        this.filterMethod = null;
+        this.searchKeyword = '';
         if (this.dt) this.dt.reset();
         this.loadPayments();
     }
@@ -340,17 +442,19 @@ export class PaymentsComponent implements OnInit {
         return new Intl.NumberFormat('vi-VN').format(Number.isFinite(n) ? n : 0) + ' đ';
     }
 
-    formatDate(d?: string): string {
+    formatDateTime(d?: string): string {
         if (!d) return '-';
-        return new Date(d).toLocaleDateString('vi-VN');
-    }
-
-    formatRound(round?: string | number): string {
-        if (round == null || round === '') return '-';
-        const r = String(round).toLowerCase();
-        if (r === 'deposit') return 'deposit';
-        const n = Number(round);
-        return Number.isFinite(n) ? `Đợt ${n}` : String(round);
+        const date = new Date(d);
+        if (Number.isNaN(date.getTime())) return '-';
+        return new Intl.DateTimeFormat('vi-VN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        }).format(date);
     }
 
     getMethodLabel(m?: string): string {
@@ -367,6 +471,7 @@ export class PaymentsComponent implements OnInit {
         const map: Record<string, string> = {
             SUCCESS:   'Thành công',
             PENDING:   'Chờ thanh toán',
+            FAILED:    'Thất bại',
             CANCELLED: 'Đã huỷ',
         };
         return map[s ?? ''] ?? s ?? '-';
@@ -376,6 +481,7 @@ export class PaymentsComponent implements OnInit {
         const map: Record<string, string> = {
             SUCCESS:   '#ffffff',
             PENDING:   '#1e293b',
+            FAILED:    '#991b1b',
             CANCELLED: '#dc2626',
         };
         return map[s ?? ''] ?? '#1e293b';
@@ -385,6 +491,7 @@ export class PaymentsComponent implements OnInit {
         const map: Record<string, string> = {
             SUCCESS:   '#2563eb',
             PENDING:   '#e2e8f0',
+            FAILED:    '#fee2e2',
             CANCELLED: '#fee2e2',
         };
         return map[s ?? ''] ?? '#f1f5f9';
