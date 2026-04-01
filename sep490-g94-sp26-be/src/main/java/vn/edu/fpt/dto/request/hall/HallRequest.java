@@ -31,6 +31,7 @@ public class HallRequest {
 
     private String notes;
 
+    @NotNull(message = "Price is required")
     private BigDecimal basePrice;
 }
 
