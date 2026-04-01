@@ -22,6 +22,7 @@ export interface Hall {
     }[];
     images?: string[];
     status?: string;
+    basePrice?: number;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -96,6 +97,7 @@ export class HallService {
         name: string;
         locationId: number;
         capacity: number;
+        basePrice?: number | null;
         notes?: string;
     }, imageFiles?: File[]): Observable<ApiResponse<Hall>> {
         const formData = new FormData();
@@ -119,6 +121,7 @@ export class HallService {
         name?: string;
         locationId?: number;
         capacity?: number;
+        basePrice?: number | null;
         notes?: string;
     }): Observable<ApiResponse<Hall>> {
         return this.http.put<ApiResponse<Hall>>(`${this.baseUrl}/update`, hall, {
