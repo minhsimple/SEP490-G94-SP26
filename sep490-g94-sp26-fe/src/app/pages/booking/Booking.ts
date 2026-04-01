@@ -291,6 +291,7 @@ export class BookingsComponent implements OnInit {
     // Điền hallOptions từ API hoặc cấu hình tĩnh nếu cần
     hallOptions: { label: string; value: number }[] = [];
     customerNameMap: Record<number, string> = {};
+    hallPriceMap: Record<number, number> = {};
     setMenuPriceMap: Record<number, number> = {};
     packagePriceMap: Record<number, number> = {};
 
@@ -319,10 +320,19 @@ export class BookingsComponent implements OnInit {
                     label: hall.name ?? `Sảnh #${hall.id}`,
                     value: Number(hall.id),
                 }));
+                this.hallPriceMap = (res.data?.content ?? []).reduce((acc: Record<number, number>, hall) => {
+                    const id = Number(hall.id);
+                    if (Number.isFinite(id) && id > 0) {
+                        const price = Number((hall as any)?.basePrice ?? 0);
+                        acc[id] = Number.isFinite(price) ? price : 0;
+                    }
+                    return acc;
+                }, {});
                 this.cdr.markForCheck();
             },
             error: () => {
                 this.hallOptions = [];
+                this.hallPriceMap = {};
             },
         });
     }
@@ -511,9 +521,11 @@ export class BookingsComponent implements OnInit {
 
         const setMenuId = Number(booking.setMenuId);
         const packageId = Number(booking.packageId);
+        const hallId = Number(booking.hallId);
         const setMenuPrice = Number.isFinite(setMenuId) ? (this.setMenuPriceMap[setMenuId] ?? 0) : 0;
         const packagePrice = Number.isFinite(packageId) ? (this.packagePriceMap[packageId] ?? 0) : 0;
-        const computed = setMenuPrice * tables + packagePrice;
+        const hallPrice = Number.isFinite(hallId) ? (this.hallPriceMap[hallId] ?? 0) : 0;
+        const computed = (setMenuPrice + hallPrice) * tables + packagePrice;
 
         return computed > 0 ? computed : undefined;
     }

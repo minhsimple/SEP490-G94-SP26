@@ -12,12 +12,13 @@ import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
 import { SetMenuService } from '../service/set-menu';
 import { ServicePackageService } from '../service/service-package.service';
+import { Invoice, InvoiceService } from '../service/invoice.service';
 
 @Component({
     selector: 'app-booking-detail',
     standalone: true,
     imports: [CommonModule, FormsModule, ButtonModule, SelectModule, ToastModule],
-    providers: [BookingService, MessageService],
+    providers: [BookingService, MessageService, InvoiceService],
     styles: [`
         .page-title {
             font-size: 1.25rem;
@@ -80,7 +81,7 @@ import { ServicePackageService } from '../service/service-package.service';
         }
         .layout {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 320px;
+            grid-template-columns: minmax(0, 1fr) 360px;
             gap: 1.25rem;
             align-items: start;
         }
@@ -347,6 +348,7 @@ import { ServicePackageService } from '../service/service-package.service';
                                 <div>
                                     <div class="muted">Sảnh cưới</div>
                                     <div class="value">{{ hallName || ('Sảnh #' + (booking.hallId || '-')) }}</div>
+                                    <div class="muted" *ngIf="hallPrice > 0" style="margin-top:0.2rem">Phí thuê: {{ formatPrice(hallPrice) }}</div>
                                 </div>
                             </div>
                             <div class="meta-row">
@@ -427,6 +429,8 @@ import { ServicePackageService } from '../service/service-package.service';
                         <h2 class="section-title">Tổng quan thanh toán</h2>
                         <div class="line" *ngIf="setMenuName || booking.setMenuId"><span>Set menu</span><strong>{{ setMenuName || ('#' + booking.setMenuId) }}</strong></div>
                         <div class="line" *ngIf="setMenuPrice > 0"><span>Giá set menu</span><strong>{{ formatPrice(setMenuPrice) }}/bàn</strong></div>
+                        <div class="line" *ngIf="hallName || booking.hallId"><span>Sảnh</span><strong>{{ hallName || ('#' + booking.hallId) }}</strong></div>
+                        <div class="line" *ngIf="hallPrice > 0"><span>Phí thuê sảnh</span><strong>{{ formatPrice(hallPrice) }}</strong></div>
                         <div class="line" *ngIf="packageName || booking.packageId"><span>Gói dịch vụ</span><strong>{{ packageName || ('#' + booking.packageId) }}</strong></div>
                         <div class="line" *ngIf="packagePrice > 0"><span>Giá gói dịch vụ</span><strong>{{ formatPrice(packagePrice) }}</strong></div>
                         <div class="line"><span>Tổng tiền</span><strong>{{ formatPrice(totalAmount) }}</strong></div>
@@ -434,6 +438,52 @@ import { ServicePackageService } from '../service/service-package.service';
                         <div class="line total"><span>Còn lại</span><strong>{{ formatPrice(remainingAmount) }}</strong></div>
                         <div class="line" style="margin-top:0.8rem"><span>Tiến độ</span><strong>{{ progressPercent }}%</strong></div>
                         <div class="progress"><div class="progress-fill" [style.width.%]="progressPercent"></div></div>
+                    </div>
+
+                    <div class="card" style="margin-bottom:1rem">
+                        <h2 class="section-title">Hoá đơn</h2>
+
+                        <div *ngIf="invoicePreview; else noInvoiceTpl">
+                            <div class="line" style="margin-top:0; margin-bottom:0.35rem;">
+                                <span class="muted">Mã hoá đơn</span>
+                                <strong>{{ invoicePreview.code || ('INV-' + invoicePreview.id) }}</strong>
+                            </div>
+                            <div class="line" style="margin:0.35rem 0;">
+                                <span class="muted">Ngày tạo</span>
+                                <strong>{{ formatDate(resolveInvoiceCreatedAt(invoicePreview)) }}</strong>
+                            </div>
+                            <div class="line" style="margin:0.35rem 0;">
+                                <span class="muted">Tổng tiền</span>
+                                <strong>{{ formatPrice(invoicePreview.totalAmount) }}</strong>
+                            </div>
+                            <div class="line" style="margin:0.35rem 0;">
+                                <span class="muted">Đã thanh toán</span>
+                                <strong style="color:#16a34a">{{ formatPrice(invoicePreview.paidAmount ?? 0) }}</strong>
+                            </div>
+                            <div class="line" style="margin:0.35rem 0 0.85rem;">
+                                <span class="muted">Trạng thái</span>
+                                <span
+                                    class="chip"
+                                    [style.background]="invoiceStateBg(invoicePreview.invoiceState)"
+                                    [style.color]="invoiceStateColor(invoicePreview.invoiceState)"
+                                >
+                                    {{ invoiceStateLabel(invoicePreview.invoiceState) }}
+                                </span>
+                            </div>
+
+                            <p-button
+                                label="Xem chi tiết & Thanh toán"
+                                icon="pi pi-external-link"
+                                severity="secondary"
+                                [outlined]="true"
+                                styleClass="w-full"
+                                (onClick)="goToInvoiceDetail()"
+                            />
+                        </div>
+
+                        <ng-template #noInvoiceTpl>
+                            <div class="muted" style="margin-bottom:0.8rem">Chưa có hoá đơn cho hợp đồng này.</div>
+                        </ng-template>
                     </div>
 
                     <div class="card">
@@ -483,10 +533,12 @@ export class BookingDetailComponent implements OnInit {
     customer: Customer | null = null;
     customerName = '';
     hallName = '';
+    hallPrice = 0;
     setMenuName = '';
     setMenuPrice = 0;
     packageName = '';
     packagePrice = 0;
+    invoicePreview: Invoice | null = null;
 
     apiTotalAmount = 0;
     totalAmount = 0;
@@ -519,6 +571,7 @@ export class BookingDetailComponent implements OnInit {
         private hallService: HallService,
         private setMenuService: SetMenuService,
         private servicePackageService: ServicePackageService,
+        private invoiceService: InvoiceService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef,
         private sanitizer: DomSanitizer,
@@ -554,6 +607,9 @@ export class BookingDetailComponent implements OnInit {
                 if (this.booking?.packageId) {
                     this.loadPackage(this.booking.packageId);
                 }
+                if (this.booking?.id) {
+                    this.loadInvoicePreview(this.booking.id);
+                }
 
                 const rawTotal = Number((this.booking as any)?.totalAmount ?? (this.booking as any)?.totalPrice ?? (this.booking as any)?.finalAmount ?? (this.booking as any)?.amount ?? 0);
                 const rawPaid = Number((this.booking as any)?.paidAmount ?? 0);
@@ -571,6 +627,85 @@ export class BookingDetailComponent implements OnInit {
                 this.goBack();
             },
         });
+    }
+
+    private loadInvoicePreview(contractId: number) {
+        this.invoiceService.searchInvoices({ contractId, page: 0, size: 1 }).subscribe({
+            next: (res) => {
+                const list = res.data?.content ?? [];
+                if (list.length === 0) {
+                    this.invoicePreview = null;
+                    this.cdr.detectChanges();
+                    return;
+                }
+
+                const preview = list[0] as any;
+                this.invoicePreview = {
+                    ...preview,
+                    createdAt: this.resolveInvoiceCreatedAt(preview),
+                };
+                this.cdr.detectChanges();
+
+                if (!this.invoicePreview?.createdAt && this.invoicePreview?.id) {
+                    this.invoiceService.getById(this.invoicePreview.id).subscribe({
+                        next: (detailRes) => {
+                            const detail = detailRes.data as any;
+                            this.invoicePreview = {
+                                ...this.invoicePreview,
+                                ...detail,
+                                createdAt: this.resolveInvoiceCreatedAt({ ...this.invoicePreview, ...detail }),
+                            };
+                            this.cdr.detectChanges();
+                        },
+                        error: () => {
+                            this.cdr.detectChanges();
+                        },
+                    });
+                }
+            },
+            error: () => {
+                this.invoicePreview = null;
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    goToInvoiceDetail() {
+        if (!this.invoicePreview?.id) return;
+        this.router.navigate(['/pages/invoice', this.invoicePreview.id]);
+    }
+
+    invoiceStateLabel(value?: string): string {
+        return {
+            UNPAID: 'Chưa thanh toán',
+            PARTIAL: 'Thanh toán một phần',
+            PAID: 'Đã thanh toán',
+        }[value ?? ''] ?? (value || '-');
+    }
+
+    invoiceStateBg(value?: string): string {
+        return {
+            UNPAID: '#fee2e2',
+            PARTIAL: '#fef3c7',
+            PAID: '#dcfce7',
+        }[value ?? ''] ?? '#e2e8f0';
+    }
+
+    invoiceStateColor(value?: string): string {
+        return {
+            UNPAID: '#b91c1c',
+            PARTIAL: '#92400e',
+            PAID: '#166534',
+        }[value ?? ''] ?? '#334155';
+    }
+
+    resolveInvoiceCreatedAt(invoice?: any): string {
+        return invoice?.createdAt
+            ?? invoice?.created_at
+            ?? invoice?.createdDate
+            ?? invoice?.createAt
+            ?? invoice?.invoiceDate
+            ?? new Date().toISOString();
     }
 
     saveBookingState() {
@@ -628,10 +763,14 @@ export class BookingDetailComponent implements OnInit {
         this.hallService.getHallById(hallId).subscribe({
             next: (res) => {
                 this.hallName = res.data?.name ?? '';
+                const price = Number((res.data as any)?.basePrice ?? 0);
+                this.hallPrice = Number.isFinite(price) ? price : 0;
+                this.recalculatePaymentSummary();
                 this.updateContractPreview();
                 this.cdr.detectChanges();
             },
             error: () => {
+                this.hallPrice = 0;
                 this.cdr.detectChanges();
             },
         });
@@ -678,7 +817,7 @@ export class BookingDetailComponent implements OnInit {
 
         const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
         const computedTotal = Number.isFinite(tables) && tables > 0
-            ? (this.setMenuPrice * tables) + this.packagePrice
+            ? (this.setMenuPrice * tables) + this.hallPrice + this.packagePrice
             : 0;
 
         this.totalAmount = computedTotal > 0 ? computedTotal : this.apiTotalAmount;
@@ -724,6 +863,8 @@ export class BookingDetailComponent implements OnInit {
         const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
         const guests = Number(this.booking.expectedGuests ?? this.booking.guestCount ?? 0);
         const amount = this.totalAmount > 0 ? this.totalAmount : this.apiTotalAmount;
+        const hallAmount = this.hallPrice;
+        const setMenuAmount = tables > 0 ? this.setMenuPrice * tables : 0;
         const deposit1 = Math.round(amount * 0.3);
         const deposit2 = Math.round(amount * 0.4);
         const deposit3 = Math.max(amount - deposit1 - deposit2, 0);
@@ -768,6 +909,9 @@ export class BookingDetailComponent implements OnInit {
             <p><strong>Tổng giá trị hợp đồng:</strong> <span style="color:#dc2626">${esc(this.formatPrice(amount))}</span></p>
             <p><strong>Số bàn dự kiến:</strong> ${esc(tables > 0 ? `${tables} bàn` : '-')}</p>
             <p><strong>Số khách dự kiến:</strong> ${esc(guests > 0 ? `${guests} khách` : '-')}</p>
+            <p><strong>Phí thuê sảnh:</strong> ${esc(this.formatPrice(hallAmount))}</p>
+            <p><strong>Giá set menu:</strong> ${esc(this.setMenuPrice > 0 ? `${this.formatPrice(this.setMenuPrice)}/bàn` : '-')} (${esc(this.formatPrice(setMenuAmount))})</p>
+            <p><strong>Giá gói dịch vụ:</strong> ${esc(this.formatPrice(this.packagePrice))}</p>
             <p><strong>Đợt 1 (đặt cọc):</strong> ${esc(this.formatPrice(deposit1))}</p>
             <p><strong>Đợt 2:</strong> ${esc(this.formatPrice(deposit2))}</p>
             <p><strong>Đợt 3:</strong> ${esc(this.formatPrice(deposit3))}</p>

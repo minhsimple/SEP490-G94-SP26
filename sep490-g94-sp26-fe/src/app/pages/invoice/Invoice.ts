@@ -38,25 +38,50 @@ interface Column { field: string; header: string; }
 
                 <!-- Search + filter bar inside card -->
                 <div class="px-4 py-3 flex items-center gap-3 border-bottom-1 surface-border flex-wrap">
-                    <p-iconfield style="flex:1; max-width:560px;">
-                        <p-inputicon styleClass="pi pi-search" />
-                        <input
-                            pInputText type="text"
-                            [(ngModel)]="searchKeyword"
-                            (input)="onSearch()"
-                            placeholder="Tìm mã HĐ, hợp đồng, booking, khách..."
-                            class="w-full"
-                        />
-                    </p-iconfield>
+                    <input
+                        pInputText
+                        type="number"
+                        [(ngModel)]="filterContractId"
+                        placeholder="Lọc theo Contract ID"
+                        style="width: 220px"
+                    />
+
+                    <p-select
+                        [options]="invoiceStateOptions"
+                        [(ngModel)]="filterInvoiceState"
+                        optionLabel="label" optionValue="value"
+                        placeholder="Invoice state"
+                        [showClear]="true"
+                        style="width:180px"
+                    />
+
+                    <input
+                        pInputText
+                        type="number"
+                        [(ngModel)]="filterLowerBoundTotalAmount"
+                        placeholder="Tổng tiền từ"
+                        style="width: 170px"
+                    />
+
+                    <input
+                        pInputText
+                        type="number"
+                        [(ngModel)]="filterUpperBoundTotalAmount"
+                        placeholder="Đến"
+                        style="width: 170px"
+                    />
+
                     <p-select
                         [options]="statusOptions"
                         [(ngModel)]="filterStatus"
                         optionLabel="label" optionValue="value"
-                        placeholder="Tất cả"
+                        placeholder="Record status"
                         [showClear]="true"
-                        (onChange)="onFilter()"
                         style="width:180px"
                     />
+
+                    <p-button label="Lọc" icon="pi pi-filter" size="small" (click)="onFilter()" />
+                    <p-button label="Xóa lọc" icon="pi pi-refresh" size="small" severity="secondary" [text]="true" (click)="resetFilter()" />
                 </div>
 
                 <p-table
@@ -80,12 +105,13 @@ interface Column { field: string; header: string; }
                         <tr>
                             <th style="min-width:12rem">Mã HĐơn</th>
                             <th style="min-width:12rem">Hợp đồng</th>
-                            <th style="min-width:10rem">Khách</th>
-                            <th style="min-width:9rem">Ngày</th>
-                            <th style="min-width:9rem">Hạn</th>
-                            <th style="min-width:10rem">Trạng thái</th>
+                            <th style="min-width:12rem">Sảnh</th>
+                            <th style="min-width:12rem">Gói dịch vụ</th>
+                            <th style="min-width:12rem">Set menu</th>
+                            <th style="min-width:9rem; text-align:right">Bàn dự kiến</th>
+                            <th style="min-width:11rem">Trạng thái hóa đơn</th>
+                            <th style="min-width:10rem">Trạng thái record</th>
                             <th style="min-width:11rem; text-align:right">Tổng</th>
-                            <th style="min-width:9rem; text-align:right">Đã thu</th>
                             <th style="min-width:8rem; text-align:center">Thao tác</th>
                         </tr>
                     </ng-template>
@@ -95,7 +121,7 @@ interface Column { field: string; header: string; }
                             <!-- Mã HĐơn -->
                             <td>
                                 <span class="font-semibold text-900" style="font-size:0.875rem;">
-                                    {{ inv.code ?? ('#' + inv.id) }}
+                                    #{{ inv.id }}
                                 </span>
                             </td>
 
@@ -112,37 +138,35 @@ interface Column { field: string; header: string; }
                                 </ng-template>
                             </td>
 
-                            <!-- Khách -->
-                            <td class="text-600 text-sm">{{ inv.customerName ?? '-' }}</td>
-
-                            <!-- Ngày tạo -->
-                            <td class="text-600 text-sm">{{ formatDate(inv.createdAt) }}</td>
-
-                            <!-- Hạn -->
-                            <td class="text-sm" [style.color]="isDue(inv.dueDate) ? '#dc2626' : '#475569'">
-                                {{ formatDate(inv.dueDate) }}
-                            </td>
+                            <td class="text-600 text-sm">{{ inv.hall?.name ?? '-' }}</td>
+                            <td class="text-600 text-sm">{{ inv.servicesPackage?.name ?? '-' }}</td>
+                            <td class="text-600 text-sm">{{ inv.setMenu?.name ?? '-' }}</td>
+                            <td class="text-700 text-sm" style="text-align:right;">{{ inv.expectedTables ?? '-' }}</td>
 
                             <!-- Trạng thái -->
                             <td>
                                 <span
                                     class="text-xs font-bold px-3 py-1 border-round-xl"
-                                    [style.background]="getStatusBg(inv.status)"
-                                    [style.color]="getStatusColor(inv.status)"
+                                    [style.background]="getStatusBg(inv.invoiceState)"
+                                    [style.color]="getStatusColor(inv.invoiceState)"
                                 >
-                                    {{ getStatusLabel(inv.status) }}
+                                    {{ getStatusLabel(inv.invoiceState) }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <span
+                                    class="text-xs font-bold px-3 py-1 border-round-xl"
+                                    [style.background]="getRecordStatusBg(inv.status)"
+                                    [style.color]="getRecordStatusColor(inv.status)"
+                                >
+                                    {{ getRecordStatusLabel(inv.status) }}
                                 </span>
                             </td>
 
                             <!-- Tổng -->
                             <td class="font-semibold text-900 text-sm" style="text-align:right;">
                                 {{ formatPrice(inv.totalAmount) }}
-                            </td>
-
-                            <!-- Đã thu -->
-                            <td class="text-sm" style="text-align:right;"
-                                [style.color]="(inv.paidAmount ?? 0) > 0 ? '#16a34a' : '#94a3b8'">
-                                {{ formatPrice(inv.paidAmount ?? 0) }}
                             </td>
 
                             <!-- Thao tác -->
@@ -171,7 +195,7 @@ interface Column { field: string; header: string; }
 
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="9" class="text-center py-8 text-500">
+                            <td colspan="10" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
                                 Không có hóa đơn nào
                             </td>
@@ -210,14 +234,21 @@ export class InvoicesComponent implements OnInit {
     totalRecords = 0;
     pageSize = 20;
     currentPage = 0;
-    searchKeyword = '';
-    searchTimeout: any;
+    filterContractId: number | null = null;
+    filterInvoiceState: string | null = null;
+    filterLowerBoundTotalAmount: number | null = null;
+    filterUpperBoundTotalAmount: number | null = null;
     filterStatus: string | null = null;
 
+    invoiceStateOptions = [
+        { label: 'Chưa thanh toán', value: 'UNPAID' },
+        { label: 'Thanh toán một phần', value: 'PARTIAL' },
+        { label: 'Đã thanh toán', value: 'PAID' },
+    ];
+
     statusOptions = [
-        { label: 'Chưa thanh toán', value: 'UNPAID'   },
-        { label: 'Thanh toán 1 phần', value: 'PARTIAL' },
-        { label: 'Đã thanh toán',   value: 'PAID'     },
+        { label: 'Đang hoạt động', value: 'active' },
+        { label: 'Không hoạt động', value: 'inactive' },
     ];
 
     cols: Column[] = [];
@@ -235,12 +266,13 @@ export class InvoicesComponent implements OnInit {
         this.cols = [
             { field: 'code',         header: 'Mã HĐơn'   },
             { field: 'contractNo',   header: 'Hợp đồng'  },
-            { field: 'customerName', header: 'Khách'      },
-            { field: 'createdAt',    header: 'Ngày'       },
-            { field: 'dueDate',      header: 'Hạn'        },
-            { field: 'status',       header: 'Trạng thái' },
+            { field: 'hall.name',    header: 'Sảnh'       },
+            { field: 'servicesPackage.name', header: 'Gói dịch vụ' },
+            { field: 'setMenu.name', header: 'Set menu'   },
+            { field: 'expectedTables', header: 'Bàn dự kiến' },
+            { field: 'invoiceState', header: 'Trạng thái hóa đơn' },
+            { field: 'status',       header: 'Trạng thái record' },
             { field: 'totalAmount',  header: 'Tổng'       },
-            { field: 'paidAmount',   header: 'Đã thu'     },
         ];
         this.loadInvoices();
     }
@@ -249,8 +281,11 @@ export class InvoicesComponent implements OnInit {
         this.loading = true;
         this.invoiceService.searchInvoices({
             page, size,
-            keyword: this.searchKeyword || undefined,
-            status:  this.filterStatus  || undefined,
+            contractId: this.filterContractId ?? undefined,
+            invoiceState: this.filterInvoiceState ?? undefined,
+            lowerBoundTotalAmount: this.filterLowerBoundTotalAmount ?? undefined,
+            upperBoundTotalAmount: this.filterUpperBoundTotalAmount ?? undefined,
+            status: this.filterStatus ?? undefined,
         }).subscribe({
             next: (res) => {
                 if (res?.data) {
@@ -272,15 +307,17 @@ export class InvoicesComponent implements OnInit {
         this.loadInvoices(this.currentPage, this.pageSize);
     }
 
-    onSearch() {
-        clearTimeout(this.searchTimeout);
-        this.searchTimeout = setTimeout(() => {
-            if (this.dt) this.dt.reset();
-            this.loadInvoices();
-        }, 400);
+    onFilter() {
+        if (this.dt) this.dt.reset();
+        this.loadInvoices();
     }
 
-    onFilter() {
+    resetFilter() {
+        this.filterContractId = null;
+        this.filterInvoiceState = null;
+        this.filterLowerBoundTotalAmount = null;
+        this.filterUpperBoundTotalAmount = null;
+        this.filterStatus = null;
         if (this.dt) this.dt.reset();
         this.loadInvoices();
     }
@@ -356,5 +393,17 @@ export class InvoicesComponent implements OnInit {
             PAID:    '#dcfce7',
         };
         return m[s ?? ''] ?? '#f1f5f9';
+    }
+
+    getRecordStatusLabel(s?: string): string {
+        return { active: 'Đang hoạt động', inactive: 'Không hoạt động' }[s ?? ''] ?? s ?? '-';
+    }
+
+    getRecordStatusColor(s?: string): string {
+        return { active: '#166534', inactive: '#7f1d1d' }[s ?? ''] ?? '#1e293b';
+    }
+
+    getRecordStatusBg(s?: string): string {
+        return { active: '#dcfce7', inactive: '#fee2e2' }[s ?? ''] ?? '#f1f5f9';
     }
 }

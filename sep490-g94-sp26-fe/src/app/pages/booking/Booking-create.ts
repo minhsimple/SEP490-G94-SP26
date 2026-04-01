@@ -32,6 +32,7 @@ interface CustomerOption {
 interface HallOption {
     id: number;
     label: string;
+    basePrice: number;
 }
 
 interface LocationOption {
@@ -105,7 +106,7 @@ interface SalesOption {
         }
         .create-layout {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 310px;
+            grid-template-columns: minmax(0, 1fr) 360px;
             gap: 1.5rem;
             align-items: start;
         }
@@ -564,6 +565,10 @@ interface SalesOption {
                         <span>Sảnh</span>
                         <strong>{{ summary.hallName }}</strong>
                     </div>
+                    <div class="summary-row" *ngIf="summary.hallPrice > 0">
+                        <span>Giá sảnh</span>
+                        <strong>{{ formatPrice(summary.hallPrice) }}/bàn</strong>
+                    </div>
                     <div class="summary-row" *ngIf="form.bookingDate">
                         <span>Ngày tổ chức</span>
                         <strong>{{ formatDateDisplay(form.bookingDate) }}</strong>
@@ -677,6 +682,7 @@ export class BookingCreateComponent implements OnInit {
 
     summary = {
         hallName: '',
+        hallPrice: 0,
         setMenuName: '',
         setMenuPrice: 0,
         packageName: '',
@@ -1028,6 +1034,8 @@ export class BookingCreateComponent implements OnInit {
                 const hall = res.data;
                 this.form.locationId = hall?.locationId ?? null;
                 this.summary.hallName = hall?.name ?? `Sảnh #${hallId}`;
+                this.summary.hallPrice = Number(hall?.basePrice ?? 0) || 0;
+                this.recalcEstimatedTotal();
                 this.cdr.detectChanges();
             }),
             switchMap(() => {
@@ -1059,6 +1067,7 @@ export class BookingCreateComponent implements OnInit {
         this.form.setMenuId = null;
         this.form.packageId = null;
         this.summary.hallName = '';
+        this.summary.hallPrice = 0;
         this.summary.setMenuName = '';
         this.summary.setMenuPrice = 0;
         this.summary.packageName = '';
@@ -1081,6 +1090,7 @@ export class BookingCreateComponent implements OnInit {
                 this.hallOptions = (res.data?.content ?? []).map((hall) => ({
                     id: Number(hall.id),
                     label: hall.name ?? `Sảnh #${hall.id}`,
+                    basePrice: Number(hall.basePrice ?? 0) || 0,
                 }));
 
                 if (selectedHallId) {
@@ -1092,6 +1102,7 @@ export class BookingCreateComponent implements OnInit {
             mapTo(void 0),
             catchError(() => {
                 this.hallOptions = [];
+                this.summary.hallPrice = 0;
                 this.cdr.detectChanges();
                 return of(void 0);
             })
@@ -1205,6 +1216,8 @@ export class BookingCreateComponent implements OnInit {
     private syncHallSummary() {
         const selectedHall = this.hallOptions.find((hall) => hall.id === this.form.hallId);
         this.summary.hallName = selectedHall?.label ?? (this.form.hallId ? `Sảnh #${this.form.hallId}` : '');
+        this.summary.hallPrice = selectedHall?.basePrice ?? 0;
+        this.recalcEstimatedTotal();
     }
 
     searchCustomer(event: { query?: string }) {
@@ -1269,7 +1282,12 @@ export class BookingCreateComponent implements OnInit {
     }
 
     recalcEstimatedTotal() {
-        this.summary.estimatedTotal = (this.summary.setMenuPrice * this.form.expectedTables) + this.summary.packagePrice;
+        const tables = Number(this.form.expectedTables ?? 0);
+        const safeTables = Number.isFinite(tables) && tables > 0 ? tables : 0;
+        this.summary.estimatedTotal =
+            (this.summary.setMenuPrice * safeTables) +
+            (this.summary.hallPrice * safeTables) +
+            this.summary.packagePrice;
     }
 
     submit() {

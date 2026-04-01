@@ -13,6 +13,8 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TableModule } from 'primeng/table';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
+import { BookingService } from '../service/booking.service';
+import { CustomerService } from '../service/customer.service';
 
 @Component({
     selector: 'app-invoice-detail',
@@ -42,7 +44,7 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
         }
         .layout {
             display: grid;
-            grid-template-columns: minmax(0,1fr) 300px;
+            grid-template-columns: minmax(0,1fr) 360px;
             gap: 1.25rem;
             align-items: start;
         }
@@ -135,17 +137,15 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
                         <div class="invoice-no">{{ invoice.code ?? ('#' + invoice.id) }}</div>
                         <div class="invoice-meta">
                             Ngày tạo: {{ formatDate(invoice.createdAt) }}
-                            &nbsp;·&nbsp;
-                            Hạn: {{ formatDate(invoice.dueDate) }}
                         </div>
                     </div>
                 </div>
                 <span
                     class="status-chip"
-                    [style.background]="getStatusBg(invoice.status)"
-                    [style.color]="getStatusColor(invoice.status)"
+                    [style.background]="getStatusBg(invoice.invoiceState)"
+                    [style.color]="getStatusColor(invoice.invoiceState)"
                 >
-                    {{ getStatusLabel(invoice.status) }}
+                    {{ getStatusLabel(invoice.invoiceState) }}
                 </span>
             </div>
 
@@ -157,15 +157,6 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
                     <!-- Thông tin hóa đơn -->
                     <div class="section">
                         <div class="section-title">Thông tin hoá đơn</div>
-                        <div class="info-row">
-                            <span class="label">Hợp đồng:</span>
-                            <span
-                                *ngIf="invoice.contractNo; else dash1"
-                                class="val link"
-                                (click)="goToContract()"
-                            >{{ invoice.contractNo }}</span>
-                            <ng-template #dash1><span class="val">-</span></ng-template>
-                        </div>
                         <div class="info-row">
                             <span class="label">Khách hàng:</span>
                             <span class="val">{{ invoice.customerName ?? '-' }}</span>
@@ -180,11 +171,11 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
                         </div>
                         <div class="info-row">
                             <span class="label">Sảnh:</span>
-                            <span class="val">{{ invoice.hallName ?? '-' }}</span>
+                            <span class="val">{{ invoice.hall?.name ?? invoice.hallName ?? '-' }}</span>
                         </div>
                         <div class="info-row">
                             <span class="label">Số bàn:</span>
-                            <span class="val">{{ invoice.tableCount ?? '-' }} bàn</span>
+                            <span class="val">{{ invoice.expectedTables ?? invoice.tableCount ?? '-' }} bàn</span>
                         </div>
                     </div>
 
@@ -195,20 +186,18 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
                             <thead>
                                 <tr>
                                     <th>Sảnh</th>
-                                    <th style="text-align:right;">Số bàn</th>
-                                    <th style="text-align:right;">Giá / bàn</th>
+                                    <th style="text-align:right;">Giá sảnh</th>
                                     <th>Thành tiền</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>{{ invoice.hallName ?? '-' }}</td>
-                                    <td style="text-align:right;">{{ invoice.tableCount ?? '-' }}</td>
-                                    <td style="text-align:right;">{{ formatPrice(invoice.pricePerTable ?? 0) }}</td>
+                                    <td>{{ invoice.hall?.name ?? invoice.hallName ?? '-' }}</td>
+                                    <td style="text-align:right;">{{ formatPrice(invoice.hall?.basePrice ?? invoice.pricePerTable ?? 0) }}</td>
                                     <td>{{ formatPrice(invoice.hallTotal ?? 0) }}</td>
                                 </tr>
                                 <tr class="subtotal">
-                                    <td colspan="3" style="text-align:right; padding-right:1.5rem;">Tổng chi phí sảnh:</td>
+                                    <td colspan="2" style="text-align:right; padding-right:1.5rem;">Tổng chi phí sảnh:</td>
                                     <td>{{ formatPrice(invoice.hallTotal ?? 0) }}</td>
                                 </tr>
                             </tbody>
@@ -224,7 +213,7 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
                                     <th>Tên set menu</th>
                                     <th style="text-align:right;">Số lượng</th>
                                     <th style="text-align:right;">Đơn giá / bàn</th>
-                                    <th style="text-align:right;">Số bàn</th>
+                                    <th style="text-align:right;">x Số bàn</th>
                                     <th>Thành tiền</th>
                                 </tr>
                             </thead>
@@ -233,7 +222,7 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
                                     <td>{{ sm.name ?? '-' }}</td>
                                     <td style="text-align:right;">{{ sm.quantity ?? 1 }}</td>
                                     <td style="text-align:right;">{{ formatPrice(sm.pricePerTable) }}</td>
-                                    <td style="text-align:right;">{{ sm.tableCount ?? invoice.tableCount }}</td>
+                                    <td style="text-align:right;">{{ sm.tableCount ?? invoice.expectedTables ?? invoice.tableCount }}</td>
                                     <td>{{ formatPrice(sm.totalPrice) }}</td>
                                 </tr>
                                 <tr class="subtotal">
@@ -278,9 +267,9 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
                             <span>Chi phí sảnh:</span>
                             <span>{{ formatPrice(invoice.hallTotal ?? 0) }}</span>
                         </div>
-                        <div class="summary-line" *ngIf="invoice.setMenuTotal">
+                        <div class="summary-line" *ngIf="invoice.setMenus?.length">
                             <span>Chi phí thực đơn:</span>
-                            <span>{{ formatPrice(invoice.setMenuTotal) }}</span>
+                            <span>{{ formatPrice(invoice.setMenuTotal ?? 0) }}</span>
                         </div>
                         <div class="summary-line" *ngIf="invoice.serviceTotal">
                             <span>Chi phí dịch vụ:</span>
@@ -455,7 +444,7 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
             </ng-template>
         </p-dialog>
     `,
-    providers: [MessageService, ConfirmationService, InvoiceService]
+    providers: [MessageService, ConfirmationService, InvoiceService, BookingService]
 })
 export class InvoiceDetailComponent implements OnInit {
 
@@ -486,6 +475,8 @@ export class InvoiceDetailComponent implements OnInit {
         private route: ActivatedRoute,
         private router: Router,
         private invoiceService: InvoiceService,
+        private bookingService: BookingService,
+        private customerService: CustomerService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private cdr: ChangeDetectorRef,
@@ -501,7 +492,8 @@ export class InvoiceDetailComponent implements OnInit {
         this.loading = true;
         this.invoiceService.getById(id).subscribe({
             next: (res) => {
-                this.invoice = res.data;
+                this.invoice = this.adaptInvoice(res.data);
+                this.enrichInvoiceMissingInfo();
                 this.loading = false;
                 this.cdr.detectChanges();
             },
@@ -570,6 +562,129 @@ export class InvoiceDetailComponent implements OnInit {
 
     goBack()       { this.router.navigate(['/pages/invoice']); }
     goToContract() { if (this.invoice?.contractId) this.router.navigate(['/pages/booking', this.invoice.contractId, 'view']); }
+
+    private enrichInvoiceMissingInfo() {
+        const current = this.invoice;
+        if (!current?.contractId) return;
+
+        const missingCore = !current.createdAt || !current.bookingDate || !current.customerName || !current.customerPhone;
+        if (!missingCore) return;
+
+        this.bookingService.getById(current.contractId).subscribe({
+            next: (res) => {
+                const booking = res.data as any;
+                const customerId = Number(current.customerId ?? booking?.customerId ?? 0) || undefined;
+
+                this.invoice = {
+                    ...this.invoice,
+                    customerId,
+                    customerName: this.invoice?.customerName ?? booking?.customerName,
+                    bookingDate: this.invoice?.bookingDate ?? booking?.bookingDate ?? booking?.eventDate,
+                    expectedTables: this.invoice?.expectedTables ?? booking?.expectedTables,
+                    tableCount: this.invoice?.tableCount ?? booking?.tableCount ?? booking?.expectedTables,
+                };
+
+                if (!this.invoice?.customerPhone && customerId) {
+                    this.customerService.getCustomerById(customerId).subscribe({
+                        next: (cusRes) => {
+                            this.invoice = {
+                                ...this.invoice,
+                                customerName: this.invoice?.customerName ?? cusRes.data?.fullName,
+                                customerPhone: cusRes.data?.phone ?? this.invoice?.customerPhone,
+                            };
+                            this.cdr.detectChanges();
+                        },
+                        error: () => {
+                            this.cdr.detectChanges();
+                        }
+                    });
+                }
+
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    private adaptInvoice(raw: Invoice): Invoice {
+        const expectedTables = raw.expectedTables ?? raw.tableCount ?? 0;
+        const hallBasePrice = Number(raw.hall?.basePrice ?? raw.pricePerTable ?? 0);
+        const hallTotal = Number(raw.hallTotal ?? hallBasePrice);
+
+        const serviceTotal = Number(raw.serviceTotal ?? raw.servicesPackage?.basePrice ?? 0);
+        const directSetMenuUnit = Number(
+            raw.setMenu?.setPrice
+            ?? (raw.setMenu as any)?.pricePerTable
+            ?? (raw.setMenu as any)?.basePrice
+            ?? (raw.setMenu as any)?.price
+            ?? (raw as any)?.setMenuPrice
+            ?? raw.setMenus?.[0]?.pricePerTable
+            ?? 0
+        );
+        const setMenuUnit = Number.isFinite(directSetMenuUnit) && directSetMenuUnit > 0
+            ? directSetMenuUnit
+            : Number(raw.setMenuTotal ?? 0) > 0 && expectedTables > 0
+                ? Number(raw.setMenuTotal) / expectedTables
+                : 0;
+        const setMenuTotal = Number(raw.setMenuTotal ?? (setMenuUnit > 0 ? setMenuUnit * expectedTables : 0));
+
+        const normalizedSetMenus = (raw.setMenus?.length
+            ? raw.setMenus
+            : (raw.setMenu
+                ? [{
+                    id: raw.setMenu.id,
+                    name: raw.setMenu.name,
+                    quantity: 1,
+                    pricePerTable: raw.setMenu.setPrice,
+                    tableCount: expectedTables,
+                    totalPrice: setMenuTotal,
+                }]
+                : [])
+        ).map((menu) => {
+            const quantity = Number(menu.quantity ?? 1) || 1;
+            const unitPrice = Number(menu.pricePerTable ?? setMenuUnit ?? 0);
+            const tableCount = Number(menu.tableCount ?? expectedTables ?? 0);
+            const normalizedUnitPrice = Number.isFinite(unitPrice) ? unitPrice : 0;
+            const normalizedTableCount = Number.isFinite(tableCount) ? tableCount : 0;
+            const fallbackTotal = normalizedUnitPrice * normalizedTableCount * quantity;
+
+            return {
+                ...menu,
+                quantity,
+                pricePerTable: normalizedUnitPrice,
+                tableCount: normalizedTableCount,
+                totalPrice: Number(menu.totalPrice ?? fallbackTotal),
+            };
+        });
+
+        return {
+            ...raw,
+            createdAt: raw.createdAt ?? (raw as any).created_at ?? new Date().toISOString(),
+            bookingDate: raw.bookingDate ?? (raw as any).eventDate ?? (raw as any).booking_date,
+            customerName: raw.customerName ?? (raw as any).customer?.fullName,
+            customerPhone: raw.customerPhone ?? (raw as any).customer?.phone,
+            hallName: raw.hall?.name ?? raw.hallName,
+            tableCount: raw.tableCount ?? raw.expectedTables,
+            expectedTables,
+            pricePerTable: raw.pricePerTable ?? raw.hall?.basePrice,
+            hallTotal,
+            serviceTotal,
+            setMenuTotal,
+            status: raw.status,
+            invoiceState: raw.invoiceState ?? raw.status,
+            services: raw.services ?? (raw.servicesPackage
+                ? [{
+                    name: raw.servicesPackage.name,
+                    quantity: 1,
+                    unitPrice: raw.servicesPackage.basePrice,
+                    totalPrice: raw.servicesPackage.basePrice,
+                }]
+                : []),
+            setMenus: normalizedSetMenus,
+        };
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     formatPrice(v?: number): string {
