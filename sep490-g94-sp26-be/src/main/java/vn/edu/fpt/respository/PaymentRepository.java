@@ -8,6 +8,7 @@ import vn.edu.fpt.entity.Payment;
 import vn.edu.fpt.util.enums.PaymentState;
 import vn.edu.fpt.util.enums.RecordStatus;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +19,8 @@ public interface PaymentRepository extends BaseRepository<Payment, Integer> {
     Page<Payment> findAllByStatus(RecordStatus status, Pageable pageable);
 
     Page<Payment> findByContractIdAndStatus(Integer contractId, RecordStatus status, Pageable pageable);
+
+    List<Payment> findAllByContractIdAndPaymentStateAndStatus(Integer contractId, PaymentState paymentState , RecordStatus status);
 
     @Query("""
             SELECT p FROM Payment p

@@ -16,13 +16,16 @@ import vn.edu.fpt.dto.request.payos.CreatePayOSPaymentRequest;
 import vn.edu.fpt.dto.response.payos.PayOSCheckoutResponse;
 import vn.edu.fpt.dto.response.payos.WebhookAcknowledgeResponse;
 import vn.edu.fpt.entity.Contract;
+import vn.edu.fpt.entity.Invoice;
 import vn.edu.fpt.entity.Payment;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.respository.ContractRepository;
+import vn.edu.fpt.respository.InvoiceRepository;
 import vn.edu.fpt.respository.PaymentRepository;
 import vn.edu.fpt.service.PayOSService;
 import vn.edu.fpt.util.enums.ContractState;
+import vn.edu.fpt.util.enums.InvoiceState;
 import vn.edu.fpt.util.enums.PaymentState;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.payos.PayOS;
@@ -32,6 +35,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +51,7 @@ public class PayOSServiceImpl implements PayOSService {
 
     private final ContractRepository contractRepository;
     private final PaymentRepository paymentRepository;
+    private final InvoiceRepository invoiceRepository;
     private final PayOSProperties payOSProperties;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -195,6 +200,18 @@ public class PayOSServiceImpl implements PayOSService {
             contract.setContractState(ContractState.ACTIVE);
             contractRepository.save(contract);
         }
+        Invoice invoice = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+
+        List<Payment> payments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(contractId, PaymentState.SUCCESS, RecordStatus.active);
+        if(payments.size() > 1){
+            invoice.setInvoiceState(InvoiceState.PAID);
+        } else if (payments.size() == 1){
+            invoice.setInvoiceState(InvoiceState.PARTIALLY_PAID);
+        }
+        invoiceRepository.save(invoice);
+
+
         return WebhookAcknowledgeResponse.builder()
                 .processed(true)
                 .message("Webhook processed")
