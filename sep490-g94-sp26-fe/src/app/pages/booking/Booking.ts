@@ -42,7 +42,7 @@ import { ServicePackageService } from '../service/service-package.service';
                             pInputText type="text"
                             [(ngModel)]="searchKeyword"
                             (input)="onSearch()"
-                            placeholder="Tìm kiếm đơn đặt tiệc..."
+                            placeholder="Tìm kiếm hợp đồng..."
                             style="width:280px;"
                         />
                     </p-iconfield>
