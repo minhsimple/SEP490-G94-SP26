@@ -5,7 +5,10 @@ import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
+import vn.edu.fpt.dto.response.contract.CalenderContractResponse;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
+
+import java.util.List;
 
 public interface ContractService {
 
@@ -20,6 +23,8 @@ public interface ContractService {
     ContractResponse changeContractStatus(Integer id);
 
     ContractResponse updateContractState(ContractStatusRequest request);
+
+//    List<CalenderContractResponse> getAllTimeTable();
 }
 
 

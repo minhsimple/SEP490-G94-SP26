@@ -10,12 +10,17 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
 import vn.edu.fpt.dto.response.payment.PaymentResponse;
+import vn.edu.fpt.entity.Invoice;
 import vn.edu.fpt.entity.Payment;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.PaymentMapper;
+import vn.edu.fpt.respository.ContractRepository;
+import vn.edu.fpt.respository.InvoiceRepository;
 import vn.edu.fpt.respository.PaymentRepository;
 import vn.edu.fpt.service.PaymentService;
+import vn.edu.fpt.util.enums.ContractState;
+import vn.edu.fpt.util.enums.InvoiceState;
 import vn.edu.fpt.util.enums.PaymentState;
 import vn.edu.fpt.util.enums.RecordStatus;
 
@@ -29,6 +34,8 @@ import java.util.stream.Collectors;
 public class PaymentServiceImpl implements PaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
+    private final ContractRepository contractRepository;
+    private final InvoiceRepository invoiceRepository;
 
     @Override
     @Transactional
@@ -48,6 +55,23 @@ public class PaymentServiceImpl implements PaymentService {
 
         paymentMapper.updateEntity(payment, request);
         Payment updatedPayment = paymentRepository.save(payment);
+        if(request.getPaymentState().equals(PaymentState.SUCCESS)) {
+            contractRepository.findByIdAndStatus(payment.getContractId(), RecordStatus.active)
+                    .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED))
+                    .setContractState(ContractState.ACTIVE);
+
+            Invoice invoice = invoiceRepository.findByContractIdAndStatus(payment.getContractId(), RecordStatus.active)
+                    .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+
+            List<Payment> payments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(payment.getContractId(),
+                    PaymentState.SUCCESS, RecordStatus.active);
+            if(payments.size() > 1){
+                invoice.setInvoiceState(InvoiceState.PAID);
+            } else {
+                invoice.setInvoiceState(InvoiceState.PARTIALLY_PAID);
+            }
+            invoiceRepository.save(invoice);
+        }
         return paymentMapper.toResponse(updatedPayment);
     }
 

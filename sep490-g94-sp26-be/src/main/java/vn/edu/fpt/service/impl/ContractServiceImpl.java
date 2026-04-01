@@ -25,13 +25,14 @@ import vn.edu.fpt.service.ContractService;
 import vn.edu.fpt.service.InvoiceService;
 import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.*;
-
+import vn.edu.fpt.dto.response.contract.CalenderContractResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -251,6 +252,12 @@ public class ContractServiceImpl implements ContractService {
         return contractMapper.toResponse(saved);
     }
 
+//    @Override
+//    public List<CalenderContractResponse> getAllTimeTable() {
+//        List<CalenderContractResponse> calenders =
+//                bookingRepository.getCalendarFromContract(null, LocalDateTime.now(), LocalDateTime.now().plusMonths(6));
+//    }
+
     // tạo 3 payment mới với thông tin từ contract
     // payment đầu tiên: 40% tổng tiền, trạng thái PENDING
     // payment thứ 2:  30% tổng tiền, trạng thái PENDING
@@ -259,13 +266,7 @@ public class ContractServiceImpl implements ContractService {
         BigDecimal totalAmount = getTotalAmountForContract(contract);
 
         BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(0.4));
-        BigDecimal secondAmount = totalAmount.multiply(BigDecimal.valueOf(0.3));
-
-        BigDecimal thirdAmount = totalAmount
-                .subtract(firstAmount)
-                .subtract(secondAmount);
-
-        //todo: tính penalty nếu có và cộng vào thirdAmount
+        BigDecimal secondAmount = totalAmount.multiply(BigDecimal.valueOf(0.6));
 
         PaymentRequest request1 = PaymentRequest.builder()
                 .contractId(contract.getId())
