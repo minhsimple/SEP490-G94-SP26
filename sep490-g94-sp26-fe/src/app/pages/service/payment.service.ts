@@ -80,17 +80,21 @@ export class PaymentService {
         page?: number;
         size?: number;
         keyword?: string;
-        status?: string;
+        paymentState?: string;
+        method?: string;
         sort?: string;
     }): Observable<PageResponse<Payment>> {
         let p = new HttpParams()
             .set('page', params.page ?? 0)
             .set('size', params.size ?? 20)
-            .set('sort', params.sort ?? 'paymentDate,DESC');
+            .set('sort', params.sort ?? 'updatedAt,DESC');
         if (params.keyword) p = p.set('keyword', params.keyword);
-        if (params.status)  p = p.set('status',  params.status);
+        if (params.paymentState) p = p.set('paymentState', params.paymentState);
+        if (params.method)  p = p.set('method',  params.method);
+
+        const endpoint = params.paymentState ? `${BASE}/payments/filter` : `${BASE}/payments`;
         return this.http.get<PageResponse<Payment>>(
-            `${BASE}/payments`, { headers: this.headers, params: p }
+            endpoint, { headers: this.headers, params: p }
         );
     }
 

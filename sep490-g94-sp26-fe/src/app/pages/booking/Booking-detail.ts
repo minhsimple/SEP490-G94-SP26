@@ -472,7 +472,7 @@ import { Payment, PaymentService } from '../service/payment.service';
                             </div>
                             <div class="line" style="margin:0.35rem 0;">
                                 <span class="muted">Đã thanh toán</span>
-                                <strong style="color:#16a34a">{{ formatPrice(invoicePreview.paidAmount ?? 0) }}</strong>
+                                <strong style="color:#16a34a">{{ formatPrice(invoicePreview.paidAmount ?? paidAmount ?? 0) }}</strong>
                             </div>
                             <div class="line" style="margin:0.35rem 0 0.85rem;">
                                 <span class="muted">Trạng thái</span>
@@ -659,6 +659,7 @@ export class BookingDetailComponent implements OnInit {
                 const preview = list[0] as any;
                 this.invoicePreview = {
                     ...preview,
+                    paidAmount: Number(preview?.paidAmount ?? this.paidAmount ?? 0),
                     createdAt: this.resolveInvoiceCreatedAt(preview),
                 };
                 this.cdr.detectChanges();
@@ -670,6 +671,7 @@ export class BookingDetailComponent implements OnInit {
                             this.invoicePreview = {
                                 ...this.invoicePreview,
                                 ...detail,
+                                paidAmount: Number(detail?.paidAmount ?? this.paidAmount ?? 0),
                                 createdAt: this.resolveInvoiceCreatedAt({ ...this.invoicePreview, ...detail }),
                             };
                             this.cdr.detectChanges();
@@ -910,84 +912,134 @@ export class BookingDetailComponent implements OnInit {
         const signDate = this.formatDate(this.booking.updatedAt ?? this.booking.bookingDate ?? this.booking.eventDate);
         const contractNo = this.booking.contractNo || this.booking.bookingNo || `HD-${this.booking.id}`;
         const groomName = this.booking.groomName || '-';
+        const groomAge = this.booking.groomAge ? `${this.booking.groomAge}` : '-';
         const brideName = this.booking.brideName || '-';
+        const brideAge = this.booking.brideAge ? `${this.booking.brideAge}` : '-';
+        const brideFatherName = this.booking.brideFatherName || '-';
+        const brideMotherName = this.booking.brideMotherName || '-';
+        const groomFatherName = this.booking.groomFatherName || '-';
+        const groomMotherName = this.booking.groomMotherName || '-';
         const customerName = this.customer?.fullName || this.customerName || '-';
         const customerPhone = this.customer?.phone || '-';
         const customerEmail = this.customer?.email || '-';
         const customerAddress = this.customer?.address || '-';
         const hallName = this.hallName || (this.booking.hallId ? `Sảnh #${this.booking.hallId}` : '-');
+        const shift = this.shiftLabel(this.booking.bookingTime ?? this.booking.shift);
+        const invoiceCode = this.invoicePreview?.code || (this.invoicePreview?.id ? `INV-${this.invoicePreview.id}` : '-');
         const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
         const guests = Number(this.booking.expectedGuests ?? this.booking.guestCount ?? 0);
         const amount = this.totalAmount > 0 ? this.totalAmount : this.apiTotalAmount;
         const hallAmount = this.hallPrice;
         const setMenuAmount = tables > 0 ? this.setMenuPrice * tables : 0;
-        const deposit1 = Math.round(amount * 0.3);
-        const deposit2 = Math.round(amount * 0.4);
-        const deposit3 = Math.max(amount - deposit1 - deposit2, 0);
+        const packageAmount = this.packagePrice;
+        const baseAmount = hallAmount + setMenuAmount + packageAmount;
+        const estimatedExtra = Math.max(amount - baseAmount, 0);
+        const paidAmount = Number(this.paidAmount ?? 0);
+        const remainingAmount = Math.max(amount - paidAmount, 0);
+        const deposit1 = Math.round(amount * 0.4);
+        const deposit2 = Math.max(amount - deposit1, 0);
+        const notes = this.booking.notes || '-';
+        const recordStatus = this.booking.contractState || this.booking.bookingState || '-';
 
         return `
             <p style="text-align:center; margin:0; font-size:10pt">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
             <p style="text-align:center; margin:0; font-size:10pt">Độc Lập - Tự Do - Hạnh Phúc</p>
-            <p style="text-align:center; margin:8px 0 0; font-size:16pt"><strong>HỢP ĐỒNG DỊCH VỤ</strong></p>
+            <p style="text-align:center; margin:8px 0 0; font-size:16pt"><strong>HỢP ĐỒNG CUNG CẤP DỊCH VỤ TIỆC CƯỚI</strong></p>
             <p style="text-align:center; margin:4px 0 10px; font-size:10pt">Số: <span style="color:#dc2626">${esc(contractNo)}</span></p>
 
             <p>Hợp đồng được lập ngày <span style="color:#dc2626">${esc(signDate)}</span>, gồm có:</p>
 
-            <p><strong>BÊN SỬ DỤNG DỊCH VỤ (BÊN A)</strong></p>
-            <p><strong>Ông/Bà:</strong> <span style="color:#dc2626">${esc(customerName)}</span></p>
+            <p><strong>BÊN SỬ DỤNG DỊCH VỤ (BÊN A - KHÁCH HÀNG)</strong></p>
+            <p><strong>Người đại diện:</strong> <span style="color:#dc2626">${esc(customerName)}</span></p>
 
             <table>
                 <tr>
-                    <td><strong>CÔ DÂU: ${esc(brideName)}</strong></td>
-                    <td><strong>CHÚ RỂ: ${esc(groomName)}</strong></td>
+                    <td><strong>CÔ DÂU: ${esc(brideName)} - Tuổi: ${esc(brideAge)}</strong></td>
+                    <td><strong>CHÚ RỂ: ${esc(groomName)} - Tuổi: ${esc(groomAge)}</strong></td>
                 </tr>
                 <tr>
                     <td>
                         <p><strong>Địa chỉ:</strong> ${esc(customerAddress)}</p>
                         <p><strong>Số điện thoại:</strong> ${esc(customerPhone)}</p>
                         <p><strong>Email:</strong> ${esc(customerEmail)}</p>
+                        <p><strong>Cha cô dâu:</strong> ${esc(brideFatherName)}</p>
+                        <p><strong>Mẹ cô dâu:</strong> ${esc(brideMotherName)}</p>
                     </td>
                     <td>
                         <p><strong>Ngày tổ chức:</strong> ${esc(bookingDate)}</p>
                         <p><strong>Sảnh:</strong> ${esc(hallName)}</p>
-                        <p><strong>Ca tiệc:</strong> ${esc(this.shiftLabel(this.booking.bookingTime ?? this.booking.shift))}</p>
+                        <p><strong>Ca tiệc:</strong> ${esc(shift)}</p>
+                        <p><strong>Cha chú rể:</strong> ${esc(groomFatherName)}</p>
+                        <p><strong>Mẹ chú rể:</strong> ${esc(groomMotherName)}</p>
                     </td>
                 </tr>
             </table>
 
             <p style="margin-top:10px"><strong>BÊN CUNG CẤP DỊCH VỤ CƯỚI (BÊN B)</strong></p>
             <p><strong>Đơn vị:</strong> WEDDINGLINK</p>
+            <p><strong>Vai trò:</strong> Đơn vị tổ chức và cung cấp dịch vụ tiệc cưới trọn gói theo thỏa thuận.</p>
+
+            <p><strong>THÔNG TIN THAM CHIẾU HÓA ĐƠN:</strong> ${esc(invoiceCode)}</p>
+            <p><strong>Trạng thái hợp đồng:</strong> ${esc(this.bookingStateLabel(recordStatus))}</p>
 
             <p style="margin-top:10px"><strong>ĐIỀU I: NỘI DUNG CÔNG VIỆC</strong></p>
-            <p>Bên B cung cấp dịch vụ tiệc cưới theo phụ lục đính kèm cho sự kiện của Bên A.</p>
+            <p>1. Bên B cung cấp dịch vụ tổ chức tiệc cưới theo yêu cầu của Bên A, bao gồm các hạng mục đã xác nhận.</p>
+            <p>2. Bên A xác nhận thông tin sự kiện: ngày tổ chức, sảnh, ca tiệc, số bàn, số khách và các yêu cầu riêng.</p>
+            <p>3. Danh mục dịch vụ dự kiến:</p>
+            <p>- Sảnh tổ chức: ${esc(hallName)} (phí thuê: ${esc(this.formatPrice(hallAmount))}).</p>
+            <p>- Set menu: ${esc(this.setMenuName || '-')}, đơn giá ${esc(this.setMenuPrice > 0 ? `${this.formatPrice(this.setMenuPrice)}/bàn` : '-')}.</p>
+            <p>- Gói dịch vụ đi kèm: ${esc(this.packageName || '-')}, giá ${esc(this.formatPrice(packageAmount))}.</p>
+            <p>- Ghi chú bổ sung: ${esc(notes)}.</p>
 
             <p><strong>ĐIỀU II: GIÁ TRỊ HỢP ĐỒNG VÀ THANH TOÁN</strong></p>
-            <p><strong>Tổng giá trị hợp đồng:</strong> <span style="color:#dc2626">${esc(this.formatPrice(amount))}</span></p>
-            <p><strong>Số bàn dự kiến:</strong> ${esc(tables > 0 ? `${tables} bàn` : '-')}</p>
-            <p><strong>Số khách dự kiến:</strong> ${esc(guests > 0 ? `${guests} khách` : '-')}</p>
-            <p><strong>Phí thuê sảnh:</strong> ${esc(this.formatPrice(hallAmount))}</p>
-            <p><strong>Giá set menu:</strong> ${esc(this.setMenuPrice > 0 ? `${this.formatPrice(this.setMenuPrice)}/bàn` : '-')} (${esc(this.formatPrice(setMenuAmount))})</p>
-            <p><strong>Giá gói dịch vụ:</strong> ${esc(this.formatPrice(this.packagePrice))}</p>
-            <p><strong>Đợt 1 (đặt cọc):</strong> ${esc(this.formatPrice(deposit1))}</p>
-            <p><strong>Đợt 2:</strong> ${esc(this.formatPrice(deposit2))}</p>
-            <p><strong>Đợt 3:</strong> ${esc(this.formatPrice(deposit3))}</p>
+            <p>1. Tổng giá trị tạm tính của hợp đồng: <span style="color:#dc2626"><strong>${esc(this.formatPrice(amount))}</strong></span>.</p>
+            <p>2. Cấu phần chi phí:</p>
+            <p>- Phí sảnh: ${esc(this.formatPrice(hallAmount))}.</p>
+            <p>- Chi phí set menu (theo số bàn dự kiến): ${esc(this.formatPrice(setMenuAmount))}.</p>
+            <p>- Chi phí gói dịch vụ: ${esc(this.formatPrice(packageAmount))}.</p>
+            <p>- Chi phí phát sinh tạm tính: ${esc(this.formatPrice(estimatedExtra))} (sẽ quyết toán theo thực tế).</p>
+            <p>3. Tiến độ thanh toán:</p>
+            <p>- Đợt 1 (đặt cọc 40% khi ký hợp đồng): ${esc(this.formatPrice(deposit1))}.</p>
+            <p>- Đợt 2 (60% còn lại + toàn bộ chi phí phát sinh): ${esc(this.formatPrice(deposit2))} + phí phát sinh (nếu có), thanh toán trước khi diễn ra tiệc.</p>
+            <p>4. Tình trạng thanh toán hiện tại:</p>
+            <p>- Đã thanh toán: ${esc(this.formatPrice(paidAmount))}.</p>
+            <p>- Còn phải thanh toán: ${esc(this.formatPrice(remainingAmount))}.</p>
+            <p>5. Hình thức thanh toán: tiền mặt/chuyển khoản/thanh toán điện tử theo thông tin do Bên B cung cấp.</p>
 
-            <p><strong>ĐIỀU III: TRÁCH NHIỆM HAI BÊN</strong></p>
-            <p>Hai bên cam kết thực hiện đúng nội dung đã thỏa thuận trong hợp đồng và phụ lục.</p>
+            <p><strong>ĐIỀU III: THAY ĐỔI DỊCH VỤ VÀ PHÍ PHÁT SINH</strong></p>
+            <p>1. Mọi thay đổi về thực đơn, số bàn, hạng mục dịch vụ, timeline chương trình phải được xác nhận trước ngày tổ chức theo quy định của Bên B.</p>
+            <p>2. Chi phí phát sinh gồm nhưng không giới hạn: tăng số bàn, nâng cấp thực đơn, bổ sung nhân sự, thiết bị, trang trí hoặc dịch vụ ngoài danh mục ban đầu.</p>
+            <p>3. Phát sinh được lập thành phụ lục/xác nhận bổ sung và là phần không tách rời hợp đồng.</p>
 
-            <p><strong>ĐIỀU IV: THAY ĐỔI HỢP ĐỒNG</strong></p>
-            <p>Mọi thay đổi phải được hai bên thống nhất bằng văn bản và có thể làm thay đổi giá trị hợp đồng.</p>
+            <p><strong>ĐIỀU IV: HỦY/TẠM HOÃN SỰ KIỆN</strong></p>
+            <p>1. Trường hợp Bên A hủy tiệc, khoản cọc Đợt 1 được xử lý theo chính sách hủy của Bên B và các chi phí đã phát sinh thực tế.</p>
+            <p>2. Trường hợp Bên A đổi ngày tổ chức, hai bên sẽ thống nhất lịch mới bằng phụ lục; mọi chênh lệch chi phí (nếu có) được cập nhật vào giá trị hợp đồng.</p>
+            <p>3. Trường hợp bất khả kháng (thiên tai, dịch bệnh, quy định cơ quan nhà nước...), hai bên ưu tiên phương án dời lịch và hạn chế thiệt hại cho cả hai bên.</p>
 
-            <p><strong>ĐIỀU V: ĐIỀU KHOẢN CHUNG</strong></p>
-            <p>Hợp đồng có hiệu lực từ ngày ký đến khi hai bên hoàn tất trách nhiệm.</p>
+            <p><strong>ĐIỀU V: QUYỀN VÀ NGHĨA VỤ CỦA CÁC BÊN</strong></p>
+            <p>1. Bên A có trách nhiệm cung cấp thông tin chính xác, thanh toán đúng hạn và phối hợp trong quá trình tổ chức.</p>
+            <p>2. Bên B có trách nhiệm cung cấp dịch vụ đúng hạng mục, đúng chất lượng, bảo đảm tiến độ và an toàn sự kiện.</p>
+            <p>3. Hai bên có trách nhiệm phối hợp nghiệm thu trước và sau sự kiện.</p>
+
+            <p><strong>ĐIỀU VI: PHẠT VI PHẠM VÀ BỒI THƯỜNG</strong></p>
+            <p>1. Bên vi phạm nghĩa vụ thanh toán hoặc nghĩa vụ thực hiện dịch vụ phải khắc phục và bồi thường thiệt hại thực tế cho bên còn lại theo quy định pháp luật.</p>
+            <p>2. Trường hợp chậm thanh toán, Bên B có quyền tạm ngừng cung cấp một phần dịch vụ cho đến khi Bên A hoàn tất nghĩa vụ tài chính theo thỏa thuận.</p>
+
+            <p><strong>ĐIỀU VII: ĐIỀU KHOẢN CHUNG</strong></p>
+            <p>1. Hợp đồng có hiệu lực từ ngày ký đến khi hai bên hoàn thành mọi quyền và nghĩa vụ.</p>
+            <p>2. Mọi sửa đổi, bổ sung hợp đồng phải lập thành văn bản và có xác nhận của cả hai bên.</p>
+            <p>3. Nếu phát sinh tranh chấp, hai bên ưu tiên thương lượng; trường hợp không đạt thỏa thuận sẽ giải quyết theo quy định pháp luật hiện hành.</p>
+            <p>4. Hợp đồng được lập thành 02 bản có giá trị pháp lý như nhau, mỗi bên giữ 01 bản.</p>
 
             <table style="margin-top:20px; border:none; width:100%">
                 <tr>
                     <td style="width:50%; border:none; text-align:center; vertical-align:top">
                         <p><strong>ĐẠI DIỆN BÊN A</strong></p>
+                        <p>(Ký, ghi rõ họ tên)</p>
                     </td>
                     <td style="width:50%; border:none; text-align:center; vertical-align:top">
                         <p><strong>ĐẠI DIỆN BÊN B</strong></p>
+                        <p>(Ký, ghi rõ họ tên, đóng dấu)</p>
                     </td>
                 </tr>
                 <tr>
