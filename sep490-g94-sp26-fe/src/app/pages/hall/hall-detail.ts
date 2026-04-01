@@ -40,6 +40,9 @@ import { LocationService } from '../service/location.service';
                     <span>Quay lại danh sách sảnh</span>
                 </button>
 
+
+                
+
                 <!-- Hero Image Carousel -->
                 <div class="hero-carousel">
                     <div class="carousel-main">

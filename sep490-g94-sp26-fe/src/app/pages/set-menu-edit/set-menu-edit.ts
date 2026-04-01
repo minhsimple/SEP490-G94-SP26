@@ -326,6 +326,9 @@ export class SetMenuEditComponent implements OnInit {
         return this.selectedItems.reduce((sum, i) => sum + (i.unitPrice ?? 0) * (i.quantity ?? 1), 0);
     }
 
+
+    
+
     constructor(
         private route: ActivatedRoute,
         private router: Router,
