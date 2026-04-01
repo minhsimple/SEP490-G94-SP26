@@ -16,9 +16,13 @@ import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
+import vn.edu.fpt.dto.response.contract.CalenderContractResponse;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
 import vn.edu.fpt.service.ContractService;
 import vn.edu.fpt.util.enums.Constants;
+
+import java.util.Date;
+import java.util.List;
 
 
 @RestController
@@ -90,6 +94,14 @@ public class ContractController {
                 .data(response)
                 .build();
     }
+//    @Operation(summary = "Lấy lịch đăt tiệc của hợp đồng")
+//    @GetMapping("/get-time-table")
+//    public ApiResponse<List<CalenderContractResponse>> getAllTimeTable() {
+//        return ApiResponse.<SimplePage<ContractResponse>>builder()
+//                .data(contractService.getAllTimeTable())
+//                .build();
+//    }
+
 }
 
 
