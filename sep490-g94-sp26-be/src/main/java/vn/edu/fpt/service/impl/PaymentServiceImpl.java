@@ -19,10 +19,7 @@ import vn.edu.fpt.respository.ContractRepository;
 import vn.edu.fpt.respository.InvoiceRepository;
 import vn.edu.fpt.respository.PaymentRepository;
 import vn.edu.fpt.service.PaymentService;
-import vn.edu.fpt.util.enums.ContractState;
-import vn.edu.fpt.util.enums.InvoiceState;
-import vn.edu.fpt.util.enums.PaymentState;
-import vn.edu.fpt.util.enums.RecordStatus;
+import vn.edu.fpt.util.enums.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +52,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         paymentMapper.updateEntity(payment, request);
         Payment updatedPayment = paymentRepository.save(payment);
-        if(request.getPaymentState().equals(PaymentState.SUCCESS)) {
+        if(request.getPaymentState().equals(PaymentState.SUCCESS) && request.getMethod().equals(PaymentMethod.CASH)){
             contractRepository.findByIdAndStatus(payment.getContractId(), RecordStatus.active)
                     .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED))
                     .setContractState(ContractState.ACTIVE);

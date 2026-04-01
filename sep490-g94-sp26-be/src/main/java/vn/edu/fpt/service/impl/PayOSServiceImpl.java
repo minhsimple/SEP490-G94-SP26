@@ -24,10 +24,7 @@ import vn.edu.fpt.respository.ContractRepository;
 import vn.edu.fpt.respository.InvoiceRepository;
 import vn.edu.fpt.respository.PaymentRepository;
 import vn.edu.fpt.service.PayOSService;
-import vn.edu.fpt.util.enums.ContractState;
-import vn.edu.fpt.util.enums.InvoiceState;
-import vn.edu.fpt.util.enums.PaymentState;
-import vn.edu.fpt.util.enums.RecordStatus;
+import vn.edu.fpt.util.enums.*;
 import vn.payos.PayOS;
 import vn.payos.model.webhooks.WebhookData;
 
@@ -191,6 +188,7 @@ public class PayOSServiceImpl implements PayOSService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
         if (payment.getPaymentState() == PaymentState.PENDING) {
             payment.setPaymentState(PaymentState.SUCCESS);
+            payment.setMethod(PaymentMethod.BANK_TRANSFER);
             paymentRepository.save(payment);
         }
         Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
