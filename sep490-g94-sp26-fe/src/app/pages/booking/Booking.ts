@@ -94,7 +94,7 @@ import { ServicePackageService } from '../service/service-package.service';
                 </div>
 
                 <p-button
-                    label="Đặt tiệc mới"
+                    label="Hợp đồng mới"
                     icon="pi pi-plus"
                     severity="primary"
                     (onClick)="goToCreate()"
