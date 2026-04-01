@@ -13,6 +13,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TableModule } from 'primeng/table';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
+import { PaymentService } from '../service/payment.service';
 import { BookingService } from '../service/booking.service';
 import { CustomerService } from '../service/customer.service';
 
@@ -336,9 +337,18 @@ import { CustomerService } from '../service/customer.service';
                                     <td class="text-500">{{ p.note ?? '-' }}</td>
                                     <td style="text-align:center;">
                                         <p-button
+                                            *ngIf="canPayWithPayOS(p)"
+                                            icon="pi pi-wallet"
+                                            [rounded]="true" [text]="true"
+                                            severity="success"
+                                            [loading]="payingPaymentId === p.id"
+                                            (click)="payExistingPayment(p)"
+                                        />
+                                        <p-button
                                             icon="pi pi-trash"
                                             [rounded]="true" [text]="true"
                                             severity="danger"
+                                            [disabled]="payingPaymentId === p.id"
                                             (click)="confirmDeletePayment(p)"
                                         />
                                     </td>
@@ -397,6 +407,23 @@ import { CustomerService } from '../service/customer.service';
             <ng-template #content>
                 <div class="flex flex-col gap-4 mt-2">
                     <div>
+                        <label class="block font-semibold mb-2 text-sm">Đợt thanh toán</label>
+                        <p-select
+                            [options]="roundOptions"
+                            [(ngModel)]="paymentForm.round"
+                            optionLabel="label" optionValue="value"
+                            placeholder="Chọn đợt..."
+                            (ngModelChange)="onRoundChange()"
+                            fluid
+                        />
+                        <small class="text-500" *ngIf="paymentForm.round === 1">
+                            Đợt 1 mặc định 40% tổng hóa đơn.
+                        </small>
+                        <small class="text-500" *ngIf="paymentForm.round === 2">
+                            Đợt 2 mặc định phần còn lại (60% + phí phát sinh nếu có).
+                        </small>
+                    </div>
+                    <div>
                         <label class="block font-semibold mb-2 text-sm">
                             Số tiền <span class="text-red-500">*</span>
                         </label>
@@ -444,7 +471,7 @@ import { CustomerService } from '../service/customer.service';
             </ng-template>
         </p-dialog>
     `,
-    providers: [MessageService, ConfirmationService, InvoiceService, BookingService]
+    providers: [MessageService, ConfirmationService, InvoiceService, PaymentService, BookingService]
 })
 export class InvoiceDetailComponent implements OnInit {
 
@@ -453,10 +480,16 @@ export class InvoiceDetailComponent implements OnInit {
     paymentDialog = false;
     paymentSubmitted = false;
     savingPayment = false;
+    payingPaymentId: number | null = null;
 
-    paymentForm: { amount: number | null; method: string; note: string; paymentDate: string } = {
-        amount: null, method: 'CASH', note: '', paymentDate: ''
+    paymentForm: { amount: number | null; method: string; note: string; paymentDate: string; round: number } = {
+        amount: null, method: 'CASH', note: '', paymentDate: '', round: 1
     };
+
+    roundOptions = [
+        { label: 'Đợt 1 (40%)', value: 1 },
+        { label: 'Đợt 2 (Còn lại)', value: 2 },
+    ];
 
     methodOptions = [
         { label: 'Tiền mặt',      value: 'CASH'          },
@@ -475,6 +508,7 @@ export class InvoiceDetailComponent implements OnInit {
         private route: ActivatedRoute,
         private router: Router,
         private invoiceService: InvoiceService,
+        private paymentService: PaymentService,
         private bookingService: BookingService,
         private customerService: CustomerService,
         private messageService: MessageService,
@@ -493,6 +527,7 @@ export class InvoiceDetailComponent implements OnInit {
         this.invoiceService.getById(id).subscribe({
             next: (res) => {
                 this.invoice = this.adaptInvoice(res.data);
+                this.loadPaymentsByContract();
                 this.enrichInvoiceMissingInfo();
                 this.loading = false;
                 this.cdr.detectChanges();
@@ -506,34 +541,241 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     openPaymentDialog() {
+        const suggestedRound = this.suggestRound();
         this.paymentForm = {
             amount: null, method: 'CASH', note: '',
-            paymentDate: new Date().toISOString().slice(0, 10)
+            paymentDate: new Date().toISOString().slice(0, 10),
+            round: suggestedRound,
         };
+        this.onRoundChange();
         this.paymentSubmitted = false;
         this.paymentDialog = true;
+    }
+
+    onRoundChange() {
+        const suggested = this.getSuggestedAmountByRound(this.paymentForm.round);
+        this.paymentForm.amount = suggested > 0 ? suggested : null;
     }
 
     savePayment() {
         this.paymentSubmitted = true;
         if (!this.paymentForm.amount) return;
 
+        const invoiceId = this.invoice?.id;
+        const contractId = this.invoice?.contractId;
+        if (!invoiceId || !contractId) {
+            this.messageService.add({
+                severity: 'error',
+                summary: 'Lỗi',
+                detail: 'Không tìm thấy thông tin hợp đồng của hóa đơn',
+                life: 3000
+            });
+            return;
+        }
+
         this.savingPayment = true;
-        this.invoiceService.addPayment(this.invoice!.id!, {
-            amount:      this.paymentForm.amount,
-            method:      this.paymentForm.method,
-            note:        this.paymentForm.note,
-            paymentDate: this.paymentForm.paymentDate,
+        const noteWithRound = this.buildRoundNote(this.paymentForm.note, this.paymentForm.round);
+        this.paymentService.createPayment({
+            contractId,
+            amount: this.paymentForm.amount,
+            method: this.paymentForm.method,
+            note: noteWithRound,
+            paymentState: 'PENDING'
         }).subscribe({
-            next: () => {
+            next: (res) => {
+                const createdPaymentId = res.data?.id;
+                if (!createdPaymentId) {
+                    this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không lấy được mã thanh toán vừa tạo', life: 3000 });
+                    this.savingPayment = false;
+                    return;
+                }
+
+                if (this.requiresPayOSRedirect(this.paymentForm.method)) {
+                    const returnUrl = this.buildInvoiceReturnUrl(invoiceId);
+                    const description = this.buildPayOSDescription();
+
+                    this.paymentService.createPayOSPaymentLink({
+                        paymentId: createdPaymentId,
+                        returnUrl,
+                        cancelUrl: returnUrl,
+                        description
+                    }).subscribe({
+                        next: (payRes) => {
+                            const checkoutUrl = payRes.data?.checkoutUrl;
+                            if (!checkoutUrl) {
+                                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không nhận được link thanh toán PayOS', life: 3000 });
+                                this.savingPayment = false;
+                                return;
+                            }
+
+                            this.paymentDialog = false;
+                            this.savingPayment = false;
+                            window.location.href = checkoutUrl;
+                        },
+                        error: () => {
+                            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tạo link thanh toán PayOS', life: 3000 });
+                            this.savingPayment = false;
+                        }
+                    });
+                    return;
+                }
+
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã thêm thanh toán', life: 3000 });
                 this.paymentDialog = false;
                 this.savingPayment = false;
-                this.loadDetail(this.invoice!.id!);
+                this.loadDetail(invoiceId);
             },
             error: () => {
                 this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể thêm thanh toán', life: 3000 });
                 this.savingPayment = false;
+            }
+        });
+    }
+
+    private requiresPayOSRedirect(method?: string): boolean {
+        return method === 'BANK_TRANSFER' || method === 'E_WALLET' || method === 'CREDIT_CARD';
+    }
+
+    private buildInvoiceReturnUrl(invoiceId: number): string {
+        return `${window.location.origin}/pages/invoice/${invoiceId}`;
+    }
+
+    private buildPayOSDescription(): string {
+        const invoiceNo = this.invoice?.code ?? `#${this.invoice?.id ?? ''}`;
+        const contractNo = this.invoice?.contractNo ?? `#${this.invoice?.contractId ?? ''}`;
+        return `thanh toán hóa đơn ${invoiceNo} của hợp đồng ${contractNo}`;
+    }
+
+    private suggestRound(): number {
+        const paid = Number(this.invoice?.paidAmount ?? 0);
+        return paid > 0 ? 2 : 1;
+    }
+
+    private getSuggestedAmountByRound(round: number): number {
+        const total = Number(this.invoice?.totalAmount ?? 0);
+        const remaining = this.remainingAmount;
+        if (!Number.isFinite(total) || total <= 0) return 0;
+
+        if (round === 1) {
+            // Đợt 1 cố định 40% tổng hóa đơn.
+            const fortyPercent = Math.round(total * 0.4);
+            return Math.min(fortyPercent, Math.max(remaining, 0));
+        }
+
+        // Đợt 2 là phần còn lại: 60% + phí phát sinh (nếu tổng hóa đơn tăng).
+        return Math.max(Math.round(remaining), 0);
+    }
+
+    private buildRoundNote(note: string, round: number): string {
+        const prefix = round === 1 ? 'Đợt 1 (40%)' : 'Đợt 2 (60% + phí nếu có)';
+        const trimmed = (note ?? '').trim();
+        return trimmed ? `${prefix} - ${trimmed}` : prefix;
+    }
+
+    private buildPayOSFallbackDescription(): string {
+        const invoiceNo = String(this.invoice?.code ?? this.invoice?.id ?? '').replace(/[^a-zA-Z0-9-]/g, '');
+        const contractNo = String(this.invoice?.contractNo ?? this.invoice?.contractId ?? '').replace(/[^a-zA-Z0-9-]/g, '');
+        const shortText = `TT ${invoiceNo} HD ${contractNo}`.trim();
+        return shortText.slice(0, 25) || 'Thanh toan hop dong';
+    }
+
+    canPayWithPayOS(payment?: Payment): boolean {
+        const state = String(payment?.status ?? '').toUpperCase();
+        return !!payment?.id
+            && this.requiresPayOSRedirect(payment?.method)
+            && (!state || state === 'PENDING' || state === 'FAILED');
+    }
+
+    payExistingPayment(payment: Payment) {
+        if (!payment?.id || !this.invoice?.id) return;
+
+        if (!this.requiresPayOSRedirect(payment.method)) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Không hỗ trợ',
+                detail: 'Phương thức này không dùng cổng PayOS. Vui lòng chọn thanh toán online.',
+                life: 3500
+            });
+            return;
+        }
+
+        this.payingPaymentId = payment.id;
+        const returnUrl = this.buildInvoiceReturnUrl(this.invoice.id);
+        const description = this.buildPayOSDescription();
+        const fallbackDescription = this.buildPayOSFallbackDescription();
+
+        this.paymentService.createPayOSPaymentLink({
+            paymentId: payment.id,
+            returnUrl,
+            cancelUrl: returnUrl,
+            description
+        }).subscribe({
+            next: (res) => {
+                const checkoutUrl = res.data?.checkoutUrl;
+                if (!checkoutUrl) {
+                    this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không nhận được link thanh toán PayOS', life: 3000 });
+                    this.payingPaymentId = null;
+                    return;
+                }
+
+                window.location.href = checkoutUrl;
+            },
+            error: (err) => {
+                this.paymentService.createPayOSPaymentLink({
+                    paymentId: payment.id!,
+                    returnUrl,
+                    cancelUrl: returnUrl,
+                    description: fallbackDescription
+                }).subscribe({
+                    next: (retryRes) => {
+                        const checkoutUrl = retryRes.data?.checkoutUrl;
+                        if (!checkoutUrl) {
+                            const detail = err?.error?.message ?? err?.message ?? 'Không thể tạo link thanh toán PayOS';
+                            this.messageService.add({ severity: 'error', summary: 'Lỗi', detail, life: 4000 });
+                            this.payingPaymentId = null;
+                            return;
+                        }
+                        window.location.href = checkoutUrl;
+                    },
+                    error: (retryErr) => {
+                        const detail = retryErr?.error?.message ?? retryErr?.message ?? err?.error?.message ?? 'Không thể tạo link thanh toán PayOS';
+                        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail, life: 4000 });
+                        this.payingPaymentId = null;
+                    }
+                });
+            }
+        });
+    }
+
+    private loadPaymentsByContract() {
+        const contractId = this.invoice?.contractId;
+        if (!contractId || !this.invoice) return;
+
+        this.paymentService.getPaymentsByContract(contractId, 0, 100).subscribe({
+            next: (res) => {
+                const rows = [...(res.data?.content ?? [])].sort((a: any, b: any) => Number(a?.id ?? 0) - Number(b?.id ?? 0));
+                const mappedPayments: Payment[] = rows.map((p: any, index: number) => ({
+                    id: p.id,
+                    code: p.code,
+                    amount: Number(p.amount ?? 0),
+                    method: p.method,
+                    note: p.note,
+                    round: p.round ?? (index === 0 ? 1 : 2),
+                    paymentDate: p.paidAt ?? p.paymentDate ?? p.createdAt,
+                    status: p.paymentState ?? p.status,
+                }));
+
+                this.invoice = {
+                    ...this.invoice,
+                    payments: mappedPayments,
+                    paidAmount: mappedPayments
+                        .filter((p) => ['SUCCESS', 'CONFIRMED', 'PAID'].includes(String(p.status ?? '').toUpperCase()))
+                        .reduce((sum, p) => sum + Number(p.amount ?? 0), 0),
+                };
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cdr.detectChanges();
             }
         });
     }
@@ -547,7 +789,7 @@ export class InvoiceDetailComponent implements OnInit {
             rejectLabel: 'Hủy',
             acceptButtonStyleClass: 'p-button-danger',
             accept: () => {
-                this.invoiceService.deletePayment(this.invoice!.id!, p.id!).subscribe({
+                this.paymentService.deletePayment(p.id!).subscribe({
                     next: () => {
                         this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xoá thanh toán', life: 3000 });
                         this.loadDetail(this.invoice!.id!);
@@ -714,14 +956,32 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     getPaymentStatusLabel(s?: string): string {
-        return { PENDING: 'Chờ xử lý', CONFIRMED: 'Đã xác nhận', CANCELLED: 'Đã huỷ' }[s ?? ''] ?? s ?? '-';
+        return {
+            PENDING: 'Chờ xử lý',
+            SUCCESS: 'Thành công',
+            FAILED: 'Thất bại',
+            CONFIRMED: 'Đã xác nhận',
+            CANCELLED: 'Đã huỷ'
+        }[s ?? ''] ?? s ?? '-';
     }
 
     getPaymentStatusBg(s?: string): string {
-        return { PENDING: '#fef3c7', CONFIRMED: '#dcfce7', CANCELLED: '#fee2e2' }[s ?? ''] ?? '#f1f5f9';
+        return {
+            PENDING: '#fef3c7',
+            SUCCESS: '#dcfce7',
+            FAILED: '#fee2e2',
+            CONFIRMED: '#dcfce7',
+            CANCELLED: '#fee2e2'
+        }[s ?? ''] ?? '#f1f5f9';
     }
 
     getPaymentStatusColor(s?: string): string {
-        return { PENDING: '#d97706', CONFIRMED: '#16a34a', CANCELLED: '#dc2626' }[s ?? ''] ?? '#64748b';
+        return {
+            PENDING: '#d97706',
+            SUCCESS: '#16a34a',
+            FAILED: '#dc2626',
+            CONFIRMED: '#16a34a',
+            CANCELLED: '#dc2626'
+        }[s ?? ''] ?? '#64748b';
     }
 }
