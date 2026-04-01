@@ -7,16 +7,21 @@ const BASE = 'http://localhost:8080/api/v1';
 export interface Payment {
     id?: number;
     code?: string;               // TT-260323-1129
+    contractId?: number;
     invoiceId?: number;
     invoiceCode?: string;        // INV-260323-4612
     customerId?: number;
     customerName?: string;
     paymentDate?: string;
+    paidAt?: string;
+    createdAt?: string;
     round?: string | number;     // Đợt 1, deposit, ...
     method?: string;             // BANK_TRANSFER | CASH | ...
     methodNote?: string;         // ghi chú phương thức (hy345534)
     status?: string;             // 'SUCCESS' | 'PENDING' | 'CANCELLED'
+    paymentState?: string;
     amount?: number;
+    referenceNo?: string;
     note?: string;
 }
 
@@ -34,6 +39,29 @@ export interface PageResponse<T> {
 export interface SingleResponse<T> {
     code: number;
     data: T;
+}
+
+export interface CreatePaymentPayload {
+    contractId: number;
+    amount: number;
+    method: string;
+    paymentState?: string;
+    referenceNo?: string;
+    note?: string;
+}
+
+export interface PayOSCreatePaymentPayload {
+    description: string;
+    returnUrl: string;
+    cancelUrl: string;
+    paymentId: number;
+}
+
+export interface PayOSCheckoutResponse {
+    orderCode?: number;
+    checkoutUrl?: string;
+    paymentLinkId?: string;
+    qrCode?: string;
 }
 
 @Injectable()
@@ -69,6 +97,30 @@ export class PaymentService {
     deletePayment(id: number): Observable<SingleResponse<any>> {
         return this.http.delete<SingleResponse<any>>(
             `${BASE}/payments/${id}`, { headers: this.headers }
+        );
+    }
+
+    createPayment(payload: CreatePaymentPayload): Observable<SingleResponse<Payment>> {
+        return this.http.post<SingleResponse<Payment>>(
+            `${BASE}/payments/create`, payload, { headers: this.headers }
+        );
+    }
+
+    createPayOSPaymentLink(payload: PayOSCreatePaymentPayload): Observable<SingleResponse<PayOSCheckoutResponse>> {
+        return this.http.post<SingleResponse<PayOSCheckoutResponse>>(
+            'http://localhost:8080/api/payos/payment/payos/create', payload, { headers: this.headers }
+        );
+    }
+
+    getPaymentsByContract(contractId: number, page = 0, size = 50): Observable<PageResponse<Payment>> {
+        const params = new HttpParams()
+            .set('page', page)
+            .set('size', size)
+            .set('sort', 'id,ASC');
+
+        return this.http.get<PageResponse<Payment>>(
+            `${BASE}/payments/contract/${contractId}`,
+            { headers: this.headers, params }
         );
     }
 }

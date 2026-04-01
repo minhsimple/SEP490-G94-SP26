@@ -13,12 +13,13 @@ import { HallService } from '../service/hall.service';
 import { SetMenuService } from '../service/set-menu';
 import { ServicePackageService } from '../service/service-package.service';
 import { Invoice, InvoiceService } from '../service/invoice.service';
+import { Payment, PaymentService } from '../service/payment.service';
 
 @Component({
     selector: 'app-booking-detail',
     standalone: true,
     imports: [CommonModule, FormsModule, ButtonModule, SelectModule, ToastModule],
-    providers: [BookingService, MessageService, InvoiceService],
+    providers: [BookingService, MessageService, InvoiceService, PaymentService],
     styles: [`
         .page-title {
             font-size: 1.25rem;
@@ -420,7 +421,20 @@ import { Invoice, InvoiceService } from '../service/invoice.service';
                     <div class="card">
                         <h2 class="section-title">Lịch sử thanh toán</h2>
                         <div class="muted">Các đợt thanh toán đã ghi nhận</div>
-                        <div style="padding:2rem 0; text-align:center" class="muted">Chưa có thanh toán nào</div>
+                        <div *ngIf="paymentHistory.length; else noPaymentHistoryTpl" style="margin-top:0.8rem">
+                            <div class="line" *ngFor="let p of paymentHistory" style="align-items:flex-start">
+                                <span>
+                                    {{ p.code || ('TT-' + p.id) }}
+                                    <small class="muted" style="display:block; margin-top:0.15rem">{{ formatDate(p.paymentDate || p.createdAt) }} - {{ paymentMethodLabel(p.method) }}</small>
+                                </span>
+                                <strong [style.color]="isPaidState(p.status || p.paymentState) ? '#16a34a' : '#b45309'">
+                                    {{ formatPrice(p.amount) }}
+                                </strong>
+                            </div>
+                        </div>
+                        <ng-template #noPaymentHistoryTpl>
+                            <div style="padding:2rem 0; text-align:center" class="muted">Chưa có thanh toán nào</div>
+                        </ng-template>
                     </div>
                 </div>
 
@@ -539,6 +553,7 @@ export class BookingDetailComponent implements OnInit {
     packageName = '';
     packagePrice = 0;
     invoicePreview: Invoice | null = null;
+    paymentHistory: Payment[] = [];
 
     apiTotalAmount = 0;
     totalAmount = 0;
@@ -572,6 +587,7 @@ export class BookingDetailComponent implements OnInit {
         private setMenuService: SetMenuService,
         private servicePackageService: ServicePackageService,
         private invoiceService: InvoiceService,
+        private paymentService: PaymentService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef,
         private sanitizer: DomSanitizer,
@@ -609,6 +625,7 @@ export class BookingDetailComponent implements OnInit {
                 }
                 if (this.booking?.id) {
                     this.loadInvoicePreview(this.booking.id);
+                    this.loadPaymentHistory(this.booking.id);
                 }
 
                 const rawTotal = Number((this.booking as any)?.totalAmount ?? (this.booking as any)?.totalPrice ?? (this.booking as any)?.finalAmount ?? (this.booking as any)?.amount ?? 0);
@@ -665,6 +682,45 @@ export class BookingDetailComponent implements OnInit {
             },
             error: () => {
                 this.invoicePreview = null;
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    private loadPaymentHistory(contractId: number) {
+        this.paymentService.getPaymentsByContract(contractId, 0, 100).subscribe({
+            next: (res) => {
+                const rows = [...(res.data?.content ?? [])].sort((a: any, b: any) => Number(a?.id ?? 0) - Number(b?.id ?? 0));
+                const mappedPayments: Payment[] = rows.map((p: any) => ({
+                    id: p.id,
+                    code: p.code,
+                    amount: Number(p.amount ?? 0),
+                    method: p.method,
+                    status: p.paymentState ?? p.status,
+                    paymentState: p.paymentState,
+                    paymentDate: p.paidAt ?? p.paymentDate ?? p.createdAt,
+                    createdAt: p.createdAt,
+                    note: p.note,
+                }));
+
+                // Only successful payments are recorded in contract payment history table.
+                this.paymentHistory = mappedPayments.filter((p) => this.isPaidState(p.status ?? p.paymentState));
+
+                this.paidAmount = this.paymentHistory
+                    .reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+
+                if (this.invoicePreview) {
+                    this.invoicePreview = {
+                        ...this.invoicePreview,
+                        paidAmount: this.paidAmount,
+                    };
+                }
+
+                this.recalculatePaymentSummary();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.paymentHistory = [];
                 this.cdr.detectChanges();
             },
         });
@@ -1086,5 +1142,20 @@ export class BookingDetailComponent implements OnInit {
     formatPrice(value?: number): string {
         const num = Number(value ?? 0);
         return `${new Intl.NumberFormat('vi-VN').format(Number.isFinite(num) ? num : 0)} đ`;
+    }
+
+    paymentMethodLabel(value?: string): string {
+        const map: Record<string, string> = {
+            CASH: 'Tiền mặt',
+            BANK_TRANSFER: 'Chuyển khoản',
+            CREDIT_CARD: 'Thẻ tín dụng',
+            E_WALLET: 'Ví điện tử',
+        };
+        return map[value ?? ''] ?? (value || '-');
+    }
+
+    isPaidState(value?: string): boolean {
+        const state = String(value ?? '').toUpperCase();
+        return state === 'SUCCESS' || state === 'CONFIRMED' || state === 'PAID';
     }
 }
