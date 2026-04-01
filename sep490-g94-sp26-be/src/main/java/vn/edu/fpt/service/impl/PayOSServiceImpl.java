@@ -62,6 +62,9 @@ public class PayOSServiceImpl implements PayOSService {
         Contract contract = contractRepository.findByIdAndStatus(request.getContractId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
+        Payment payment = paymentRepository.findByIdAndStatus(request.getPaymentId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
+
         if (contract.getContractState() == ContractState.CANCELLED || contract.getContractState() == ContractState.LIQUIDATED) {
             throw new AppException(ERROR_CODE.PAYMENT_INVALID_STATE);
         }
@@ -78,7 +81,7 @@ public class PayOSServiceImpl implements PayOSService {
 
 
         long orderCode = buildOrderCode(contract.getId(), request.getPaymentId());
-        String signatureData = "amount=" + request.getAmount()
+        String signatureData = "amount=" + payment.getAmount()
                 + "&cancelUrl=" + cancelUrl
                 + "&description=" + request.getDescription()
                 + "&orderCode=" + orderCode
@@ -86,7 +89,7 @@ public class PayOSServiceImpl implements PayOSService {
 
         Map<String, Object> body = new HashMap<>();
         body.put("orderCode", orderCode);
-        body.put("amount", request.getAmount());
+        body.put("amount", payment.getAmount());
         body.put("description", request.getDescription());
         body.put("returnUrl", returnUrl);
         body.put("cancelUrl", cancelUrl);
