@@ -266,13 +266,7 @@ public class ContractServiceImpl implements ContractService {
         BigDecimal totalAmount = getTotalAmountForContract(contract);
 
         BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(0.4));
-        BigDecimal secondAmount = totalAmount.multiply(BigDecimal.valueOf(0.3));
-
-        BigDecimal thirdAmount = totalAmount
-                .subtract(firstAmount)
-                .subtract(secondAmount);
-
-        //todo: tính penalty nếu có và cộng vào thirdAmount
+        BigDecimal secondAmount = totalAmount.multiply(BigDecimal.valueOf(0.6));
 
         PaymentRequest request1 = PaymentRequest.builder()
                 .contractId(contract.getId())

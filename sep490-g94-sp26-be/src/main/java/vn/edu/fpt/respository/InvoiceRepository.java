@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface InvoiceRepository extends BaseRepository<Invoice, Integer>{
     Optional<Invoice> findByIdAndStatus(Integer id, RecordStatus status);
+    Optional<Invoice> findByContractIdAndStatus(Integer id, RecordStatus status);
 }
