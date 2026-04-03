@@ -1,10 +1,8 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { ButtonModule } from 'primeng/button';
-import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { Booking, BookingService } from '../service/booking.service';
@@ -18,7 +16,7 @@ import { Payment, PaymentService } from '../service/payment.service';
 @Component({
     selector: 'app-booking-detail',
     standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, SelectModule, ToastModule],
+    imports: [CommonModule, ButtonModule, ToastModule],
     providers: [BookingService, MessageService, InvoiceService, PaymentService],
     styles: [`
         .page-title {
@@ -72,13 +70,10 @@ import { Payment, PaymentService } from '../service/payment.service';
             gap: 0.35rem;
             text-align: left;
         }
-        .state-edit {
+        .state-view {
             display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-        .state-select {
-            min-width: 210px;
+            flex-direction: column;
+            gap: 0.35rem;
         }
         .layout {
             display: grid;
@@ -280,10 +275,6 @@ import { Payment, PaymentService } from '../service/payment.service';
                 align-items: flex-start;
                 text-align: left;
             }
-            .state-select {
-                min-width: 0;
-                width: 100%;
-            }
             .contract-modal {
                 width: 100%;
                 max-height: calc(100vh - 1rem);
@@ -320,20 +311,15 @@ import { Payment, PaymentService } from '../service/payment.service';
                     </div>
                     <div class="hero-right">
                         <div class="muted">Trạng thái xử lý</div>
-                        <div class="state-edit">
-                            <p-select
-                                class="state-select"
-                                [options]="bookingStateOptions"
-                                [(ngModel)]="selectedBookingState"
-                                optionLabel="label"
-                                optionValue="value"
-                            />
-                            <p-button
-                                icon="pi pi-check"
-                                severity="secondary"
-                                [loading]="stateSubmitting"
-                                (onClick)="saveBookingState()"
-                            />
+                        <div class="state-view">
+                            <span
+                                class="chip"
+                                [style.background]="statusBg(booking.contractState ?? booking.bookingState ?? 'DRAFT')"
+                                [style.color]="statusColor(booking.contractState ?? booking.bookingState ?? 'DRAFT')"
+                            >
+                                {{ bookingStateLabel(booking.contractState ?? booking.bookingState ?? 'DRAFT') }}
+                            </span>
+                            <small class="muted">Trạng thái được đồng bộ tự động theo thanh toán.</small>
                         </div>
                     </div>
                 </div>
@@ -472,7 +458,7 @@ import { Payment, PaymentService } from '../service/payment.service';
                             </div>
                             <div class="line" style="margin:0.35rem 0;">
                                 <span class="muted">Đã thanh toán</span>
-                                <strong style="color:#16a34a">{{ formatPrice(invoicePreview.paidAmount ?? paidAmount ?? 0) }}</strong>
+                                <strong style="color:#16a34a">{{ formatPrice(invoicePreview.paidAmount) }}</strong>
                             </div>
                             <div class="line" style="margin:0.35rem 0 0.85rem;">
                                 <span class="muted">Trạng thái</span>
@@ -560,23 +546,11 @@ export class BookingDetailComponent implements OnInit {
     paidAmount = 0;
     remainingAmount = 0;
     progressPercent = 0;
-    stateSubmitting = false;
-    selectedBookingState = 'ACTIVE';
     contractPreviewHtml: SafeHtml = '';
     contractPreviewRawHtml = '';
     contractDialogVisible = false;
     contractZoom = 1;
     zoomPercent = 100;
-    bookingStateOptions = [
-        { label: 'Đang hiệu lực', value: 'ACTIVE' },
-        { label: 'Ngưng hiệu lực', value: 'INACTIVE' },
-        { label: 'Nháp', value: 'DRAFT' },
-        { label: 'Hết hạn', value: 'EXPIRED' },
-        { label: 'Đã duyệt', value: 'APPROVED' },
-        { label: 'Chưa duyệt', value: 'UNAPPROVED' },
-        { label: 'Đã hủy', value: 'CANCELLED' },
-        { label: 'Đã chuyển đổi', value: 'CONVERTED' },
-    ];
 
     constructor(
         private route: ActivatedRoute,
@@ -609,7 +583,6 @@ export class BookingDetailComponent implements OnInit {
         this.bookingService.getById(id).subscribe({
             next: (res) => {
                 this.booking = res.data;
-                this.selectedBookingState = this.booking?.contractState ?? this.booking?.bookingState ?? 'ACTIVE';
 
                 if (this.booking?.customerId) {
                     this.loadCustomer(this.booking.customerId);
@@ -764,43 +737,6 @@ export class BookingDetailComponent implements OnInit {
             ?? invoice?.createAt
             ?? invoice?.invoiceDate
             ?? new Date().toISOString();
-    }
-
-    saveBookingState() {
-        if (!this.booking?.id) {
-            return;
-        }
-
-        this.stateSubmitting = true;
-        this.bookingService.updateState({
-            contractId: this.booking.id,
-            contractState: this.selectedBookingState,
-        }).subscribe({
-            next: (res) => {
-                this.stateSubmitting = false;
-                if (this.booking) {
-                    this.booking.contractState = res.data?.contractState ?? res.data?.bookingState ?? this.selectedBookingState;
-                    this.selectedBookingState = this.booking.contractState ?? this.selectedBookingState;
-                }
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Thành công',
-                    detail: 'Đã cập nhật trạng thái xử lý',
-                    life: 3000,
-                });
-                this.cdr.detectChanges();
-            },
-            error: (err) => {
-                this.stateSubmitting = false;
-                this.messageService.add({
-                    severity: 'error',
-                    summary: 'Lỗi',
-                    detail: err?.error?.message ?? 'Không thể cập nhật trạng thái xử lý',
-                    life: 4000,
-                });
-                this.cdr.detectChanges();
-            },
-        });
     }
 
     private loadCustomer(customerId: number) {
@@ -1146,42 +1082,30 @@ export class BookingDetailComponent implements OnInit {
 
     bookingStateLabel(value?: string): string {
         const map: Record<string, string> = {
-            ACTIVE: 'Đang hiệu lực',
-            INACTIVE: 'Ngưng hiệu lực',
             DRAFT: 'Nháp',
-            EXPIRED: 'Hết hạn',
-            APPROVED: 'Đã duyệt',
-            UNAPPROVED: 'Chưa duyệt',
-            CANCELLED: 'Đã hủy',
-            CONVERTED: 'Đã chuyển đổi',
+            ACTIVE: 'Khách hàng đóng cọc',
+            LIQUIDATED: 'Thanh lý hợp đồng',
+            CANCELLED: 'Hủy contract',
         };
         return map[value ?? ''] ?? (value || '-');
     }
 
     statusBg(value?: string): string {
         const map: Record<string, string> = {
-            ACTIVE: '#dcfce7',
-            INACTIVE: '#fee2e2',
             DRAFT: '#fef3c7',
-            EXPIRED: '#ffedd5',
-            APPROVED: '#dcfce7',
-            UNAPPROVED: '#fee2e2',
+            ACTIVE: '#dcfce7',
+            LIQUIDATED: '#dbeafe',
             CANCELLED: '#fee2e2',
-            CONVERTED: '#dbeafe',
         };
         return map[value ?? ''] ?? '#e2e8f0';
     }
 
     statusColor(value?: string): string {
         const map: Record<string, string> = {
-            ACTIVE: '#166534',
-            INACTIVE: '#b91c1c',
             DRAFT: '#92400e',
-            EXPIRED: '#9a3412',
-            APPROVED: '#166534',
-            UNAPPROVED: '#b91c1c',
+            ACTIVE: '#166534',
+            LIQUIDATED: '#1d4ed8',
             CANCELLED: '#b91c1c',
-            CONVERTED: '#1d4ed8',
         };
         return map[value ?? ''] ?? '#334155';
     }
