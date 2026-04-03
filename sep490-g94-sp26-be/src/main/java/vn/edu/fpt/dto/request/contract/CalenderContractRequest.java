@@ -16,4 +16,5 @@ public class CalenderContractRequest {
     LocalDateTime startTime;
     LocalDateTime endTime;
     Integer hallId;
+    Integer locationId;
 }

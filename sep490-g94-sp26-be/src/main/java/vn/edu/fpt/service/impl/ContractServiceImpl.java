@@ -255,7 +255,8 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     public List<CalenderContractResponse> getAllTimeTable(CalenderContractRequest request) {
-        return bookingRepository.getCalendarFromContract(request.getHallId(), request.getStartTime(), request.getEndTime());
+        return bookingRepository.getCalendarFromContract(request.getHallId(),
+                request.getStartTime(), request.getEndTime(), request.getLocationId());
     }
 
     // tạo 3 payment mới với thông tin từ contract

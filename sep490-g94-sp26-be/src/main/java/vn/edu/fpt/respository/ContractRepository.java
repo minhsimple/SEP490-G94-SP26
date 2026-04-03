@@ -41,11 +41,14 @@ public interface ContractRepository extends BaseRepository<Contract, Integer> {
             WHERE (c.hallId = COALESCE(:hallId, c.hallId))
               AND (c.startTime < :to)
               AND (c.endTime > :from)
-            """)
+              AND (h.locationId = COALESCE(:locationId, h.locationId))
+              AND (c.contractState IN ('ACTIVE'))
+              AND (h.status = 'active')""")
     List<CalenderContractResponse> getCalendarFromContract(
             Integer hallId,
             LocalDateTime from,
-            LocalDateTime to
+            LocalDateTime to,
+            Integer locationId
     );
 }
 
