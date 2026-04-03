@@ -19,6 +19,7 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { Service, ServiceService } from '../service/service.service';
 import { LocationService } from '../service/location.service';
+import { Router } from '@angular/router';
 
 interface Column {
     field: string;
@@ -120,7 +121,7 @@ interface Column {
                             </th>
                             <th style="min-width:8rem">Đơn vị</th>
                             <th style="min-width:8rem">Trạng thái</th>
-                            <th *ngIf="!isSale" style="min-width:6rem">Thao tác</th>
+                            <th style="min-width:8rem">Thao tác</th>
                         </tr>
                     </ng-template>
 
@@ -143,12 +144,22 @@ interface Column {
                             <td class="text-600">{{ service.unit || '-' }}</td>
                             <td>
                                 <span class="font-medium"
-                                      [style.color]="service.status === 'INACTIVE' ? '#ef4444' : '#22c55e'">
-                                    {{ service.status === 'INACTIVE' ? 'Không hoạt động' : 'Hoạt động' }}
+                                                                            [style.color]="isInactiveStatus(service.status) ? '#ef4444' : '#22c55e'">
+                                                                        {{ isInactiveStatus(service.status) ? 'Không hoạt động' : 'Hoạt động' }}
                                 </span>
                             </td>
-                            <td *ngIf="!isSale">
+                            <td>
                                 <p-button
+                                    icon="pi pi-eye"
+                                    [rounded]="true"
+                                    [text]="true"
+                                    severity="secondary"
+                                    (click)="viewDetail(service)"
+                                    pTooltip="Xem chi tiết"
+                                    tooltipPosition="top"
+                                />
+                                <p-button
+                                    *ngIf="!isSale"
                                     icon="pi pi-pencil"
                                     [rounded]="true"
                                     [text]="true"
@@ -477,7 +488,8 @@ export class ServicesComponent implements OnInit {
         private locationService: LocationService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
-        private cdr: ChangeDetectorRef
+        private cdr: ChangeDetectorRef,
+        private router: Router
     ) {}
 
     ngOnInit() {
@@ -616,9 +628,14 @@ const payload = {
     }
 
     // ── Edit ───────────────────────────────────────────────────────────────────
+    viewDetail(service: Service) {
+        if (!service?.id) return;
+        this.router.navigate(['/pages/service', service.id]);
+    }
+
     editService(service: Service) {
         this.editedService = { ...service };
-        this.editedServiceActive = service.status !== 'INACTIVE';
+        this.editedServiceActive = !this.isInactiveStatus(service.status);
         this.editSubmitted = false;
         this.editDialog = true;
     }
@@ -643,7 +660,7 @@ const payload = {
     locationId:  this.editedService.locationId
 };
 
-        const currentlyActive = this.editedService.status !== 'INACTIVE';
+        const currentlyActive = !this.isInactiveStatus(this.editedService.status);
         const needsStatusChange = this.editedServiceActive !== currentlyActive;
 
         this.serviceService.updateService(this.editedService.id, updatePayload).subscribe({
@@ -675,5 +692,9 @@ const payload = {
     formatPrice(price: number | undefined): string {
         if (!price && price !== 0) return '-';
         return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
+    }
+
+    isInactiveStatus(status?: string): boolean {
+        return String(status ?? '').toUpperCase() === 'INACTIVE';
     }
 }

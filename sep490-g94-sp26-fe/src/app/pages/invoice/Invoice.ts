@@ -71,15 +71,6 @@ interface Column { field: string; header: string; }
                         style="width: 170px"
                     />
 
-                    <p-select
-                        [options]="statusOptions"
-                        [(ngModel)]="filterStatus"
-                        optionLabel="label" optionValue="value"
-                        placeholder="Record status"
-                        [showClear]="true"
-                        style="width:180px"
-                    />
-
                     <p-button label="Lọc" icon="pi pi-filter" size="small" (click)="onFilter()" />
                     <p-button label="Xóa lọc" icon="pi pi-refresh" size="small" severity="secondary" [text]="true" (click)="resetFilter()" />
                 </div>
@@ -92,7 +83,7 @@ interface Column { field: string; header: string; }
                     [totalRecords]="totalRecords"
                     [lazy]="true"
                     (onLazyLoad)="onLazyLoad($event)"
-                    [tableStyle]="{ 'min-width': '70rem' }"
+                    [tableStyle]="{ 'min-width': '60rem' }"
                     [rowHover]="true"
                     dataKey="id"
                     currentPageReportTemplate="Hiển thị {first} đến {last} trong {totalRecords} hóa đơn"
@@ -103,15 +94,14 @@ interface Column { field: string; header: string; }
                 >
                     <ng-template #header>
                         <tr>
-                            <th style="min-width:12rem">Mã HĐơn</th>
-                            <th style="min-width:12rem">Hợp đồng</th>
-                            <th style="min-width:12rem">Sảnh</th>
-                            <th style="min-width:12rem">Gói dịch vụ</th>
-                            <th style="min-width:12rem">Set menu</th>
-                            <th style="min-width:9rem; text-align:right">Bàn dự kiến</th>
-                            <th style="min-width:11rem">Trạng thái hóa đơn</th>
-                            <th style="min-width:10rem">Trạng thái record</th>
-                            <th style="min-width:11rem; text-align:right">Tổng</th>
+                            <th style="min-width:8rem">Mã HĐơn</th>
+                            <th style="min-width:9rem">Hợp đồng</th>
+                            <th style="min-width:8rem">Sảnh</th>
+                            <th style="min-width:10rem">Gói dịch vụ</th>
+                            <th style="min-width:9rem">Set menu</th>
+                            <th style="min-width:7rem; text-align:right">Bàn dự kiến</th>
+                            <th style="min-width:9rem">Trạng thái hóa đơn</th>
+                            <th style="min-width:8rem; text-align:right">Tổng</th>
                             <th style="min-width:8rem; text-align:center">Thao tác</th>
                         </tr>
                     </ng-template>
@@ -154,16 +144,6 @@ interface Column { field: string; header: string; }
                                 </span>
                             </td>
 
-                            <td>
-                                <span
-                                    class="text-xs font-bold px-3 py-1 border-round-xl"
-                                    [style.background]="getRecordStatusBg(inv.status)"
-                                    [style.color]="getRecordStatusColor(inv.status)"
-                                >
-                                    {{ getRecordStatusLabel(inv.status) }}
-                                </span>
-                            </td>
-
                             <!-- Tổng -->
                             <td class="font-semibold text-900 text-sm" style="text-align:right;">
                                 {{ formatPrice(inv.totalAmount) }}
@@ -195,7 +175,7 @@ interface Column { field: string; header: string; }
 
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="10" class="text-center py-8 text-500">
+                            <td colspan="9" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
                                 Không có hóa đơn nào
                             </td>
@@ -214,11 +194,11 @@ interface Column { field: string; header: string; }
                 font-size: 0.8rem;
                 text-transform: uppercase;
                 letter-spacing: 0.04em;
-                padding: 0.7rem 1rem;
+                padding: 0.55rem 0.7rem;
                 border-bottom: 1px solid #e2e8f0;
             }
             .p-datatable .p-datatable-tbody > tr > td {
-                padding: 0.9rem 1rem;
+                padding: 0.65rem 0.7rem;
                 border-bottom: 1px solid #f1f5f9;
             }
             .p-datatable .p-datatable-tbody > tr:hover > td { background: #f8fafc; }
@@ -238,17 +218,11 @@ export class InvoicesComponent implements OnInit {
     filterInvoiceState: string | null = null;
     filterLowerBoundTotalAmount: number | null = null;
     filterUpperBoundTotalAmount: number | null = null;
-    filterStatus: string | null = null;
 
     invoiceStateOptions = [
         { label: 'Chưa thanh toán', value: 'UNPAID' },
         { label: 'Thanh toán một phần', value: 'PARTIAL' },
         { label: 'Đã thanh toán', value: 'PAID' },
-    ];
-
-    statusOptions = [
-        { label: 'Đang hoạt động', value: 'active' },
-        { label: 'Không hoạt động', value: 'inactive' },
     ];
 
     cols: Column[] = [];
@@ -271,7 +245,6 @@ export class InvoicesComponent implements OnInit {
             { field: 'setMenu.name', header: 'Set menu'   },
             { field: 'expectedTables', header: 'Bàn dự kiến' },
             { field: 'invoiceState', header: 'Trạng thái hóa đơn' },
-            { field: 'status',       header: 'Trạng thái record' },
             { field: 'totalAmount',  header: 'Tổng'       },
         ];
         this.loadInvoices();
@@ -285,7 +258,6 @@ export class InvoicesComponent implements OnInit {
             invoiceState: this.filterInvoiceState ?? undefined,
             lowerBoundTotalAmount: this.filterLowerBoundTotalAmount ?? undefined,
             upperBoundTotalAmount: this.filterUpperBoundTotalAmount ?? undefined,
-            status: this.filterStatus ?? undefined,
         }).subscribe({
             next: (res) => {
                 if (res?.data) {
@@ -317,7 +289,6 @@ export class InvoicesComponent implements OnInit {
         this.filterInvoiceState = null;
         this.filterLowerBoundTotalAmount = null;
         this.filterUpperBoundTotalAmount = null;
-        this.filterStatus = null;
         if (this.dt) this.dt.reset();
         this.loadInvoices();
     }

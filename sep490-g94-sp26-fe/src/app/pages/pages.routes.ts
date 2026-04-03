@@ -9,6 +9,7 @@ import { RoleComponent } from './role/role';
 import { HallComponent } from './hall/hall';
 import { HallDetailComponent } from './hall/hall-detail';
 import { ServicesComponent } from './services/services';
+import { ServiceDetailComponent } from './services/service-detail.component';
 import { SetMenuComponent } from './set-menu/set-menu';
 import { SetMenuDetailComponent } from './set-menu/set-menu-detail.component';
 import { SetMenuEditComponent } from './set-menu-edit/set-menu-edit';
@@ -35,6 +36,7 @@ export default [
     { path: 'empty', component: Empty },
     { path: 'hall', component: HallComponent },
     { path: 'hall/:id', component: HallDetailComponent },
+    { path: 'service/:id', component: ServiceDetailComponent },
     { path: 'service', component: ServicesComponent },
     { path: 'combo-services/:id', component: ComboServiceDetailComponent },
     { path: 'combo-services', component: CombosComponent },
