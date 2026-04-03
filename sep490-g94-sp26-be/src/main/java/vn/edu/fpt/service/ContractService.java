@@ -2,6 +2,7 @@ package vn.edu.fpt.service;
 
 import org.springframework.data.domain.Pageable;
 import vn.edu.fpt.dto.SimplePage;
+import vn.edu.fpt.dto.request.contract.CalenderContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
@@ -24,7 +25,7 @@ public interface ContractService {
 
     ContractResponse updateContractState(ContractStatusRequest request);
 
-//    List<CalenderContractResponse> getAllTimeTable();
+    List<CalenderContractResponse> getAllTimeTable(CalenderContractRequest request);
 }
 
 
