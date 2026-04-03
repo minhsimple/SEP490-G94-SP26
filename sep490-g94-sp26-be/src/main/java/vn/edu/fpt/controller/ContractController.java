@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
+import vn.edu.fpt.dto.request.contract.CalenderContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
@@ -94,13 +95,13 @@ public class ContractController {
                 .data(response)
                 .build();
     }
-//    @Operation(summary = "Lấy lịch đăt tiệc của hợp đồng")
-//    @GetMapping("/get-time-table")
-//    public ApiResponse<List<CalenderContractResponse>> getAllTimeTable() {
-//        return ApiResponse.<SimplePage<ContractResponse>>builder()
-//                .data(contractService.getAllTimeTable())
-//                .build();
-//    }
+    @Operation(summary = "Lấy lịch đăt tiệc của hợp đồng")
+    @GetMapping("/get-time-table")
+    public ApiResponse<List<CalenderContractResponse>> getAllTimeTable(CalenderContractRequest request) {
+        return ApiResponse.<List<CalenderContractResponse>>builder()
+                .data(contractService.getAllTimeTable(request))
+                .build();
+    }
 
 }
 

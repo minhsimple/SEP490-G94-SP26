@@ -11,6 +11,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
+import vn.edu.fpt.dto.request.contract.CalenderContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
@@ -252,11 +253,10 @@ public class ContractServiceImpl implements ContractService {
         return contractMapper.toResponse(saved);
     }
 
-//    @Override
-//    public List<CalenderContractResponse> getAllTimeTable() {
-//        List<CalenderContractResponse> calenders =
-//                bookingRepository.getCalendarFromContract(null, LocalDateTime.now(), LocalDateTime.now().plusMonths(6));
-//    }
+    @Override
+    public List<CalenderContractResponse> getAllTimeTable(CalenderContractRequest request) {
+        return bookingRepository.getCalendarFromContract(request.getHallId(), request.getStartTime(), request.getEndTime());
+    }
 
     // tạo 3 payment mới với thông tin từ contract
     // payment đầu tiên: 40% tổng tiền, trạng thái PENDING
