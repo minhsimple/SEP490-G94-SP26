@@ -13,5 +13,6 @@ public class Constants {
         int DEFAULT_PAGE_NUMBER = 0;
     }
 
-    public static final long FILE_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    public static final long FILE_IMAGE_MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    public static final long FILE_VIDEO_MAX_SIZE = 40 * 1024 * 1024; // 40MB
 }
