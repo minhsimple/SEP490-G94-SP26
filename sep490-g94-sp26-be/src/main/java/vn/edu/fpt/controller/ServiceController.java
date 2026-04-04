@@ -12,6 +12,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.service.ServiceFilterRequest;
 import vn.edu.fpt.dto.request.service.ServiceRequest;
@@ -26,61 +28,61 @@ import vn.edu.fpt.service.ServiceItemService;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ServiceController {
-    ServiceItemService serviceItemService;
+        ServiceItemService serviceItemService;
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    @Operation(summary = "Tạo mới dịch vụ")
-    @PostMapping("/create")
-    public ApiResponse<ServiceResponse> createServiceItem(@RequestBody @Valid ServiceRequest request) {
-        ServiceResponse response = serviceItemService.createService(request);
-        return ApiResponse.<ServiceResponse>builder()
-                .data(response)
-                .build();
-    }
+        @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+        @Operation(summary = "Tạo mới dịch vụ")
+        @PostMapping("/create")
+        public ApiResponse<ServiceResponse> createServiceItem(
+                        @Valid @RequestPart("serviceRequest") ServiceRequest serviceRequest,
+                        @RequestPart(value = "videoFile") MultipartFile videoFile) {
+                ServiceResponse response = serviceItemService.createService(serviceRequest, videoFile);
+                return ApiResponse.<ServiceResponse>builder()
+                                .data(response)
+                                .build();
+        }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    @Operation(summary = "Cập nhật dịch vụ")
-    @PutMapping("/update")
-    public ApiResponse<ServiceResponse> updateService(
-            @RequestParam Integer serviceId,
-            @Valid @RequestBody ServiceRequest serviceRequest
-    ) {
-        ServiceResponse serviceResponse = serviceItemService.updateService(serviceId, serviceRequest);
-        return ApiResponse.<ServiceResponse>builder()
-                .data(serviceResponse)
-                .build();
-    }
+        @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+        @Operation(summary = "Cập nhật dịch vụ")
+        @PutMapping("/update")
+        public ApiResponse<ServiceResponse> updateService(
+                        @RequestParam Integer serviceId,
+                        @Valid @RequestPart("serviceRequest") ServiceRequest serviceRequest,
+                        @RequestPart(value = "videoFile", required = false) MultipartFile videoFile) {
+                ServiceResponse serviceResponse = serviceItemService.updateService(serviceId, serviceRequest,
+                                videoFile);
+                return ApiResponse.<ServiceResponse>builder()
+                                .data(serviceResponse)
+                                .build();
+        }
 
-    @Operation(summary = "xem chi tiết dịch vụ")
-    @GetMapping("/{serviceId}")
-    public ApiResponse<ServiceResponse> viewDetailService(@PathVariable Integer serviceId) {
-        ServiceResponse serviceResponse = serviceItemService.getServiceDetail(serviceId);
-        return ApiResponse.<ServiceResponse>builder()
-                .data(serviceResponse)
-                .build();
-    }
+        @Operation(summary = "xem chi tiết dịch vụ")
+        @GetMapping("/{serviceId}")
+        public ApiResponse<ServiceResponse> viewDetailService(@PathVariable Integer serviceId) {
+                ServiceResponse serviceResponse = serviceItemService.getServiceDetail(serviceId);
+                return ApiResponse.<ServiceResponse>builder()
+                                .data(serviceResponse)
+                                .build();
+        }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    @Operation(summary = "Thay đổi trạng thái dich vụ")
-    @PutMapping("/{menuItemId}/change-status")
-    public ApiResponse<ServiceResponse> changeStatusService(@PathVariable Integer menuItemId) {
-        ServiceResponse serviceResponse = serviceItemService.changeStatus(menuItemId);
-        return ApiResponse.<ServiceResponse>builder()
-                .data(serviceResponse)
-                .build();
-    }
+        @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+        @Operation(summary = "Thay đổi trạng thái dich vụ")
+        @PutMapping("/{menuItemId}/change-status")
+        public ApiResponse<ServiceResponse> changeStatusService(@PathVariable Integer menuItemId) {
+                ServiceResponse serviceResponse = serviceItemService.changeStatus(menuItemId);
+                return ApiResponse.<ServiceResponse>builder()
+                                .data(serviceResponse)
+                                .build();
+        }
 
-    @Operation(summary = "Xem danh sách dịch vụ")
-    @GetMapping("/search")
-    public ApiResponse<SimplePage<ServiceResponse>> searchService(
-            @Valid ServiceFilterRequest filterRequest,
-            @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE,
-                    sort = Constants.SORT.SORT_BY,
-                    direction = Sort.Direction.DESC)
-            Pageable pageable) {
-        return ApiResponse.<SimplePage<ServiceResponse>>builder()
-                .data(serviceItemService.searchService( pageable, filterRequest))
-                .build();
-    }
+        @Operation(summary = "Xem danh sách dịch vụ")
+        @GetMapping("/search")
+        public ApiResponse<SimplePage<ServiceResponse>> searchService(
+                        @Valid ServiceFilterRequest filterRequest,
+                        @ParameterObject @PageableDefault(size = Constants.PAGE.DEFAULT_PAGE_SIZE, sort = Constants.SORT.SORT_BY, direction = Sort.Direction.DESC) Pageable pageable) {
+                return ApiResponse.<SimplePage<ServiceResponse>>builder()
+                                .data(serviceItemService.searchService(pageable, filterRequest))
+                                .build();
+        }
 
 }

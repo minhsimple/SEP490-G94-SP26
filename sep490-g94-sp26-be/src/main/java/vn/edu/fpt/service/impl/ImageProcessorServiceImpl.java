@@ -29,8 +29,12 @@ public class ImageProcessorServiceImpl implements ImageProcessorService {
 
     @Override
     public ImageSet process(MultipartFile file) throws Exception {
-        if (file == null || file.isEmpty()) throw new AppException(ERROR_CODE.FILE_EMPTY);
-        if (file.getSize() > Constants.FILE_MAX_SIZE) throw new AppException(ERROR_CODE.FILE_TOO_LARGE);
+        if (file == null || file.isEmpty()) {
+            throw new AppException(ERROR_CODE.FILE_EMPTY);
+        }
+        if (file.getSize() > Constants.FILE_IMAGE_MAX_SIZE) {
+            throw new AppException(ERROR_CODE.FILE_IMAGE_TOO_LARGE);
+        }
 
         // Safer than trusting file.getContentType()
         String detectedType;
@@ -38,21 +42,23 @@ public class ImageProcessorServiceImpl implements ImageProcessorService {
             detectedType = tika.detect(in);
         }
         if (!ALLOWED.contains(detectedType)) {
-            throw new AppException(ERROR_CODE.FILE_INVALID_CONTENT_TYPE);
+            throw new AppException(ERROR_CODE.FILE_IMAGE_INVALID_CONTENT_TYPE);
         }
 
         BufferedImage original;
         try (InputStream in = file.getInputStream()) {
             original = ImageIO.read(in);
         }
-        if (original == null) throw new AppException(ERROR_CODE.FILE_ERROR);
+        if (original == null)
+            throw new AppException(ERROR_CODE.FILE_ERROR);
 
         String outFormat = "jpg";
         String outContentType = "image/jpeg";
         String outExt = ".jpg";
 
         // Optimized "orig" (cap big photos)
-        ProcessedImage origOptimized = encodeResized(original, 2000, 2000, 0.86f, outFormat, outContentType, "orig" + outExt);
+        ProcessedImage origOptimized = encodeResized(original, 2000, 2000, 0.86f, outFormat, outContentType,
+                "orig" + outExt);
 
         Map<ImageVariant, ProcessedImage> variants = new EnumMap<>(ImageVariant.class);
         for (ImageVariant v : ImageVariant.values()) {
@@ -66,8 +72,7 @@ public class ImageProcessorServiceImpl implements ImageProcessorService {
 
     private ProcessedImage encodeResized(
             BufferedImage src, int maxW, int maxH, float quality,
-            String format, String contentType, String filename
-    ) throws Exception {
+            String format, String contentType, String filename) throws Exception {
 
         BufferedImage resized = Thumbnails.of(src)
                 .size(maxW, maxH)

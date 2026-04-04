@@ -28,4 +28,6 @@ public class ServiceResponse {
     Integer locationId;
 
     RecordStatus status;
+
+    String videoKey;
 }
