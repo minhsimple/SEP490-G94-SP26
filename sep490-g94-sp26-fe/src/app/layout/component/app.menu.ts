@@ -26,6 +26,7 @@ export class AppMenu implements OnInit, OnDestroy {
   private sub!: Subscription;
 
   private readonly allMenuItems: MenuItem[] = [
+  { label: 'Lịch sự kiện', icon: 'pi pi-file', routerLink: ['/pages/calender'], id: 'calender' },
   { label: 'Hợp đồng', icon: 'pi pi-file', routerLink: ['/pages/booking'], id: 'booking' },
   { label: 'Thanh Toán', icon: 'pi pi-credit-card', routerLink: ['/pages/payment'], id: 'payment' },
   { label: 'Hóa Đơn', icon: 'pi pi-dollar', routerLink: ['/pages/invoice'], id: 'invoice' },
