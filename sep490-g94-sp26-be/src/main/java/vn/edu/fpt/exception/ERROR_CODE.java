@@ -111,7 +111,7 @@ public enum ERROR_CODE {
      */
     FILE_EMPTY(13001, "File không được để trống", HttpStatus.BAD_REQUEST),
     FILE_IMAGE_INVALID_CONTENT_TYPE(13002, "Chỉ chấp nhận file ảnh jpg", HttpStatus.BAD_REQUEST),
-    FILE_VIDEO_INVALID_CONTENT_TYPE(13003, "Chỉ chấp nhận file video mp4", HttpStatus.BAD_REQUEST),
+    FILE_VIDEO_INVALID_CONTENT_TYPE(13003, "Chỉ chấp nhận file video mp4, mov, avi, mkv, webm", HttpStatus.BAD_REQUEST),
     FILE_IMAGE_TOO_LARGE(13004, "Kích thước file ảnh vượt quá 5MB", HttpStatus.BAD_REQUEST),
     FILE_VIDEO_TOO_LARGE(13005, "Kích thước file video vượt quá 40MB", HttpStatus.BAD_REQUEST),
     FILE_ERROR(13006, "Lỗi xử lý file", HttpStatus.INTERNAL_SERVER_ERROR),
