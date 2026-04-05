@@ -88,17 +88,17 @@ public class VideoServiceImpl implements VideoService {
      * AVI: starts with "RIFF" (bytes 0–3) and "AVI " at bytes 8–11.
      */
     private boolean isVideoMagicBytes(byte[] header, String extension) {
-        if (header == null || header.length < 12) return false;
+        if (header == null || header.length < 12)
+            return false;
         return switch (extension) {
             case ".mp4", ".mov" -> header[4] == 'f' && header[5] == 't' && header[6] == 'y' && header[7] == 'p';
             case ".mkv", ".webm" ->
-                    (header[0] & 0xFF) == 0x1A && (header[1] & 0xFF) == 0x45
-                            && (header[2] & 0xFF) == 0xDF && (header[3] & 0xFF) == 0xA3;
+                (header[0] & 0xFF) == 0x1A && (header[1] & 0xFF) == 0x45
+                        && (header[2] & 0xFF) == 0xDF && (header[3] & 0xFF) == 0xA3;
             case ".avi" ->
-                    header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
-                            && header[8] == 'A' && header[9] == 'V' && header[10] == 'I' && header[11] == ' ';
-            // For any other allowed extension, skip magic check (trust extension)
-            default -> true;
+                header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
+                        && header[8] == 'A' && header[9] == 'V' && header[10] == 'I' && header[11] == ' ';
+            default -> false;
         };
     }
 
