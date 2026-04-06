@@ -137,7 +137,13 @@ public enum ERROR_CODE {
     /**
      * Invoice Error
      */
-    INVOICE_NOT_FOUND(17001, "Hóa đơn ko tồn tại", HttpStatus.NOT_FOUND),
+    INVOICE_NOT_FOUND(17001, "Hóa đơn không tồn tại", HttpStatus.NOT_FOUND),
+
+    /**
+     * Table Layout Error
+     */
+    TABLE_LAYOUT_TOO_MANY_TABLES(180001, "Số lượng bàn không được vượt quá số lượng bàn trong hợp đồng", HttpStatus.BAD_REQUEST),
+
     /**
      * Other Error
      */
