@@ -40,5 +40,7 @@ public class Services extends BaseEntity {
     @Column(name = "location_id")
     @Comment("location id")
     Integer locationId;
-}
 
+    @Column(name = "video_key")
+    String videoKey;
+}

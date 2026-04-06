@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.service.ServiceFilterRequest;
 import vn.edu.fpt.dto.request.service.ServiceRequest;
@@ -20,8 +22,8 @@ import vn.edu.fpt.respository.PackageServiceRepository;
 import vn.edu.fpt.respository.ServicePackageRepository;
 import vn.edu.fpt.respository.ServiceItemRepository;
 import vn.edu.fpt.service.ServiceItemService;
+import vn.edu.fpt.service.VideoService;
 import vn.edu.fpt.entity.Services;
-
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,35 +37,45 @@ public class ServiceItemServiceImpl implements ServiceItemService {
     private final ServiceMapper serviceMapper; // Add this dependency
     private final LocationRepository locationRepository;
     private final PackageServiceRepository packageServiceRepository;
-
+    private final VideoService videoService;
 
     @Override
-    public ServiceResponse createService(ServiceRequest request) {
+    @Transactional
+    public ServiceResponse createService(ServiceRequest request, MultipartFile videoFile) {
         if (serviceItemRepository.existsByCodeAndLocationId(request.getCode(),
                 request.getLocationId())) {
             throw new AppException(ERROR_CODE.SERVICE_EXISTED);
         }
-        if(!locationRepository.existsByIdAndStatus(request.getLocationId(), RecordStatus.active)){
+        if (!locationRepository.existsByIdAndStatus(request.getLocationId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.LOCATION_NOT_EXISTED);
         }
 
         Services service = serviceMapper.toEntity(request);
         Services saved = serviceItemRepository.save(service);
+        String videoKey = videoService.uploadVideo("services", saved.getId(), videoFile);
+        saved.setVideoKey(videoKey);
         return serviceMapper.toResponse(saved);
     }
 
     @Override
-    public ServiceResponse updateService(Integer serviceId, ServiceRequest serviceRequest) {
+    @Transactional
+    public ServiceResponse updateService(Integer serviceId, ServiceRequest serviceRequest, MultipartFile videoFile) {
         Services service = serviceItemRepository.findByIdAndStatus(serviceId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_NOT_EXISTED));
 
-        if(!locationRepository.existsByIdAndStatus(serviceRequest.getLocationId(), RecordStatus.active)){
+        if (!locationRepository.existsByIdAndStatus(serviceRequest.getLocationId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.LOCATION_NOT_EXISTED);
         }
 
         serviceMapper.updateEntity(service, serviceRequest);
-        Services saved = serviceItemRepository.save(service);
-        return serviceMapper.toResponse(saved);
+        if (videoFile != null) {
+            if (service.getVideoKey() != null) {
+                videoService.deleteVideo(service.getVideoKey());
+            }
+            String videoKey = videoService.uploadVideo("services", service.getId(), videoFile);
+            service.setVideoKey(videoKey);
+        }
+        return serviceMapper.toResponse(service);
     }
 
     @Override
@@ -80,7 +92,7 @@ public class ServiceItemServiceImpl implements ServiceItemService {
         Services service = serviceItemRepository.findById(serviceId)
                 .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_NOT_EXISTED));
 
-        if(!locationRepository.existsByIdAndStatus(service.getLocationId(), RecordStatus.active)) {
+        if (!locationRepository.existsByIdAndStatus(service.getLocationId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.LOCATION_NOT_EXISTED);
         }
 
@@ -121,14 +133,13 @@ public class ServiceItemServiceImpl implements ServiceItemService {
                     predicates.add(cb.like(cb.lower(root.get("unit")),
                             "%" + filterRequest.getUnit().toLowerCase() + "%"));
                 }
-                if(filterRequest.getUpperBoundItemPrice() != null && filterRequest.getLowerBoundItemPrice() != null) {
+                if (filterRequest.getUpperBoundItemPrice() != null && filterRequest.getLowerBoundItemPrice() != null) {
                     predicates.add(
-                            cb.between(root.get("unitPrice"), filterRequest.getLowerBoundItemPrice(), filterRequest.getUpperBoundItemPrice())
-                    );
-                } else if(filterRequest.getUpperBoundItemPrice() != null) {
+                            cb.between(root.get("unitPrice"), filterRequest.getLowerBoundItemPrice(),
+                                    filterRequest.getUpperBoundItemPrice()));
+                } else if (filterRequest.getUpperBoundItemPrice() != null) {
                     predicates.add(
-                            cb.lessThanOrEqualTo(root.get("unitPrice"), filterRequest.getUpperBoundItemPrice())
-                    );
+                            cb.lessThanOrEqualTo(root.get("unitPrice"), filterRequest.getUpperBoundItemPrice()));
                 }
                 if (filterRequest.getLocationId() != null) {
                     predicates.add(cb.equal(root.get("locationId"), filterRequest.getLocationId()));
@@ -151,7 +162,6 @@ public class ServiceItemServiceImpl implements ServiceItemService {
         return new SimplePage<>(
                 responses,
                 page.getTotalElements(),
-                pageable
-        );
+                pageable);
     }
 }

@@ -38,7 +38,6 @@ public enum ERROR_CODE {
     EMAIL_INVALID(2012, "Username không đúng định dạng email", HttpStatus.BAD_REQUEST),
     ROLE_NOT_NULL(2013, "Role không được để trống", HttpStatus.BAD_REQUEST),
 
-
     /**
      * Role Error
      */
@@ -107,14 +106,15 @@ public enum ERROR_CODE {
     HALL_NOT_EXISTED(12001, "Hội trường không tồn tại", HttpStatus.NOT_FOUND),
     HALL_EXISTED(12002, "Hội trường đã tồn tại", HttpStatus.BAD_REQUEST),
 
-
     /**
      * File Error
      */
     FILE_EMPTY(13001, "File không được để trống", HttpStatus.BAD_REQUEST),
-    FILE_INVALID_CONTENT_TYPE(13002, "Chỉ chấp nhận file ảnh jpg", HttpStatus.BAD_REQUEST),
-    FILE_TOO_LARGE(13003, "Kích thước file vượt quá 5MB", HttpStatus.BAD_REQUEST),
-    FILE_ERROR(13004, "Lỗi xử lý file", HttpStatus.INTERNAL_SERVER_ERROR),
+    FILE_IMAGE_INVALID_CONTENT_TYPE(13002, "Chỉ chấp nhận file ảnh jpg", HttpStatus.BAD_REQUEST),
+    FILE_VIDEO_INVALID_CONTENT_TYPE(13003, "Chỉ chấp nhận file video mp4, mov, avi, mkv, webm", HttpStatus.BAD_REQUEST),
+    FILE_IMAGE_TOO_LARGE(13004, "Kích thước file ảnh vượt quá 5MB", HttpStatus.BAD_REQUEST),
+    FILE_VIDEO_TOO_LARGE(13005, "Kích thước file video vượt quá 40MB", HttpStatus.BAD_REQUEST),
+    FILE_ERROR(13006, "Lỗi xử lý file", HttpStatus.INTERNAL_SERVER_ERROR),
 
     /**
      * Booking Error
@@ -137,7 +137,13 @@ public enum ERROR_CODE {
     /**
      * Invoice Error
      */
-    INVOICE_NOT_FOUND(17001, "Hóa đơn ko tồn tại", HttpStatus.NOT_FOUND),
+    INVOICE_NOT_FOUND(17001, "Hóa đơn không tồn tại", HttpStatus.NOT_FOUND),
+
+    /**
+     * Table Layout Error
+     */
+    TABLE_LAYOUT_TOO_MANY_TABLES(180001, "Số lượng bàn không được vượt quá số lượng bàn trong hợp đồng", HttpStatus.BAD_REQUEST),
+
     /**
      * Other Error
      */

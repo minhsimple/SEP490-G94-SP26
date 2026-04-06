@@ -267,14 +267,10 @@ export class BookingsComponent implements OnInit {
     filterShift: string | null = null;
     filterMonth: number | null = null;
     statusOptions = [
-        { label: 'Đang hiệu lực', value: 'ACTIVE' },
-        { label: 'Ngưng hiệu lực', value: 'INACTIVE' },
-        { label: 'Nháp',          value: 'DRAFT'     },
-        { label: 'Hết hạn',       value: 'EXPIRED' },
-        { label: 'Đã duyệt',      value: 'APPROVED' },
-        { label: 'Chưa duyệt',    value: 'UNAPPROVED' },
-        { label: 'Đã huỷ',        value: 'CANCELLED' },
-        { label: 'Đã chuyển đổi', value: 'CONVERTED' },
+        { label: 'Nháp', value: 'DRAFT' },
+        { label: 'Khách hàng đóng cọc', value: 'ACTIVE' },
+        { label: 'Thanh lý hợp đồng', value: 'LIQUIDATED' },
+        { label: 'Hủy contract', value: 'CANCELLED' },
     ];
 
     shiftOptions = [
@@ -544,42 +540,30 @@ export class BookingsComponent implements OnInit {
 
     getStatusLabel(status?: string): string {
         const m: Record<string, string> = {
-            ACTIVE:    'Đang hiệu lực',
-            INACTIVE:  'Ngưng hiệu lực',
-            DRAFT:     'Nháp',
-            EXPIRED:   'Hết hạn',
-            APPROVED:  'Đã duyệt',
-            UNAPPROVED:'Chưa duyệt',
-            CANCELLED: 'Đã huỷ',
-            CONVERTED: 'Đã chuyển đổi',
+            DRAFT:      'Nháp',
+            ACTIVE:     'Khách hàng đóng cọc',
+            LIQUIDATED: 'Thanh lý hợp đồng',
+            CANCELLED:  'Hủy contract',
         };
         return m[status ?? ''] ?? status ?? '-';
     }
 
     getStatusColor(status?: string): string {
         const m: Record<string, string> = {
-            ACTIVE:    '#16a34a',
-            INACTIVE:  '#dc2626',
-            DRAFT:     '#d97706',
-            EXPIRED:   '#b45309',
-            APPROVED:  '#16a34a',
-            UNAPPROVED:'#b91c1c',
-            CANCELLED: '#dc2626',
-            CONVERTED: '#2563eb',
+            DRAFT:      '#92400e',
+            ACTIVE:     '#166534',
+            LIQUIDATED: '#1d4ed8',
+            CANCELLED:  '#b91c1c',
         };
         return m[status ?? ''] ?? '#64748b';
     }
 
     getStatusBg(status?: string): string {
         const m: Record<string, string> = {
-            ACTIVE:    '#dcfce7',
-            INACTIVE:  '#fee2e2',
-            DRAFT:     '#fef3c7',
-            EXPIRED:   '#ffedd5',
-            APPROVED:  '#dcfce7',
-            UNAPPROVED:'#fee2e2',
-            CANCELLED: '#fee2e2',
-            CONVERTED: '#dbeafe',
+            DRAFT:      '#fef3c7',
+            ACTIVE:     '#dcfce7',
+            LIQUIDATED: '#dbeafe',
+            CANCELLED:  '#fee2e2',
         };
         return m[status ?? ''] ?? '#f1f5f9';
     }

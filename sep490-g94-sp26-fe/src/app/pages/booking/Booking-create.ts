@@ -618,12 +618,11 @@ export class BookingCreateComponent implements OnInit {
     bookingCode = '';
     submitting = false;
     loading = false;
-    stateSubmitting = false;
     statusSubmitting = false;
     today = new Date();
-    loadedBookingState = 'ACTIVE';
+    loadedBookingState = 'DRAFT';
     currentStatus = 'ACTIVE';
-    selectedBookingState = 'ACTIVE';
+    selectedBookingState = 'DRAFT';
     readonly loggedInUserId = Number(localStorage.getItem('userId')) || 0;
     readonly loggedInFullName = (localStorage.getItem('fullName') ?? '').trim();
     loggedInLocationId = Number(localStorage.getItem('locationId')) || 0;
@@ -644,17 +643,6 @@ export class BookingCreateComponent implements OnInit {
         { label: 'Ca sáng (10:00 - 14:00)', value: 'SLOT_1' },
         { label: 'Ca chiều (17:00 - 21:00)', value: 'SLOT_2' },
         { label: 'Cả ngày (09:00 - 17:00)', value: 'SLOT_3' },
-    ];
-
-    bookingStateOptions = [
-        { label: 'Đang hiệu lực', value: 'ACTIVE' },
-        { label: 'Ngưng hiệu lực', value: 'INACTIVE' },
-        { label: 'Nháp', value: 'DRAFT' },
-        { label: 'Hết hạn', value: 'EXPIRED' },
-        { label: 'Đã duyệt', value: 'APPROVED' },
-        { label: 'Chưa duyệt', value: 'UNAPPROVED' },
-        { label: 'Đã hủy', value: 'CANCELLED' },
-        { label: 'Đã chuyển đổi', value: 'CONVERTED' },
     ];
 
     form = {
@@ -812,8 +800,8 @@ export class BookingCreateComponent implements OnInit {
                 this.patchFormFromBooking(booking);
                 this.bookingCode = booking.contractNo ?? booking.bookingNo ?? '';
                 this.currentStatus = booking.status ?? 'ACTIVE';
-                this.loadedBookingState = booking.contractState ?? booking.bookingState ?? 'ACTIVE';
-                this.selectedBookingState = booking.contractState ?? booking.bookingState ?? 'ACTIVE';
+                this.loadedBookingState = booking.contractState ?? booking.bookingState ?? 'DRAFT';
+                this.selectedBookingState = booking.contractState ?? booking.bookingState ?? 'DRAFT';
 
                 const requests: Observable<void>[] = [];
 
@@ -1335,39 +1323,6 @@ export class BookingCreateComponent implements OnInit {
         });
     }
 
-    saveBookingState() {
-        if (!this.bookingId) {
-            return;
-        }
-
-        this.stateSubmitting = true;
-        this.bookingService.updateState({
-            contractId: this.bookingId,
-            contractState: this.selectedBookingState,
-        }).subscribe({
-            next: (res) => {
-                this.stateSubmitting = false;
-                this.loadedBookingState = res.data?.contractState ?? res.data?.bookingState ?? this.selectedBookingState;
-                this.selectedBookingState = this.loadedBookingState;
-                this.messageService.add({
-                    severity: 'success',
-                    summary: 'Thành công',
-                    detail: 'Đã cập nhật trạng thái xử lý',
-                    life: 3000,
-                });
-            },
-            error: (err) => {
-                this.stateSubmitting = false;
-                this.messageService.add({
-                    severity: 'error',
-                    summary: 'Lỗi',
-                    detail: err?.error?.message ?? 'Không thể cập nhật trạng thái xử lý',
-                    life: 4000,
-                });
-            },
-        });
-    }
-
     toggleStatus() {
         if (!this.bookingId) {
             return;
@@ -1532,14 +1487,10 @@ export class BookingCreateComponent implements OnInit {
 
     getBookingStateLabel(value?: string): string {
         const labels: Record<string, string> = {
-            ACTIVE: 'Đang hiệu lực',
-            INACTIVE: 'Ngưng hiệu lực',
             DRAFT: 'Nháp',
-            EXPIRED: 'Hết hạn',
-            APPROVED: 'Đã duyệt',
-            UNAPPROVED: 'Chưa duyệt',
-            CANCELLED: 'Đã hủy',
-            CONVERTED: 'Đã chuyển đổi',
+            ACTIVE: 'Khách hàng đóng cọc',
+            LIQUIDATED: 'Thanh lý hợp đồng',
+            CANCELLED: 'Hủy contract',
         };
         return labels[value ?? ''] ?? value ?? '-';
     }
