@@ -2,7 +2,7 @@ package vn.edu.fpt.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import vn.edu.fpt.dto.request.tablelayout.TableLayoutRequest;
+import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.response.tablelayout.TableLayoutResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.entity.TableLayout;
@@ -24,8 +24,8 @@ public class TableLayoutServiceImpl implements TableLayoutService {
     private final ContractRepository contractRepository;
 
     @Override
-    public TableLayoutResponse createTableLayout(TableLayoutRequest tableLayoutRequest) {
-        Contract contract = contractRepository.findByIdAndStatus(tableLayoutRequest.getContractId(), RecordStatus.active)
+    public TableLayoutResponse createTableLayout(ContractRequest.TableLayoutRequest tableLayoutRequest, Integer contractId) {
+        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
         Integer numberOfTables = tableLayoutRequest.getTableLayoutDetailRequestList()
@@ -36,7 +36,7 @@ public class TableLayoutServiceImpl implements TableLayoutService {
             throw new AppException(ERROR_CODE.TABLE_LAYOUT_TOO_MANY_TABLES);
         }
 
-        List<TableLayout> tableLayoutList = extractTableLayoutFromRequest(tableLayoutRequest);
+        List<TableLayout> tableLayoutList = extractTableLayoutFromRequest(tableLayoutRequest, contractId);
         List<TableLayout> savedListTableLayouts = tableLayoutRepository.saveAll(tableLayoutList);
 
         return getTableLayoutResponse(savedListTableLayouts);
@@ -53,8 +53,8 @@ public class TableLayoutServiceImpl implements TableLayoutService {
     }
 
     @Override
-    public TableLayoutResponse updateTableLayout(TableLayoutRequest tableLayoutRequest) {
-        Contract contract = contractRepository.findByIdAndStatus(tableLayoutRequest.getContractId(), RecordStatus.active)
+    public TableLayoutResponse updateTableLayout(ContractRequest.TableLayoutRequest tableLayoutRequest, Integer contractId) {
+        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
         Integer numberOfTables = tableLayoutRequest.getTableLayoutDetailRequestList()
@@ -64,21 +64,21 @@ public class TableLayoutServiceImpl implements TableLayoutService {
         if (contract.getExpectedTables().compareTo(numberOfTables) < 0) {
             throw new AppException(ERROR_CODE.TABLE_LAYOUT_TOO_MANY_TABLES);
         }
-        tableLayoutRepository.deleteByContractId(tableLayoutRequest.getContractId());
+        tableLayoutRepository.deleteByContractId(contractId);
 
-        List<TableLayout> tableLayoutList = extractTableLayoutFromRequest(tableLayoutRequest);
+        List<TableLayout> tableLayoutList = extractTableLayoutFromRequest(tableLayoutRequest, contractId);
         List<TableLayout> savedListTableLayouts = tableLayoutRepository.saveAll(tableLayoutList);
 
         return getTableLayoutResponse(savedListTableLayouts);
     }
 
-    private List<TableLayout> extractTableLayoutFromRequest(TableLayoutRequest tableLayoutRequest) {
+    private List<TableLayout> extractTableLayoutFromRequest(ContractRequest.TableLayoutRequest tableLayoutRequest, Integer contractId) {
 
         return tableLayoutRequest.getTableLayoutDetailRequestList()
                 .stream()
                 .map(tableLayoutDetailRequest -> {
                     TableLayout tableLayout = new TableLayout();
-                    tableLayout.setContractId(tableLayoutRequest.getContractId());
+                    tableLayout.setContractId(contractId);
                     tableLayout.setTableLayout(tableLayoutDetailRequest.getTableLayoutEnum());
                     tableLayout.setGroupName(tableLayoutDetailRequest.getGroupName());
                     tableLayout.setNumberOfTables(tableLayoutDetailRequest.getNumberOfTables());
