@@ -17,6 +17,7 @@ import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
+import vn.edu.fpt.dto.response.tablelayout.TableLayoutResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -24,9 +25,11 @@ import vn.edu.fpt.mapper.ContractMapper;
 import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.ContractService;
 import vn.edu.fpt.service.InvoiceService;
+import vn.edu.fpt.service.TableLayoutService;
 import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.*;
 import vn.edu.fpt.dto.response.contract.CalenderContractResponse;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -49,6 +52,7 @@ public class ContractServiceImpl implements ContractService {
     private final SetMenuServiceImpl setMenuServiceImpl;
     private final InvoiceService invoiceService;
 
+    private final TableLayoutService tableLayoutService;
 
     @Transactional
     @Override
@@ -65,10 +69,15 @@ public class ContractServiceImpl implements ContractService {
         calculateAndSetTimes(booking, request.getBookingDate(), request.getBookingTime());
 
         Contract saved = bookingRepository.save(booking);
+
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.createTableLayout(request.getTableLayoutRequest(), saved.getId());
+        ContractResponse contractResponse = contractMapper.toResponse(saved);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
+
         createPaymentForContract(saved);
         invoiceService.createInvoice(saved.getId());
 
-        return contractMapper.toResponse(saved);
+        return contractResponse;
     }
 
     @Transactional
@@ -78,23 +87,27 @@ public class ContractServiceImpl implements ContractService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
         validateContract(request);
         // Nếu hallId hoặc expectedGuests có thay đổi thì validate số lượng khách với sức chứa của hội trường
-        if(request.getHallId() != null && request.getExpectedGuests() != null) {
+        if (request.getHallId() != null && request.getExpectedGuests() != null) {
             validateNumberOfGuests(request.getHallId(), request.getExpectedGuests());
-        } else if(request.getHallId() != null) {
+        } else if (request.getHallId() != null) {
             validateNumberOfGuests(request.getHallId(), booking.getExpectedGuests());
-        } else if(request.getExpectedGuests() != null) {
+        } else if (request.getExpectedGuests() != null) {
             validateNumberOfGuests(booking.getHallId(), request.getExpectedGuests());
         }
         contractMapper.updateEntity(booking, request);
+
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.updateTableLayout(request.getTableLayoutRequest(), booking.getId());
 
         // Tính lại startTime và endTime từ bookingDate + bookingTime slot
         calculateAndSetTimes(booking, request.getBookingDate(), request.getBookingTime());
 
         Contract saved = bookingRepository.save(booking);
-        return contractMapper.toResponse(saved);
+        ContractResponse contractResponse = contractMapper.toResponse(saved);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
+        return contractResponse;
     }
 
-    public void validateContract(ContractRequest request){
+    public void validateContract(ContractRequest request) {
         if (request == null) {
             throw new AppException(ERROR_CODE.INVALID_REQUEST);
         }
@@ -102,23 +115,24 @@ public class ContractServiceImpl implements ContractService {
                 !customerRepository.existsByIdAndStatus(request.getCustomerId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED);
         }
-        if(request.getHallId() != null &&
+        if (request.getHallId() != null &&
                 !hallRepository.existsByIdAndStatus(request.getHallId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.HALL_NOT_EXISTED);
         }
-        if(request.getSetMenuId() != null &&
+        if (request.getSetMenuId() != null &&
                 !setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
         }
-        if(request.getBookingTime() != null && request.getBookingDate() != null) {
+        if (request.getBookingTime() != null && request.getBookingDate() != null) {
             LocalDateTime startTime = calculateStartTime(request.getBookingDate(), request.getBookingTime());
             LocalDateTime endTime = calculateEndTime(request.getBookingDate(), request.getBookingTime());
-            if(bookingRepository.existsByStartTimeAndEndTimeAndContractStateAndHallId(startTime, endTime, ContractState.ACTIVE, request.getHallId())) {
+            if (bookingRepository.existsByStartTimeAndEndTimeAndContractStateAndHallId(startTime, endTime, ContractState.ACTIVE, request.getHallId())) {
                 throw new AppException(ERROR_CODE.WEDDING_TIME_CONFLICT);
             }
         }
     }
-    public void validateNumberOfGuests(Integer hallId, Integer numberOfGuests){
+
+    public void validateNumberOfGuests(Integer hallId, Integer numberOfGuests) {
         Integer hallCapacity = hallRepository.findById(hallId)
                 .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED))
                 .getCapacity();
@@ -132,7 +146,10 @@ public class ContractServiceImpl implements ContractService {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        return contractMapper.toResponse(booking);
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(id);
+        ContractResponse contractResponse = contractMapper.toResponse(booking);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
+        return contractResponse;
     }
 
     @Override
@@ -196,7 +213,12 @@ public class ContractServiceImpl implements ContractService {
 
         Page<Contract> page = bookingRepository.findAll(spec, pageable);
         List<ContractResponse> responses = page.getContent().stream()
-                .map(contractMapper::toResponse)
+                .map(contract -> {
+                    TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(contract.getId());
+                    ContractResponse contractResponse = contractMapper.toResponse(contract);
+                    contractResponse.setTableLayoutResponse(tableLayoutResponse);
+                    return contractResponse;
+                })
                 .toList();
 
         return new SimplePage<>(responses, page.getTotalElements(), pageable);
@@ -207,6 +229,7 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse changeContractStatus(Integer id) {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(id);
 
         if (booking.getStatus() == RecordStatus.active) {
             booking.setStatus(RecordStatus.inactive);
@@ -215,7 +238,9 @@ public class ContractServiceImpl implements ContractService {
         }
 
         Contract saved = bookingRepository.save(booking);
-        return contractMapper.toResponse(saved);
+        ContractResponse contractResponse = contractMapper.toResponse(saved);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
+        return contractResponse;
     }
 
     /**
@@ -231,9 +256,11 @@ public class ContractServiceImpl implements ContractService {
         booking.setEndTime(endTime);
         booking.setBookingTime(bookingTime);
     }
+
     private LocalDateTime calculateEndTime(LocalDate bookingDate, BookingTime bookingTime) {
         return bookingDate.atTime(bookingTime.getEndHour(), bookingTime.getEndMinute());
     }
+
     private LocalDateTime calculateStartTime(LocalDate bookingDate, BookingTime bookingTime) {
         return bookingDate.atTime(bookingTime.getStartHour(), bookingTime.getStartMinute());
     }
@@ -243,14 +270,19 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse updateContractState(ContractStatusRequest request) {
         Contract booking = bookingRepository.findById(request.getContractId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(request.getContractId());
 
         validateStateTransition(booking.getContractState(), request.getContractState());
-        if(request.getContractState().equals(ContractState.CANCELLED)){
+        if (request.getContractState().equals(ContractState.CANCELLED)) {
             booking.setStatus(RecordStatus.inactive);
         }
         booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
-        return contractMapper.toResponse(saved);
+
+        ContractResponse contractResponse = contractMapper.toResponse(saved);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
+
+        return contractResponse;
     }
 
     @Override
@@ -289,15 +321,16 @@ public class ContractServiceImpl implements ContractService {
         paymentServiceImpl.createPayment(request2);
 
     }
+
     public BigDecimal getTotalAmountForContract(Contract contract) throws Exception {
         BigDecimal setMenuPrice = setMenuServiceImpl.getSetMenuById(contract.getSetMenuId()).getSetPrice();
         BigDecimal servicePrice = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND))
                 .getBasePrice();
-         BigDecimal totalPrice = setMenuPrice.multiply(BigDecimal.valueOf(contract.getExpectedTables()));
-         BigDecimal hallPrice = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
-                 .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED))
-                 .getBasePrice();
+        BigDecimal totalPrice = setMenuPrice.multiply(BigDecimal.valueOf(contract.getExpectedTables()));
+        BigDecimal hallPrice = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED))
+                .getBasePrice();
         return totalPrice.add(servicePrice).add(hallPrice);
     }
 
