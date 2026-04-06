@@ -16,6 +16,7 @@ import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
+import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.exception.AppException;
@@ -24,6 +25,7 @@ import vn.edu.fpt.mapper.ContractMapper;
 import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.ContractService;
 import vn.edu.fpt.service.InvoiceService;
+import vn.edu.fpt.service.TaskListService;
 import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.*;
 import vn.edu.fpt.dto.response.contract.CalenderContractResponse;
@@ -48,6 +50,8 @@ public class ContractServiceImpl implements ContractService {
     private final PaymentServiceImpl paymentServiceImpl;
     private final SetMenuServiceImpl setMenuServiceImpl;
     private final InvoiceService invoiceService;
+    private final TaskListService taskListService;
+    private final TaskListRepository taskListRepository;
 
 
     @Transactional
@@ -161,7 +165,7 @@ public class ContractServiceImpl implements ContractService {
 
                 if (filter.getBookingDateTo() != null) {
                     LocalDateTime to = filter.getBookingDateTo().atTime(23, 59, 59);
-                    predicates.add(cb.lessThanOrEqualTo(root.get("startTime"), to));
+                    predicates.add(cb.lessThanOrEqualTo(root.get("endTime"), to));
                 }
 
                 if (filter.getBookingTime() != null) {
@@ -250,6 +254,26 @@ public class ContractServiceImpl implements ContractService {
         }
         booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
+
+        // Auto-create TaskList khi contract state = ACTIVE
+        if(request.getContractState().equals(ContractState.ACTIVE)){
+            // Kiểm tra xem TaskList đã tồn tại chưa
+            if (!taskListRepository.existsByContractId(saved.getId())) {
+                String title = (saved.getBrideName() != null ? saved.getBrideName() : "") +
+                        " & " +
+                        (saved.getGroomName() != null ? saved.getGroomName() : "");
+
+                TaskListRequest taskListRequest = TaskListRequest.builder()
+                        .contractId(saved.getId())
+                        .name(title)
+                        .description("Task list for contract " + saved.getContractNo())
+                        .tasks(null)
+                        .build();
+
+                taskListService.createNewTaskList(taskListRequest);
+            }
+        }
+
         return contractMapper.toResponse(saved);
     }
 

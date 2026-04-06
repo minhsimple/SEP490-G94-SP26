@@ -145,6 +145,17 @@ public enum ERROR_CODE {
     TABLE_LAYOUT_TOO_MANY_TABLES(180001, "Số lượng bàn không được vượt quá số lượng bàn trong hợp đồng", HttpStatus.BAD_REQUEST),
 
     /**
+     * Task List Error
+     */
+    TASK_LIST_NOT_EXISTED(19001, "Danh sách công việc không tồn tại", HttpStatus.NOT_FOUND),
+    TASK_LIST_EXISTED(19002, "Danh sách công việc đã tồn tại cho hợp đồng này", HttpStatus.BAD_REQUEST),
+
+    /**
+     * Task Error
+     */
+    TASK_NOT_EXISTED(20001, "Công việc không tồn tại", HttpStatus.NOT_FOUND),
+
+    /**
      * Other Error
      */
     INVALID_REQUEST(30000, "Request không hợp lệ", HttpStatus.BAD_REQUEST);

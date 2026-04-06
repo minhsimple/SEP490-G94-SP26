@@ -50,6 +50,15 @@ public interface ContractRepository extends BaseRepository<Contract, Integer> {
             LocalDateTime to,
             Integer locationId
     );
+
+    @Query("""
+    SELECT c.id
+    FROM Contract c
+    WHERE (c.assignCoordinatorId = COALESCE(:coordinatorId, c.assignCoordinatorId))
+      AND c.status = 'active'
+          AND c.contractState IN ('ACTIVE')
+    """)
+    List<Integer> findContractIdsByCoordinator(Integer coordinatorId);
 }
 
 
