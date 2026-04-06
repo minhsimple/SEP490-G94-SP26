@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import vn.edu.fpt.entity.TaskCategory;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.util.enums.TaskState;
 
@@ -19,5 +20,6 @@ public class TaskResponse {
     private TaskState state;
     private Integer priority;
     private RecordStatus status;
+    private Integer taskCategoryId;
 }
 

@@ -8,6 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import vn.edu.fpt.entity.TaskCategory;
+import vn.edu.fpt.util.enums.TaskState;
 
 import java.util.List;
 
@@ -24,9 +26,20 @@ public class TaskListRequest {
 
     private String description;
 
-    @Valid
-    @NotEmpty(message = "Danh sách công việc không được để trống")
-    private List<TaskRequestDTO> tasks;
+    private List<TaskCategoryGroupRequest> taskCategoryGroups;
+
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TaskCategoryGroupRequest{
+
+        @NotNull(message = "Tên nhóm công việc không được để trống")
+        private String title;
+
+        private List<TaskRequestDTO> tasks;
+    }
 
     @Data
     @Builder
@@ -40,6 +53,9 @@ public class TaskListRequest {
 
         @NotNull(message = "Mức độ ưu tiên không được để trống")
         private Integer priority;
+
+        @NotNull(message = "Trạng thái công việc không được để trống")
+        private TaskState state;
     }
 }
 

@@ -22,6 +22,6 @@ public class TaskListResponse {
     private String hallName;
     private BookingTime bookingTime;
     private RecordStatus status;
-    private List<TaskResponse> tasks;
+    private List<TaskCategoryGroupResponse> taskCategoryGroups;
 }
 

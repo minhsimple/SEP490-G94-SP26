@@ -8,11 +8,13 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.request.task.TaskListFilterRequest;
 import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.task.TaskListResponse;
+import vn.edu.fpt.dto.response.task.TaskCategoryGroupResponse;
 import vn.edu.fpt.dto.response.task.TaskResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.entity.Hall;
 import vn.edu.fpt.entity.TaskList;
 import vn.edu.fpt.entity.Tasks;
+import vn.edu.fpt.entity.TaskCategory;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.TasksMapper;
@@ -20,6 +22,7 @@ import vn.edu.fpt.respository.ContractRepository;
 import vn.edu.fpt.respository.HallRepository;
 import vn.edu.fpt.respository.TaskListRepository;
 import vn.edu.fpt.respository.TasksRepository;
+import vn.edu.fpt.respository.TaskCategoryRepository;
 import vn.edu.fpt.service.TaskListService;
 import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.RecordStatus;
@@ -36,6 +39,7 @@ public class TaskListServiceImpl implements TaskListService {
     private final TasksMapper tasksMapper;
     private final ContractRepository contractRepository;
     private final HallRepository hallRepository;
+    private final TaskCategoryRepository taskCategoryRepository;
 
     @Transactional
     @Override
@@ -162,26 +166,97 @@ public class TaskListServiceImpl implements TaskListService {
     }
 
     private List<Tasks> getTasksList(TaskListRequest taskListRequest, Integer taskListId) {
-        return taskListRequest.getTasks()
-                .stream()
-                .map(task -> Tasks.builder()
+        if (taskListRequest.getTaskCategoryGroups() == null || taskListRequest.getTaskCategoryGroups().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Tasks> allTasks = new ArrayList<>();
+
+        for (TaskListRequest.TaskCategoryGroupRequest categoryGroup : taskListRequest.getTaskCategoryGroups()) {
+            if (categoryGroup.getTasks() == null || categoryGroup.getTasks().isEmpty()) {
+                continue;
+            }
+
+            // Tạo TaskCategory nếu category title không null
+            Integer taskCategoryId = null;
+            if (categoryGroup.getTitle() != null && !categoryGroup.getTitle().isEmpty()) {
+                TaskCategory taskCategory = TaskCategory.builder()
                         .taskListId(taskListId)
-                        .title(task.getTitle())
-                        .description(task.getDescription())
-                        .priority(task.getPriority())
-                        .state(TaskState.NOT_COMPLETED) // Default state
-                        .build())
-                .collect(Collectors.toList());
+                        .title(categoryGroup.getTitle())
+                        .build();
+                TaskCategory savedCategory = taskCategoryRepository.save(taskCategory);
+                taskCategoryId = savedCategory.getId();
+            }
+
+            // Tạo Tasks cho category này
+            final Integer finalTaskCategoryId = taskCategoryId;
+            List<Tasks> categoryTasks = categoryGroup.getTasks().stream()
+                    .map(task -> Tasks.builder()
+                            .taskListId(taskListId)
+                            .taskCategoryId(finalTaskCategoryId)
+                            .title(task.getTitle())
+                            .description(task.getDescription())
+                            .priority(task.getPriority())
+                            .state(task.getState())
+                            .build())
+                    .collect(Collectors.toList());
+
+            allTasks.addAll(categoryTasks);
+        }
+
+        return allTasks;
     }
 
     private TaskListResponse mapToTaskListResponse(TaskList taskList, List<Tasks> tasksList) {
-        List<TaskResponse> tasksResponse = tasksList.stream()
-                .map(tasksMapper::toResponse)
-                .toList();
-
         // Lấy contract info
         Contract contract = contractRepository.findById(taskList.getContractId()).orElse(null);
         Hall hall = contract != null ? hallRepository.findById(contract.getHallId()).orElse(null) : null;
+
+        // Group tasks by category
+        Map<Integer, List<Tasks>> tasksByCategory = tasksList.stream()
+                .collect(Collectors.groupingBy(task -> task.getTaskCategoryId() != null ? task.getTaskCategoryId() : 0));
+
+        // Get all task categories
+        Set<Integer> categoryIds = tasksByCategory.keySet();
+        Map<Integer, TaskCategory> categoryMap = new HashMap<>();
+        if (!categoryIds.isEmpty() && categoryIds.stream().anyMatch(id -> id != 0)) {
+            categoryMap.putAll(
+                    taskCategoryRepository.findAllById(
+                            categoryIds.stream().filter(id -> id != 0).collect(Collectors.toSet())
+                    ).stream()
+                    .collect(Collectors.toMap(TaskCategory::getId, c -> c))
+            );
+        }
+
+        // Build task category groups
+        List<TaskCategoryGroupResponse> taskCategoryGroups = tasksByCategory.entrySet().stream()
+                .map(entry -> {
+                    Integer categoryId = entry.getKey();
+                    List<Tasks> tasksInCategory = entry.getValue();
+
+                    List<TaskResponse> tasksResponse = tasksInCategory.stream()
+                            .sorted(Comparator.comparingInt(Tasks::getPriority))
+                            .map(tasksMapper::toResponse)
+                            .toList();
+
+                    if (categoryId == 0) {
+                        // Tasks without category
+                        return TaskCategoryGroupResponse.builder()
+                                .categoryId(null)
+                                .categoryTitle("Không có danh mục")
+                                .tasks(tasksResponse)
+                                .build();
+                    } else {
+                        TaskCategory category = categoryMap.get(categoryId);
+                        return TaskCategoryGroupResponse.builder()
+                                .categoryId(categoryId)
+                                .categoryTitle(category != null ? category.getTitle() : "Danh mục không tồn tại")
+                                .tasks(tasksResponse)
+                                .build();
+                    }
+                })
+                .sorted(Comparator.comparingInt((TaskCategoryGroupResponse g) -> g.getCategoryId() != null ? g.getCategoryId() : Integer.MAX_VALUE))
+                .toList();
 
         return TaskListResponse.builder()
                 .id(taskList.getId())
@@ -192,7 +267,7 @@ public class TaskListServiceImpl implements TaskListService {
                 .hallName(hall != null ? hall.getName() : null)
                 .bookingTime(contract != null ? contract.getBookingTime() : null)
                 .status(taskList.getStatus())
-                .tasks(tasksResponse)
+                .taskCategoryGroups(taskCategoryGroups)
                 .build();
     }
 }

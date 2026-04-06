@@ -32,6 +32,8 @@ public class Tasks extends BaseEntity {
 
     Integer priority;
 
+    Integer taskCategoryId;
+
 
 }
 
