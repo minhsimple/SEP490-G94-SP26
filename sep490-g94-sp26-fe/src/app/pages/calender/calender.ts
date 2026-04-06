@@ -14,6 +14,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
+import { DialogModule } from 'primeng/dialog';
 import { TooltipModule } from 'primeng/tooltip';
 import { Booking, BookingService } from '../service/booking.service';
 import { Hall, HallService } from '../service/hall.service';
@@ -67,7 +68,7 @@ interface HallPalette {
     selector: 'app-event-calendar',
     standalone: true,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [CommonModule, FormsModule, SelectModule, TooltipModule],
+    imports: [CommonModule, FormsModule, SelectModule, DialogModule, TooltipModule],
     providers: [BookingService],
     template: `
 <div class="ec-root">
@@ -302,6 +303,44 @@ interface HallPalette {
             * Mỗi sảnh tối đa 2 sự kiện/ngày: Trưa (10:00-14:00) và Tối (17:00-21:00)
         </div>
     </div>
+
+    <p-dialog
+        [visible]="!!dayPopupCell()"
+        (visibleChange)="onDayPopupVisibleChange($event)"
+        [modal]="true"
+        [dismissableMask]="true"
+        [draggable]="false"
+        [resizable]="false"
+        [closable]="true"
+        styleClass="ec-day-dialog"
+        [style]="{ width: 'min(760px, 96vw)' }"
+        [header]="'Sự kiện ngày ' + formatDateLabel(dayPopupCell()?.dateStr ?? '')"
+    >
+        <div class="ec-modal-subtitle">{{ dayPopupEvents().length }} sự kiện</div>
+
+        @if (dayPopupEvents().length === 0) {
+            <div class="ec-modal-empty">Không có sự kiện trong ngày này theo bộ lọc hiện tại.</div>
+        }
+
+        @for (ev of dayPopupEvents(); track ev.id) {
+            <div class="ec-modal-item" (click)="handleEventClick(ev, $event)">
+                <div class="ec-modal-item-main">
+                    <div class="ec-modal-item-title">{{ ev.groomName }} &amp; {{ ev.brideName }}</div>
+                    <div class="ec-modal-item-meta">
+                        <span>{{ shiftShort(ev.shift) }} {{ shiftTime(ev.shift) }}</span>
+                        <span>•</span>
+                        <span>{{ ev.hallName }}</span>
+                        <span>•</span>
+                        <span>{{ ev.branchName }}</span>
+                    </div>
+                </div>
+                <div class="ec-modal-item-side">
+                    <div>{{ ev.tableCount }} bàn</div>
+                    <div class="ec-li-status" [ngClass]="'is-' + statusTone(ev.status)">{{ statusLabel(ev.status) }}</div>
+                </div>
+            </div>
+        }
+    </p-dialog>
 </div>
     `,
     styles: [`
@@ -626,6 +665,57 @@ interface HallPalette {
             border-color: #cbd5e1;
         }
 
+        /* ── Popup ────────────────────────────────────────────────────────── */
+        .ec-modal-subtitle {
+            margin: 2px 0 10px;
+            font-size: 12px;
+            color: #64748b;
+        }
+        .ec-modal-empty {
+            font-size: 13px;
+            color: #64748b;
+            border: 0.5px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 14px;
+            background: #f8fafc;
+        }
+        .ec-modal-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border: 0.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: 8px;
+            cursor: pointer;
+        }
+        .ec-modal-item:hover { background: #f8fafc; }
+        .ec-modal-item-main { min-width: 0; }
+        .ec-modal-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ec-modal-item-meta {
+            margin-top: 3px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            font-size: 12px;
+            color: #64748b;
+        }
+        .ec-modal-item-side {
+            text-align: right;
+            flex-shrink: 0;
+            color: #1e293b;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
         /* ── Footnote ─────────────────────────────────────────────────────── */
         .ec-footnote {
             padding: 10px 20px;
@@ -652,6 +742,7 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     private branchNameByHallId = new Map<number, string>();
     private hallCatalog: { hallName: string; branchName: string }[] = [];
     private filterChangeTick = signal(0);
+    dayPopupCell = signal<CalendarCell | null>(null);
 
     currentView  = signal<'grid' | 'list'>('grid');
     currentYear  = signal(new Date().getFullYear());
@@ -759,6 +850,12 @@ export class EventCalendarComponent implements OnInit, OnChanges {
             );
     });
 
+    dayPopupEvents = computed(() => {
+        const cell = this.dayPopupCell();
+        if (!cell) return [];
+        return [...cell.events].sort((a, b) => this.shiftOrder(a.shift) - this.shiftOrder(b.shift));
+    });
+
     autoLegend = computed((): HallLegend[] => {
         if (this.legends.length) return this.legends;
         const seen = new Set<string>();
@@ -803,12 +900,14 @@ export class EventCalendarComponent implements OnInit, OnChanges {
         if (m > 11) { m = 0;  y++; }
         this.currentMonth.set(m);
         this.currentYear.set(y);
+        this.closeDayPopup();
         this.monthChange.emit({ year: y, month: m });
         if (!this.useInputEvents) this.loadApiEventsByCurrentMonth();
     }
 
     onFilter() {
         this.updateHallOptionsByBranchSelection();
+        this.closeDayPopup();
         this.bumpFilterTick();
         this.cdr.markForCheck();
     }
@@ -830,6 +929,7 @@ export class EventCalendarComponent implements OnInit, OnChanges {
         if (hasMonthChanged) {
             this.currentYear.set(targetYear);
             this.currentMonth.set(targetMonth);
+            this.closeDayPopup();
             this.monthChange.emit({ year: targetYear, month: targetMonth });
             if (!this.useInputEvents) this.loadApiEventsByCurrentMonth();
         }
@@ -840,12 +940,22 @@ export class EventCalendarComponent implements OnInit, OnChanges {
 
     clearListDateFilter() {
         this.listFilterDate = null;
+        this.closeDayPopup();
         this.bumpFilterTick();
         this.cdr.markForCheck();
     }
 
     handleCellClick(cell: CalendarCell) {
+        this.dayPopupCell.set(cell);
         this.cellClick.emit({ date: cell.dateStr, events: cell.events });
+    }
+
+    closeDayPopup() {
+        this.dayPopupCell.set(null);
+    }
+
+    onDayPopupVisibleChange(visible: boolean) {
+        if (!visible) this.closeDayPopup();
     }
 
     handleEventClick(ev: CalendarEvent, e: Event) {
