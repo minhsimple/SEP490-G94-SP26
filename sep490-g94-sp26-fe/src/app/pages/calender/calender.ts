@@ -15,6 +15,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
+import { Booking, BookingService } from '../service/booking.service';
+import { Hall, HallService } from '../service/hall.service';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -66,6 +68,7 @@ interface HallPalette {
     standalone: true,
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [CommonModule, FormsModule, SelectModule, TooltipModule],
+    providers: [BookingService],
     template: `
 <div class="ec-root">
 
@@ -144,15 +147,19 @@ interface HallPalette {
             <button class="ec-mnav-btn" (click)="changeMonth(1)">&#8250;</button>
 
             @if (currentView() === 'list') {
-                <button class="ec-filterday-btn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                        <rect x="3" y="4" width="18" height="18" rx="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/>
-                        <line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
-                    </svg>
-                    Lọc theo ngày
-                </button>
+                <div class="ec-list-filters">
+                    <label class="ec-filterday-label" for="ec-list-date">Ngày</label>
+                    <input
+                        id="ec-list-date"
+                        class="ec-filterday-input"
+                        type="date"
+                        [(ngModel)]="listFilterDate"
+                        (ngModelChange)="onListDateChange($event)"
+                    />
+                    @if (listFilterDate) {
+                        <button type="button" class="ec-filterday-clear" (click)="clearListDateFilter()">Xóa</button>
+                    }
+                </div>
             }
         </div>
 
@@ -168,6 +175,9 @@ interface HallPalette {
         ═══════════════════════════════════════ -->
         @if (currentView() === 'grid') {
             <div class="ec-grid-view">
+                @if (!filterBranch) {
+                    <div class="ec-must-branch">Vui lòng chọn cơ sở để hiển thị lịch.</div>
+                }
                 <div class="ec-dow-row">
                     @for (d of DOW_LABELS; track d) {
                         <div class="ec-dow">{{ d }}</div>
@@ -225,7 +235,13 @@ interface HallPalette {
         @if (currentView() === 'list') {
             <div class="ec-list-view">
 
-                @if (listEvents().length === 0) {
+                @if (!filterBranch) {
+                    <div class="ec-empty">
+                        <p>Vui lòng chọn cơ sở để hiển thị danh sách sự kiện</p>
+                    </div>
+                }
+
+                @if (filterBranch && listEvents().length === 0) {
                     <div class="ec-empty">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
                             <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -251,6 +267,7 @@ interface HallPalette {
 
                         <div class="ec-li-body">
                             <div class="ec-li-title">{{ ev.groomName }} &amp; {{ ev.brideName }}</div>
+                            <div class="ec-li-subtitle">{{ formatDateLabel(ev.date) }} • {{ shiftShort(ev.shift) }}</div>
                             <div class="ec-li-meta">
                                 <span class="ec-li-meta-item">
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -272,7 +289,9 @@ interface HallPalette {
 
                         <div class="ec-li-right">
                             <div class="ec-li-tables">{{ ev.tableCount }} bàn</div>
-                            <div class="ec-li-shiftlabel">{{ shiftShort(ev.shift) }}</div>
+                            <div class="ec-li-status" [ngClass]="'is-' + statusTone(ev.status)">
+                                {{ statusLabel(ev.status) }}
+                            </div>
                         </div>
                     </div>
                 }
@@ -303,6 +322,11 @@ interface HallPalette {
             flex-wrap: wrap;
             gap: 12px;
             margin-bottom: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #f1f5f9;
+            padding: 8px 0;
         }
         .ec-toolbar-label { font-size: 13px; color: #64748b; }
         .ec-toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -372,20 +396,40 @@ interface HallPalette {
             color: #1e293b;
             min-width: 140px;
         }
-        .ec-filterday-btn {
+        .ec-list-filters {
             margin-left: auto;
-            display: flex; align-items: center; gap: 6px;
-            background: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ec-filterday-label {
+            font-size: 12px;
+            color: #64748b;
+        }
+        .ec-filterday-input {
+            height: 32px;
             border: 0.5px solid #e2e8f0;
             border-radius: 8px;
-            padding: 6px 12px;
+            padding: 6px 10px;
             font-size: 13px;
+            color: #334155;
+            background: #fff;
+            font-family: inherit;
+            min-width: 150px;
+        }
+        .ec-filterday-clear {
+            height: 32px;
+            border: 0.5px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0 10px;
+            font-size: 12px;
             color: #64748b;
+            background: #fff;
             cursor: pointer;
             font-family: inherit;
             transition: background 0.12s;
         }
-        .ec-filterday-btn:hover { background: #f8fafc; }
+        .ec-filterday-clear:hover { background: #f8fafc; }
 
         /* ── Loading ──────────────────────────────────────────────────────── */
         .ec-loading {
@@ -417,6 +461,15 @@ interface HallPalette {
             padding: 10px 0;
             text-transform: uppercase;
             letter-spacing: 0.06em;
+        }
+        .ec-must-branch {
+            margin: 10px 20px 0;
+            padding: 10px 12px;
+            border: 0.5px dashed #cbd5e1;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #64748b;
+            background: #f8fafc;
         }
 
         /* ── Grid – Cells ─────────────────────────────────────────────────── */
@@ -530,6 +583,11 @@ interface HallPalette {
             font-size: 14px; font-weight: 500; color: #1e293b;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
+        .ec-li-subtitle {
+            margin-top: 3px;
+            font-size: 12px;
+            color: #64748b;
+        }
         .ec-li-meta {
             display: flex; align-items: center;
             flex-wrap: wrap; gap: 6px 12px;
@@ -538,7 +596,35 @@ interface HallPalette {
         .ec-li-meta-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
         .ec-li-right { text-align: right; flex-shrink: 0; }
         .ec-li-tables { font-size: 14px; font-weight: 500; color: #1e293b; }
-        .ec-li-shiftlabel { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+        .ec-li-status {
+            margin-top: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+        }
+        .ec-li-status.is-active {
+            color: #166534;
+            background: #dcfce7;
+            border-color: #86efac;
+        }
+        .ec-li-status.is-cancelled {
+            color: #b91c1c;
+            background: #fee2e2;
+            border-color: #fca5a5;
+        }
+        .ec-li-status.is-liquidated {
+            color: #9a3412;
+            background: #ffedd5;
+            border-color: #fdba74;
+        }
+        .ec-li-status.is-other {
+            color: #334155;
+            background: #e2e8f0;
+            border-color: #cbd5e1;
+        }
 
         /* ── Footnote ─────────────────────────────────────────────────────── */
         .ec-footnote {
@@ -560,12 +646,20 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     @Output() monthChange = new EventEmitter<{ year: number; month: number }>();
 
     // ── State ─────────────────────────────────────────────────────────────────
+    private apiEvents = signal<CalendarEvent[]>([]);
+    private useInputEvents = false;
+    private hallNameById = new Map<number, string>();
+    private branchNameByHallId = new Map<number, string>();
+    private hallCatalog: { hallName: string; branchName: string }[] = [];
+    private filterChangeTick = signal(0);
+
     currentView  = signal<'grid' | 'list'>('grid');
     currentYear  = signal(new Date().getFullYear());
     currentMonth = signal(new Date().getMonth());
 
     filterBranch: string | null = null;
     filterHall:   string | null = null;
+    listFilterDate: string | null = null;
 
     branchOptions: { label: string; value: string }[] = [];
     hallOptions:   { label: string; value: string }[] = [];
@@ -592,12 +686,19 @@ export class EventCalendarComponent implements OnInit, OnChanges {
 
     // ── Computed ──────────────────────────────────────────────────────────────
 
+    eventSource = computed(() => this.useInputEvents ? this.events : this.apiEvents());
+
     filteredEvents = computed(() =>
-        this.events.filter(ev => {
+        {
+            this.filterChangeTick();
+            return this.eventSource().filter(ev => {
+            if (!this.filterBranch) return false;
+            if (!this.isCalendarVisibleStatus(ev.status)) return false;
             if (this.filterBranch && ev.branchName !== this.filterBranch) return false;
             if (this.filterHall   && ev.hallName   !== this.filterHall)   return false;
             return true;
-        })
+            });
+        }
     );
 
     calendarCells = computed((): CalendarCell[] => {
@@ -643,11 +744,14 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     });
 
     listEvents = computed(() => {
+        this.filterChangeTick();
         const y = this.currentYear(), m = this.currentMonth();
         return this.filteredEvents()
             .filter(ev => {
                 const d = new Date(ev.date);
-                return d.getFullYear() === y && d.getMonth() === m;
+                if (d.getFullYear() !== y || d.getMonth() !== m) return false;
+                if (this.listFilterDate && ev.date !== this.listFilterDate) return false;
+                return true;
             })
             .sort((a, b) =>
                 a.date.localeCompare(b.date) ||
@@ -658,7 +762,8 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     autoLegend = computed((): HallLegend[] => {
         if (this.legends.length) return this.legends;
         const seen = new Set<string>();
-        return this.events
+        return this.eventSource()
+            .filter(ev => this.isCalendarVisibleStatus(ev.status))
             .filter(ev => { const ok = !seen.has(ev.hallName); seen.add(ev.hallName); return ok; })
             .map(ev => ({
                 hallName:   ev.hallName,
@@ -669,12 +774,22 @@ export class EventCalendarComponent implements OnInit, OnChanges {
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-    constructor(private cdr: ChangeDetectorRef) {}
+    constructor(
+        private cdr: ChangeDetectorRef,
+        private bookingService: BookingService,
+        private hallService: HallService,
+    ) {}
 
-    ngOnInit() { this.buildFilterOptions(); }
+    ngOnInit() {
+        this.buildFilterOptions();
+        this.loadHallsForBranchMap();
+    }
 
     ngOnChanges(changes: SimpleChanges) {
-        if (changes['events']) this.buildFilterOptions();
+        if (changes['events']) {
+            this.useInputEvents = true;
+            this.buildFilterOptions();
+        }
         this.cdr.markForCheck();
     }
 
@@ -689,9 +804,45 @@ export class EventCalendarComponent implements OnInit, OnChanges {
         this.currentMonth.set(m);
         this.currentYear.set(y);
         this.monthChange.emit({ year: y, month: m });
+        if (!this.useInputEvents) this.loadApiEventsByCurrentMonth();
     }
 
-    onFilter() { this.cdr.markForCheck(); }
+    onFilter() {
+        this.updateHallOptionsByBranchSelection();
+        this.bumpFilterTick();
+        this.cdr.markForCheck();
+    }
+
+    onListDateChange(value: string | null) {
+        if (!value) {
+            this.bumpFilterTick();
+            this.cdr.markForCheck();
+            return;
+        }
+
+        const parsed = new Date(`${value}T00:00:00`);
+        if (Number.isNaN(parsed.getTime())) return;
+
+        const targetYear = parsed.getFullYear();
+        const targetMonth = parsed.getMonth();
+        const hasMonthChanged = targetYear !== this.currentYear() || targetMonth !== this.currentMonth();
+
+        if (hasMonthChanged) {
+            this.currentYear.set(targetYear);
+            this.currentMonth.set(targetMonth);
+            this.monthChange.emit({ year: targetYear, month: targetMonth });
+            if (!this.useInputEvents) this.loadApiEventsByCurrentMonth();
+        }
+
+        this.bumpFilterTick();
+        this.cdr.markForCheck();
+    }
+
+    clearListDateFilter() {
+        this.listFilterDate = null;
+        this.bumpFilterTick();
+        this.cdr.markForCheck();
+    }
 
     handleCellClick(cell: CalendarCell) {
         this.cellClick.emit({ date: cell.dateStr, events: cell.events });
@@ -732,6 +883,28 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     weekdayOf(ds: string)  { return this.DOW_LABELS[new Date(ds).getDay()]; }
     monthPadded(m: number) { return String(m + 1).padStart(2, '0'); }
 
+    formatDateLabel(ds: string): string {
+        const d = new Date(ds);
+        if (Number.isNaN(d.getTime())) return ds;
+        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+
+    statusLabel(status?: string): string {
+        const key = String(status ?? '').trim().toUpperCase();
+        if (key === 'ACTIVE') return 'Đang hiệu lực';
+        if (key === 'CANCELLED') return 'Đã hủy';
+        if (key === 'LIQUIDATED') return 'Đã thanh lý';
+        return status?.trim() || 'Khác';
+    }
+
+    statusTone(status?: string): 'active' | 'cancelled' | 'liquidated' | 'other' {
+        const key = String(status ?? '').trim().toUpperCase();
+        if (key === 'ACTIVE') return 'active';
+        if (key === 'CANCELLED') return 'cancelled';
+        if (key === 'LIQUIDATED') return 'liquidated';
+        return 'other';
+    }
+
     // ── Private ───────────────────────────────────────────────────────────────
 
     private fmt(d: Date): string {
@@ -739,9 +912,159 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     }
 
     private buildFilterOptions() {
-        this.branchOptions = [...new Set(this.events.map(e => e.branchName))]
-            .sort().map(b => ({ label: b, value: b }));
-        this.hallOptions = [...new Set(this.events.map(e => e.hallName))]
-            .sort().map(h => ({ label: h, value: h }));
+        const source = this.hallCatalog.length
+            ? this.hallCatalog
+            : this.eventSource()
+                .filter((e) => this.isCalendarVisibleStatus(e.status))
+                .map((e) => ({ hallName: e.hallName, branchName: e.branchName }));
+
+        this.branchOptions = [...new Set(source.map((e) => e.branchName).filter(Boolean))]
+            .sort().map((b) => ({ label: b, value: b }));
+
+        this.updateHallOptionsByBranchSelection(source);
+    }
+
+    private updateHallOptionsByBranchSelection(source?: { hallName: string; branchName: string }[]) {
+        const src = source ?? this.hallCatalog;
+        const selectedBranchHalls = this.filterBranch
+            ? src.filter((e) => e.branchName === this.filterBranch)
+            : [];
+
+        this.hallOptions = [...new Set(selectedBranchHalls.map((e) => e.hallName).filter(Boolean))]
+            .sort().map((h) => ({ label: h, value: h }));
+
+        if (this.filterHall && !this.hallOptions.some((h) => h.value === this.filterHall)) {
+            this.filterHall = null;
+        }
+    }
+
+    private bumpFilterTick() {
+        this.filterChangeTick.update((v) => v + 1);
+    }
+
+    private loadHallsForBranchMap() {
+        this.hallService.searchHalls({ page: 0, size: 500, sort: 'name,ASC' }).subscribe({
+            next: (res) => {
+                const halls = res.data?.content ?? [];
+                this.hallCatalog = [];
+                halls.forEach((hall: Hall) => {
+                    const hallId = Number(hall.id);
+                    const hallName = (hall.name ?? '').trim();
+                    const branchName = (hall.locationName ?? '').trim();
+
+                    if (hallName && branchName) {
+                        this.hallCatalog.push({ hallName, branchName });
+                    }
+
+                    if (!Number.isFinite(hallId)) return;
+
+                    if (hallName) this.hallNameById.set(hallId, hallName);
+                    if (branchName) this.branchNameByHallId.set(hallId, branchName);
+                });
+                this.buildFilterOptions();
+                if (!this.useInputEvents) this.loadApiEventsByCurrentMonth();
+                this.cdr.markForCheck();
+            },
+            error: () => {
+                this.hallNameById.clear();
+                this.branchNameByHallId.clear();
+                this.hallCatalog = [];
+                if (!this.useInputEvents) this.loadApiEventsByCurrentMonth();
+                this.cdr.markForCheck();
+            },
+        });
+    }
+
+    private loadApiEventsByCurrentMonth() {
+        this.loading = true;
+        const year = this.currentYear();
+        const month = this.currentMonth() + 1;
+        const monthStr = String(month).padStart(2, '0');
+        const lastDay = new Date(year, month, 0).getDate();
+
+        this.bookingService.searchBookings({
+            page: 0,
+            size: 500,
+            sort: 'startTime,ASC',
+            bookingDateFrom: `${year}-${monthStr}-01`,
+            bookingDateTo: `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`,
+        }).subscribe({
+            next: (res) => {
+                const rows = (res.data?.content ?? []).filter((booking) =>
+                    this.isCalendarVisibleStatus(booking.contractState ?? booking.bookingState ?? booking.status)
+                );
+                const mapped = rows
+                    .map((booking) => this.mapBookingToCalendarEvent(booking))
+                    .filter((event): event is CalendarEvent => !!event);
+
+                this.apiEvents.set(mapped);
+                this.buildFilterOptions();
+                this.loading = false;
+                this.cdr.markForCheck();
+            },
+            error: () => {
+                this.apiEvents.set([]);
+                this.buildFilterOptions();
+                this.loading = false;
+                this.cdr.markForCheck();
+            },
+        });
+    }
+
+    private mapBookingToCalendarEvent(booking: Booking): CalendarEvent | null {
+        const rawDate = booking.bookingDate ?? booking.eventDate;
+        if (!rawDate) return null;
+
+        const date = this.normalizeDate(rawDate);
+        if (!date) return null;
+
+        const hallId = this.toNumberOrUndefined(booking.hallId);
+        const hallName =
+            booking.hallName?.trim() ||
+            (hallId ? this.hallNameById.get(hallId) : '') ||
+            (hallId ? `Sảnh #${hallId}` : 'Chưa có sảnh');
+        const branchName =
+            (hallId ? this.branchNameByHallId.get(hallId) : '') ||
+            'Chưa rõ cơ sở';
+
+        const rawShift = (booking.shift ?? booking.bookingTime ?? '').toUpperCase();
+        const shift: CalendarEvent['shift'] =
+            rawShift === 'SLOT_2' || rawShift === 'SLOT_3' ? rawShift : 'SLOT_1';
+
+        const fallbackId = Number(new Date(date).getTime());
+        const id = this.toNumberOrUndefined(booking.id) ?? fallbackId;
+
+        return {
+            id,
+            date,
+            groomName: booking.groomName ?? 'Chú rể',
+            brideName: booking.brideName ?? 'Cô dâu',
+            hallId,
+            hallName,
+            branchName,
+            shift,
+            tableCount: this.toNumberOrUndefined(booking.expectedTables) ?? this.toNumberOrUndefined(booking.tableCount) ?? 0,
+            status: booking.contractState ?? booking.bookingState ?? booking.status,
+        };
+    }
+
+    private normalizeDate(rawDate: string): string | null {
+        if (!rawDate) return null;
+        const isoDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate;
+
+        const parsed = new Date(rawDate);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return this.fmt(parsed);
+    }
+
+    private toNumberOrUndefined(value: unknown): number | undefined {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : undefined;
+    }
+
+    private isCalendarVisibleStatus(status: unknown): boolean {
+        if (status === null || status === undefined) return true;
+        return String(status).trim().toUpperCase() !== 'DRAFT';
     }
 }
