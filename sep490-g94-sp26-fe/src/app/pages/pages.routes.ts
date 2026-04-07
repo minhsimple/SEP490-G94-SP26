@@ -24,9 +24,11 @@ import { ComboServiceDetailComponent } from './services/combo-service-detail.com
 import { PaymentsComponent } from './payment/Payment';
 import { InvoicesComponent } from './invoice/Invoice';
 import { InvoiceDetailComponent } from './invoice/Invoice-detail';
+import { EventCalendarComponent } from './calender/calender';
 
 
 export default [
+    { path: 'calender', component: EventCalendarComponent },
     { path: 'crud', component: Crud },
     { path: 'users', component: Users },
     { path: 'leads', component: Leads },

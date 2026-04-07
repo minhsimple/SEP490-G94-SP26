@@ -1,14 +1,19 @@
 package vn.edu.fpt.dto.request.contract;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import vn.edu.fpt.util.enums.BookingTime;
+import vn.edu.fpt.util.enums.TableLayoutEnum;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -59,4 +64,33 @@ public class ContractRequest {
     String groomFatherName;
 
     String groomMotherName;
+
+    @NotNull(message = "Thông tin bố trí bàn không được để trống")
+    @Valid
+    TableLayoutRequest tableLayoutRequest;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class TableLayoutRequest {
+        @Valid
+        @NotEmpty(message = "Danh sách bố trí bàn không được để trống")
+        List<TableLayoutDetailRequest> tableLayoutDetailRequestList;
+
+        @Data
+        @Builder
+        @NoArgsConstructor
+        @AllArgsConstructor
+        public static class TableLayoutDetailRequest {
+            @NotNull(message = "Khu vực bàn không được để trống")
+            TableLayoutEnum tableLayoutEnum;
+
+            @NotBlank(message = "Tên nhóm không được để trống")
+            String groupName;
+
+            @NotNull(message = "Số lượng bàn không được để trống")
+            Integer numberOfTables;
+        }
+    }
 }
