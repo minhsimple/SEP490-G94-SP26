@@ -300,8 +300,6 @@ public class ContractServiceImpl implements ContractService {
             }
         }
 
-        return contractMapper.toResponse(saved);
-
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setTableLayoutResponse(tableLayoutResponse);
 
