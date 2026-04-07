@@ -24,7 +24,7 @@ public interface TaskListMapper {
     @Mapping(target = "name", source = "taskList.name")
     @Mapping(target = "description", source = "taskList.description")
     @Mapping(target = "status", source = "taskList.status")
-    @Mapping(target = "tasks", source = "tasks")
+    @Mapping(target = "taskCategoryGroups", ignore = true)
     TaskListResponse toResponse(TaskList taskList, List<Tasks> tasks);
 }
 

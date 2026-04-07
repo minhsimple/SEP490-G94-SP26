@@ -17,12 +17,11 @@ public interface TasksMapper {
     void updateEntity(@MappingTarget Tasks tasks, TaskRequest taskRequest);
 
     @Mapping(target = "id", source = "tasks.id")
-    @Mapping(target = "taskListId", source = "tasks.taskListId")
     @Mapping(target = "title", source = "tasks.title")
     @Mapping(target = "description", source = "tasks.description")
     @Mapping(target = "state", source = "tasks.state")
     @Mapping(target = "priority", source = "tasks.priority")
-    @Mapping(target = "status", source = "tasks.status")
+    @Mapping(target = "taskCategoryId", source = "tasks.taskCategoryId")
     TaskResponse toResponse(Tasks tasks);
 }
 
