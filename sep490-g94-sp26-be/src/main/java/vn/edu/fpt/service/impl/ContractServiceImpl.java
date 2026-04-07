@@ -16,6 +16,8 @@ import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
+import vn.edu.fpt.dto.request.task.TaskListCreateRequest;
+import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
 import vn.edu.fpt.dto.response.tablelayout.TableLayoutResponse;
 import vn.edu.fpt.entity.Contract;
@@ -26,10 +28,10 @@ import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.ContractService;
 import vn.edu.fpt.service.InvoiceService;
 import vn.edu.fpt.service.TableLayoutService;
+import vn.edu.fpt.service.TaskListService;
 import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.*;
 import vn.edu.fpt.dto.response.contract.CalenderContractResponse;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -51,6 +53,8 @@ public class ContractServiceImpl implements ContractService {
     private final PaymentServiceImpl paymentServiceImpl;
     private final SetMenuServiceImpl setMenuServiceImpl;
     private final InvoiceService invoiceService;
+    private final TaskListService taskListService;
+    private final TaskListRepository taskListRepository;
 
     private final TableLayoutService tableLayoutService;
 
@@ -178,7 +182,7 @@ public class ContractServiceImpl implements ContractService {
 
                 if (filter.getBookingDateTo() != null) {
                     LocalDateTime to = filter.getBookingDateTo().atTime(23, 59, 59);
-                    predicates.add(cb.lessThanOrEqualTo(root.get("startTime"), to));
+                    predicates.add(cb.lessThanOrEqualTo(root.get("endTime"), to));
                 }
 
                 if (filter.getBookingTime() != null) {
@@ -278,6 +282,24 @@ public class ContractServiceImpl implements ContractService {
         }
         booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
+
+        // Auto-create TaskList khi contract state = ACTIVE
+        if(request.getContractState().equals(ContractState.ACTIVE)){
+            // Kiểm tra xem TaskList đã tồn tại chưa
+            if (!taskListRepository.existsByContractId(saved.getId())) {
+                String title = (saved.getBrideName() != null ? saved.getBrideName() : "") +
+                        " & " +
+                        (saved.getGroomName() != null ? saved.getGroomName() : "");
+
+                TaskListCreateRequest taskListRequest = TaskListCreateRequest.builder()
+                        .contractId(saved.getId())
+                        .name(title)
+                        .description("Task list for contract " + saved.getContractNo())
+                        .build();
+
+                taskListService.createNewTaskList(taskListRequest);
+            }
+        }
 
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setTableLayoutResponse(tableLayoutResponse);
