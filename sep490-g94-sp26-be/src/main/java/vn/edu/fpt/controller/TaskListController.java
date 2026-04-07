@@ -7,9 +7,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import vn.edu.fpt.dto.request.task.TaskListFilterRequest;
 import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.task.TaskListResponse;
@@ -65,7 +63,7 @@ public class TaskListController {
                 .build();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','COORDINATOR')")
     @Operation(summary = "Thay đổi trạng thái danh sách công việc")
     @PutMapping("/{taskListId}/change-status")
     public ApiResponse<TaskListResponse> changeStatusTaskList(@PathVariable Integer taskListId) {
@@ -75,7 +73,7 @@ public class TaskListController {
                 .build();
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','COORDINATOR')")
     @Operation(summary = "Cập nhật danh sách công việc (và các công việc trong đó)")
     @PutMapping("/update")
     public ApiResponse<TaskListResponse> updateTaskList(@RequestParam Integer taskListId,

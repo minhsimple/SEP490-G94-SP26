@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import vn.edu.fpt.dto.request.task.TaskListFilterRequest;
 import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.task.TaskListResponse;
 import vn.edu.fpt.dto.response.task.TaskCategoryGroupResponse;
@@ -24,9 +23,7 @@ import vn.edu.fpt.respository.TaskListRepository;
 import vn.edu.fpt.respository.TasksRepository;
 import vn.edu.fpt.respository.TaskCategoryRepository;
 import vn.edu.fpt.service.TaskListService;
-import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.RecordStatus;
-import vn.edu.fpt.util.enums.TaskState;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -106,18 +103,8 @@ public class TaskListServiceImpl implements TaskListService {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        List<TaskList> taskListList = taskListRepository.findAll(spec);
-
-        Map<Integer, List<Tasks>> tasksMap = tasksRepository.findAllByTaskListIdInAndStatus(
-                taskListList.stream().map(TaskList::getId).collect(Collectors.toSet()),
-                RecordStatus.active
-        ).stream().collect(Collectors.groupingBy(Tasks::getTaskListId));
-
-        return taskListList.stream()
-                .map(taskList -> mapToTaskListResponse(taskList,
-                    tasksMap.getOrDefault(taskList.getId(), Collections.emptyList()).stream()
-                        .sorted(Comparator.comparingInt(Tasks::getPriority))
-                        .toList()))
+        return taskListRepository.findAll(spec).stream()
+                .map(taskList -> mapToTaskListResponse(taskList, Collections.emptyList()))
                 .toList();
     }
 
@@ -155,9 +142,11 @@ public class TaskListServiceImpl implements TaskListService {
         taskList.setName(taskListRequest.getName());
         taskList.setDescription(taskListRequest.getDescription());
         taskList.setContractId(taskListRequest.getContractId());
+        taskList = taskListRepository.save(taskList);
 
-        // Delete existing tasks and create new ones
+        // Delete existing tasks and categories, then create new ones
         tasksRepository.deleteByTaskListId(taskListId);
+        taskCategoryRepository.deleteByTaskListId(taskListId);
 
         List<Tasks> tasksList = getTasksList(taskListRequest, taskListId);
         tasksList = tasksRepository.saveAll(tasksList);

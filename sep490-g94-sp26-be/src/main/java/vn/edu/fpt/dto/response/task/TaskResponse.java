@@ -14,12 +14,10 @@ import vn.edu.fpt.util.enums.TaskState;
 @AllArgsConstructor
 public class TaskResponse {
     private Integer id;
-    private Integer taskListId;
     private String title;
     private String description;
     private TaskState state;
     private Integer priority;
-    private RecordStatus status;
     private Integer taskCategoryId;
 }
 

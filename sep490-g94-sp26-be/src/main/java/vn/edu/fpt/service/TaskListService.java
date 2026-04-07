@@ -1,8 +1,5 @@
 package vn.edu.fpt.service;
 
-import org.springframework.data.domain.Pageable;
-import vn.edu.fpt.dto.SimplePage;
-import vn.edu.fpt.dto.request.task.TaskListFilterRequest;
 import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.task.TaskListResponse;
 

@@ -267,7 +267,6 @@ public class ContractServiceImpl implements ContractService {
                         .contractId(saved.getId())
                         .name(title)
                         .description("Task list for contract " + saved.getContractNo())
-                        .tasks(null)
                         .build();
 
                 taskListService.createNewTaskList(taskListRequest);
