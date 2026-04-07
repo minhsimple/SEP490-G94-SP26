@@ -16,6 +16,7 @@ import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
+import vn.edu.fpt.dto.request.task.TaskListCreateRequest;
 import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
 import vn.edu.fpt.dto.response.tablelayout.TableLayoutResponse;
@@ -290,7 +291,7 @@ public class ContractServiceImpl implements ContractService {
                         " & " +
                         (saved.getGroomName() != null ? saved.getGroomName() : "");
 
-                TaskListRequest taskListRequest = TaskListRequest.builder()
+                TaskListCreateRequest taskListRequest = TaskListCreateRequest.builder()
                         .contractId(saved.getId())
                         .name(title)
                         .description("Task list for contract " + saved.getContractNo())

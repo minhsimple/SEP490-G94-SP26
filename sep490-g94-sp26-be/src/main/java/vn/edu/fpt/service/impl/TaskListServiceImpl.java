@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.fpt.dto.request.task.TaskListCreateRequest;
 import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.task.TaskListResponse;
 import vn.edu.fpt.dto.response.task.TaskCategoryGroupResponse;
@@ -40,7 +41,7 @@ public class TaskListServiceImpl implements TaskListService {
 
     @Transactional
     @Override
-    public TaskListResponse createNewTaskList(TaskListRequest taskListRequest) {
+    public TaskListResponse createNewTaskList(TaskListCreateRequest taskListRequest) {
         // Validate: Check if taskList already exists for this contract
         if (taskListRepository.existsByContractId(taskListRequest.getContractId())) {
             throw new AppException(ERROR_CODE.TASK_LIST_EXISTED);
@@ -54,13 +55,7 @@ public class TaskListServiceImpl implements TaskListService {
                 .build();
 
         TaskList savedTaskList = taskListRepository.save(taskList);
-        Integer taskListId = savedTaskList.getId();
-
-        // Create Tasks for this TaskList
-        List<Tasks> tasksList = getTasksList(taskListRequest, taskListId);
-        tasksList = tasksRepository.saveAll(tasksList);
-
-        return mapToTaskListResponse(savedTaskList, tasksList);
+        return mapToTaskListResponse(savedTaskList,  Collections.emptyList());
     }
 
     @Override
@@ -131,18 +126,6 @@ public class TaskListServiceImpl implements TaskListService {
     public TaskListResponse updateTaskList(Integer taskListId, TaskListRequest taskListRequest) {
         TaskList taskList = taskListRepository.findTaskListByIdAndStatus(taskListId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.TASK_LIST_NOT_EXISTED));
-
-        // Check if contract id is being changed
-        if (!Objects.equals(taskList.getContractId(), taskListRequest.getContractId())) {
-            if (taskListRepository.existsByContractIdAndIdNot(taskListRequest.getContractId(), taskListId)) {
-                throw new AppException(ERROR_CODE.TASK_LIST_EXISTED);
-            }
-        }
-
-        taskList.setName(taskListRequest.getName());
-        taskList.setDescription(taskListRequest.getDescription());
-        taskList.setContractId(taskListRequest.getContractId());
-        taskList = taskListRepository.save(taskList);
 
         // Delete existing tasks and categories, then create new ones
         tasksRepository.deleteByTaskListId(taskListId);

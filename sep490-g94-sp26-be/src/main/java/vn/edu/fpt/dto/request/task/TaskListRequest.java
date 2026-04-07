@@ -18,16 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TaskListRequest {
-    @NotNull(message = "ID hợp đồng không được để trống")
-    private Integer contractId;
-
-    @NotBlank(message = "Tên danh sách công việc không được để trống")
-    private String name;
-
-    private String description;
-
     private List<TaskCategoryGroupRequest> taskCategoryGroups;
-
 
     @Data
     @Builder
