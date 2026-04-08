@@ -121,7 +121,7 @@ public class VideoServiceImpl implements VideoService {
                             .method(Method.GET)
                             .bucket(props.getBucket())
                             .object(objectKey)
-                            .expiry(minutes)
+                            .expiry(minutes * 60)
                             .build());
         } catch (Exception e) {
             log.error("Failed to generate presigned URL for {}: {}", objectKey, e.getMessage());
