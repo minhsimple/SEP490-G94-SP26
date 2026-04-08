@@ -12,11 +12,14 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface ServiceMapper {
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "videoKey", ignore = true)
     Services toEntity(ServiceRequest request);
 
+    @Mapping(target = "videoUrl", ignore = true)
     ServiceResponse toResponse(Services service);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "videoKey", ignore = true)
     void updateEntity(@MappingTarget Services service, ServiceRequest request);
 
     List<ServiceResponse> toServiceResponseList(List<Services> services);

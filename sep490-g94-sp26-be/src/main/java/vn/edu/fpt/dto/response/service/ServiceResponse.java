@@ -29,5 +29,5 @@ public class ServiceResponse {
 
     RecordStatus status;
 
-    String videoKey;
+    String videoUrl;
 }

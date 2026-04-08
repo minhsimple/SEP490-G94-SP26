@@ -54,7 +54,11 @@ public class ServiceItemServiceImpl implements ServiceItemService {
         Services saved = serviceItemRepository.save(service);
         String videoKey = videoService.uploadVideo("services", saved.getId(), videoFile);
         saved.setVideoKey(videoKey);
-        return serviceMapper.toResponse(saved);
+
+        ServiceResponse serviceResponse = serviceMapper.toResponse(saved);
+        serviceResponse.setVideoUrl(videoService.preSignedUrl(videoKey, 60));
+
+        return serviceResponse;
     }
 
     @Override
@@ -75,7 +79,10 @@ public class ServiceItemServiceImpl implements ServiceItemService {
             String videoKey = videoService.uploadVideo("services", service.getId(), videoFile);
             service.setVideoKey(videoKey);
         }
-        return serviceMapper.toResponse(service);
+        ServiceResponse serviceResponse = serviceMapper.toResponse(service);
+        serviceResponse.setVideoUrl(videoService.preSignedUrl(service.getVideoKey(), 60));
+
+        return serviceResponse;
     }
 
     @Override
@@ -83,7 +90,10 @@ public class ServiceItemServiceImpl implements ServiceItemService {
         Services service = serviceItemRepository.findById(serviceId)
                 .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_NOT_EXISTED));
 
-        return serviceMapper.toResponse(service);
+        ServiceResponse serviceResponse = serviceMapper.toResponse(service);
+        serviceResponse.setVideoUrl(videoService.preSignedUrl(service.getVideoKey(), 60));
+
+        return serviceResponse;
     }
 
     @Transactional
@@ -105,7 +115,11 @@ public class ServiceItemServiceImpl implements ServiceItemService {
         packageServiceRepository.updateStatusByServiceId(serviceId, service.getStatus());
 
         Services saved = serviceItemRepository.save(service);
-        return serviceMapper.toResponse(saved);
+
+        ServiceResponse serviceResponse = serviceMapper.toResponse(saved);
+        serviceResponse.setVideoUrl(videoService.preSignedUrl(saved.getVideoKey(), 60));
+
+        return serviceResponse;
     }
 
     @Override
@@ -156,7 +170,11 @@ public class ServiceItemServiceImpl implements ServiceItemService {
 
         List<ServiceResponse> responses = page.getContent()
                 .stream()
-                .map(serviceMapper::toResponse)
+                .map(services -> {
+                    ServiceResponse serviceResponse = serviceMapper.toResponse(services);
+                    serviceResponse.setVideoUrl(videoService.preSignedUrl(services.getVideoKey(), 60));
+                    return serviceResponse;
+                })
                 .collect(Collectors.toList());
 
         return new SimplePage<>(
