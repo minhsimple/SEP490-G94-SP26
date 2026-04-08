@@ -7,6 +7,7 @@ export interface Service {
     code?: string;
     name?: string;
     description?: string;
+    video_key?: string;
     unit?: string;
     basePrice?: number;
     locationId?: number;
@@ -89,6 +90,7 @@ export class ServiceService {
         code?: string;
         name: string;
         description?: string;
+        video_key?: string;
         unit?: string;
         basePrice?: number;
         locationId?: number;
@@ -102,6 +104,7 @@ export class ServiceService {
         code?: string;
         name?: string;
         description?: string;
+        video_key?: string;
         unit?: string;
         basePrice?: number;
         locationId?: number;

@@ -92,6 +92,10 @@ import { LocationService } from '../service/location.service';
                                     {{ isInactive(service.status) ? 'Không hoạt động' : 'Đang cung cấp' }}
                                 </span>
                             </div>
+                            <div class="detail-info-item">
+                                <span class="text-500 text-sm">Video key</span>
+                                <span class="font-semibold text-900">{{ service.video_key || '-' }}</span>
+                            </div>
                         </div>
                     </div>
 
@@ -169,6 +173,11 @@ import { LocationService } from '../service/location.service';
                         <div>
                             <label class="block font-semibold mb-2 text-sm">Mô tả</label>
                             <textarea pTextarea [(ngModel)]="editingService.description" rows="3" fluid class="w-full"></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-2 text-sm">Video key</label>
+                            <input type="text" pInputText [(ngModel)]="editingService.video_key" fluid />
                         </div>
 
                         <div class="flex items-center justify-between py-2 px-3 border-round"
@@ -398,6 +407,7 @@ export class ServiceDetailComponent implements OnInit {
             code: this.editingService.code,
             name: this.editingService.name,
             description: this.editingService.description,
+            video_key: this.editingService.video_key,
             unit: this.editingService.unit,
             basePrice: this.editingService.basePrice ?? 0,
             locationId: this.editingService.locationId,

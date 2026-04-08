@@ -268,6 +268,17 @@ interface Column {
                             ></textarea>
                         </div>
 
+                        <div>
+                            <label class="block font-semibold mb-2 text-sm">Video key</label>
+                            <input
+                                type="text"
+                                pInputText
+                                [(ngModel)]="newService.video_key"
+                                fluid
+                                placeholder="Nhập video key"
+                            />
+                        </div>
+
                         <div class="flex items-center justify-between py-2 px-3 border-round"
                              style="background: #f8fafc; border: 1px solid #e2e8f0;">
                             <span class="font-semibold text-sm text-700">Trạng thái hoạt động</span>
@@ -369,6 +380,17 @@ interface Column {
                                 fluid
                                 class="w-full"
                             ></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block font-semibold mb-2 text-sm">Video key</label>
+                            <input
+                                type="text"
+                                pInputText
+                                [(ngModel)]="editedService.video_key"
+                                fluid
+                                placeholder="Nhập video key"
+                            />
                         </div>
 
                         <div class="flex items-center justify-between py-2 px-3 border-round"
@@ -608,6 +630,7 @@ const payload = {
     code:        this.newService.code,  // ← UUID đã được gen sẵn
     name:        this.newService.name!,
     description: this.newService.description,
+    video_key:   this.newService.video_key,
     unit:        this.newService.unit,
     basePrice:   this.newService.basePrice ?? 0,
     locationId:  this.newService.locationId
@@ -655,6 +678,7 @@ const payload = {
     code:        this.editedService.code ?? this.generateUUID(), // ← fallback nếu record cũ không có code
     name:        this.editedService.name,
     description: this.editedService.description,
+    video_key:   this.editedService.video_key,
     unit:        this.editedService.unit,
     basePrice:   this.editedService.basePrice,
     locationId:  this.editedService.locationId
