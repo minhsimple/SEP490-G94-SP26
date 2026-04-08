@@ -169,8 +169,8 @@ import { Payment, PaymentService } from '../service/payment.service';
             border-radius: 10px;
             background: #ffffff;
             overflow: hidden;
-            padding: 1rem;            
-        }        
+            padding: 1rem;
+        }
         .contract-summary {
             color: #64748b;
             margin-bottom: 0.75rem;
@@ -262,6 +262,38 @@ import { Payment, PaymentService } from '../service/payment.service';
             line-height: 1.45;
             font-size: 10pt;
         }
+        .btn-setup {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #475569;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            white-space: nowrap;
+        }
+        .btn-setup:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+        .seat-card-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem 0;
+            color: #94a3b8;
+        }
+        .seat-card-empty i {
+            font-size: 2rem;
+            color: #cbd5e1;
+        }
         @media (max-width: 992px) {
             .layout {
                 grid-template-columns: 1fr;
@@ -327,6 +359,7 @@ import { Payment, PaymentService } from '../service/payment.service';
 
             <div class="layout">
                 <div>
+                    <!-- Thông tin tiệc cưới -->
                     <div class="card" style="margin-bottom:1rem">
                         <h2 class="section-title">Thông tin tiệc cưới</h2>
                         <div class="meta-grid">
@@ -378,6 +411,7 @@ import { Payment, PaymentService } from '../service/payment.service';
                         </div>
                     </div>
 
+                    <!-- Thông tin khách hàng -->
                     <div class="card" style="margin-bottom:1rem">
                         <h2 class="section-title">Thông tin khách hàng</h2>
                         <div class="muted">Người liên hệ</div>
@@ -404,6 +438,23 @@ import { Payment, PaymentService } from '../service/payment.service';
                         <div class="value" style="margin-top:0.3rem; font-weight:500">{{ customer?.address || '-' }}</div>
                     </div>
 
+                    <!-- Layout chỗ ngồi -->
+                    <div class="card" style="margin-bottom:1rem">
+                        <div class="line" style="align-items:center; justify-content:space-between; margin:0 0 0.75rem">
+                            <h2 class="section-title" style="margin:0">Layout chỗ ngồi</h2>
+                            <button class="btn-setup" (click)="openSeatLayout()">
+                                <i class="pi pi-table" style="font-size:0.8rem"></i>
+                                Thiết lập
+                            </button>
+                        </div>
+                        <div class="seat-card-empty">
+                            <i class="pi pi-stop"></i>
+                            <span style="font-size:0.88rem">Chưa có sơ đồ chỗ ngồi</span>
+                            <span style="font-size:0.78rem">Nhấn "Thiết lập" để cấu hình layout</span>
+                        </div>
+                    </div>
+
+                    <!-- Lịch sử thanh toán -->
                     <div class="card">
                         <h2 class="section-title">Lịch sử thanh toán</h2>
                         <div class="muted">Các đợt thanh toán đã ghi nhận</div>
@@ -411,7 +462,9 @@ import { Payment, PaymentService } from '../service/payment.service';
                             <div class="line" *ngFor="let p of paymentHistory" style="align-items:flex-start">
                                 <span>
                                     {{ p.code || ('TT-' + p.id) }}
-                                    <small class="muted" style="display:block; margin-top:0.15rem">{{ formatDate(p.paymentDate || p.createdAt) }} - {{ paymentMethodLabel(p.method) }}</small>
+                                    <small class="muted" style="display:block; margin-top:0.15rem">
+                                        {{ formatDate(p.paymentDate || p.createdAt) }} - {{ paymentMethodLabel(p.method) }}
+                                    </small>
                                 </span>
                                 <strong [style.color]="isPaidState(p.status || p.paymentState) ? '#16a34a' : '#b45309'">
                                     {{ formatPrice(p.amount) }}
@@ -425,6 +478,7 @@ import { Payment, PaymentService } from '../service/payment.service';
                 </div>
 
                 <div>
+                    <!-- Tổng quan thanh toán -->
                     <div class="card" style="margin-bottom:1rem">
                         <h2 class="section-title">Tổng quan thanh toán</h2>
                         <div class="line" *ngIf="setMenuName || booking.setMenuId"><span>Set menu</span><strong>{{ setMenuName || ('#' + booking.setMenuId) }}</strong></div>
@@ -440,6 +494,7 @@ import { Payment, PaymentService } from '../service/payment.service';
                         <div class="progress"><div class="progress-fill" [style.width.%]="progressPercent"></div></div>
                     </div>
 
+                    <!-- Hoá đơn -->
                     <div class="card" style="margin-bottom:1rem">
                         <h2 class="section-title">Hoá đơn</h2>
 
@@ -486,6 +541,7 @@ import { Payment, PaymentService } from '../service/payment.service';
                         </ng-template>
                     </div>
 
+                    <!-- Hợp đồng -->
                     <div class="card">
                         <h2 class="section-title">Hợp đồng</h2>
                         <div class="contract-shell">
@@ -499,6 +555,7 @@ import { Payment, PaymentService } from '../service/payment.service';
                 </div>
             </div>
 
+            <!-- Contract modal -->
             <div class="contract-overlay" *ngIf="contractDialogVisible" (click)="closeContractDialog()">
                 <div class="contract-modal" (click)="$event.stopPropagation()">
                     <div class="contract-modal-header">
@@ -552,6 +609,8 @@ export class BookingDetailComponent implements OnInit {
     contractZoom = 1;
     zoomPercent = 100;
 
+    showSeatLayout = false;
+
     constructor(
         private route: ActivatedRoute,
         private router: Router,
@@ -573,7 +632,6 @@ export class BookingDetailComponent implements OnInit {
             this.goBack();
             return;
         }
-
         this.loadDetail(id);
     }
 
@@ -584,18 +642,10 @@ export class BookingDetailComponent implements OnInit {
             next: (res) => {
                 this.booking = res.data;
 
-                if (this.booking?.customerId) {
-                    this.loadCustomer(this.booking.customerId);
-                }
-                if (this.booking?.hallId) {
-                    this.loadHall(this.booking.hallId);
-                }
-                if (this.booking?.setMenuId) {
-                    this.loadSetMenu(this.booking.setMenuId);
-                }
-                if (this.booking?.packageId) {
-                    this.loadPackage(this.booking.packageId);
-                }
+                if (this.booking?.customerId) this.loadCustomer(this.booking.customerId);
+                if (this.booking?.hallId) this.loadHall(this.booking.hallId);
+                if (this.booking?.setMenuId) this.loadSetMenu(this.booking.setMenuId);
+                if (this.booking?.packageId) this.loadPackage(this.booking.packageId);
                 if (this.booking?.id) {
                     this.loadInvoicePreview(this.booking.id);
                     this.loadPaymentHistory(this.booking.id);
@@ -617,6 +667,11 @@ export class BookingDetailComponent implements OnInit {
                 this.goBack();
             },
         });
+    }
+
+    openSeatLayout(): void {
+        if (!this.booking?.id) return;
+        this.router.navigate(['/pages/seat-layout', this.booking.id]);
     }
 
     private loadInvoicePreview(contractId: number) {
@@ -649,9 +704,7 @@ export class BookingDetailComponent implements OnInit {
                             };
                             this.cdr.detectChanges();
                         },
-                        error: () => {
-                            this.cdr.detectChanges();
-                        },
+                        error: () => { this.cdr.detectChanges(); },
                     });
                 }
             },
@@ -678,17 +731,11 @@ export class BookingDetailComponent implements OnInit {
                     note: p.note,
                 }));
 
-                // Only successful payments are recorded in contract payment history table.
                 this.paymentHistory = mappedPayments.filter((p) => this.isPaidState(p.status ?? p.paymentState));
-
-                this.paidAmount = this.paymentHistory
-                    .reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+                this.paidAmount = this.paymentHistory.reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
 
                 if (this.invoicePreview) {
-                    this.invoicePreview = {
-                        ...this.invoicePreview,
-                        paidAmount: this.paidAmount,
-                    };
+                    this.invoicePreview = { ...this.invoicePreview, paidAmount: this.paidAmount };
                 }
 
                 this.recalculatePaymentSummary();
@@ -707,36 +754,19 @@ export class BookingDetailComponent implements OnInit {
     }
 
     invoiceStateLabel(value?: string): string {
-        return {
-            UNPAID: 'Chưa thanh toán',
-            PARTIAL: 'Thanh toán một phần',
-            PAID: 'Đã thanh toán',
-        }[value ?? ''] ?? (value || '-');
+        return { UNPAID: 'Chưa thanh toán', PARTIAL: 'Thanh toán một phần', PAID: 'Đã thanh toán' }[value ?? ''] ?? (value || '-');
     }
 
     invoiceStateBg(value?: string): string {
-        return {
-            UNPAID: '#fee2e2',
-            PARTIAL: '#fef3c7',
-            PAID: '#dcfce7',
-        }[value ?? ''] ?? '#e2e8f0';
+        return { UNPAID: '#fee2e2', PARTIAL: '#fef3c7', PAID: '#dcfce7' }[value ?? ''] ?? '#e2e8f0';
     }
 
     invoiceStateColor(value?: string): string {
-        return {
-            UNPAID: '#b91c1c',
-            PARTIAL: '#92400e',
-            PAID: '#166534',
-        }[value ?? ''] ?? '#334155';
+        return { UNPAID: '#b91c1c', PARTIAL: '#92400e', PAID: '#166534' }[value ?? ''] ?? '#334155';
     }
 
     resolveInvoiceCreatedAt(invoice?: any): string {
-        return invoice?.createdAt
-            ?? invoice?.created_at
-            ?? invoice?.createdDate
-            ?? invoice?.createAt
-            ?? invoice?.invoiceDate
-            ?? new Date().toISOString();
+        return invoice?.createdAt ?? invoice?.created_at ?? invoice?.createdDate ?? invoice?.createAt ?? invoice?.invoiceDate ?? new Date().toISOString();
     }
 
     private loadCustomer(customerId: number) {
@@ -747,9 +777,7 @@ export class BookingDetailComponent implements OnInit {
                 this.updateContractPreview();
                 this.cdr.detectChanges();
             },
-            error: () => {
-                this.cdr.detectChanges();
-            },
+            error: () => { this.cdr.detectChanges(); },
         });
     }
 
@@ -779,9 +807,7 @@ export class BookingDetailComponent implements OnInit {
                 this.recalculatePaymentSummary();
                 this.cdr.detectChanges();
             },
-            error: () => {
-                this.cdr.detectChanges();
-            },
+            error: () => { this.cdr.detectChanges(); },
         });
     }
 
@@ -795,9 +821,7 @@ export class BookingDetailComponent implements OnInit {
                 this.updateContractPreview();
                 this.cdr.detectChanges();
             },
-            error: () => {
-                this.cdr.detectChanges();
-            },
+            error: () => { this.cdr.detectChanges(); },
         });
     }
 
@@ -815,7 +839,6 @@ export class BookingDetailComponent implements OnInit {
             : 0;
 
         this.totalAmount = computedTotal > 0 ? computedTotal : this.apiTotalAmount;
-
         this.remainingAmount = Math.max(this.totalAmount - this.paidAmount, 0);
         this.progressPercent = this.totalAmount > 0
             ? Math.min(100, Math.max(0, Math.round((this.paidAmount / this.totalAmount) * 100)))
@@ -863,7 +886,6 @@ export class BookingDetailComponent implements OnInit {
         const shift = this.shiftLabel(this.booking.bookingTime ?? this.booking.shift);
         const invoiceCode = this.invoicePreview?.code || (this.invoicePreview?.id ? `INV-${this.invoicePreview.id}` : '-');
         const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
-        const guests = Number(this.booking.expectedGuests ?? this.booking.guestCount ?? 0);
         const amount = this.totalAmount > 0 ? this.totalAmount : this.apiTotalAmount;
         const hallAmount = this.hallPrice;
         const setMenuAmount = tables > 0 ? this.setMenuPrice * tables : 0;
@@ -986,25 +1008,11 @@ export class BookingDetailComponent implements OnInit {
         `;
     }
 
-    openContractDialog() {
-        this.contractDialogVisible = true;
-    }
-
-    closeContractDialog() {
-        this.contractDialogVisible = false;
-    }
-
-    zoomIn() {
-        this.setZoom(this.contractZoom + 0.1);
-    }
-
-    zoomOut() {
-        this.setZoom(this.contractZoom - 0.1);
-    }
-
-    resetZoom() {
-        this.setZoom(1);
-    }
+    openContractDialog() { this.contractDialogVisible = true; }
+    closeContractDialog() { this.contractDialogVisible = false; }
+    zoomIn() { this.setZoom(this.contractZoom + 0.1); }
+    zoomOut() { this.setZoom(this.contractZoom - 0.1); }
+    resetZoom() { this.setZoom(1); }
 
     private setZoom(value: number) {
         this.contractZoom = Math.min(2, Math.max(0.5, Number(value.toFixed(2))));
@@ -1032,13 +1040,7 @@ export class BookingDetailComponent implements OnInit {
                 <style>
                     @page { size: A4; margin: 12mm; }
                     body { margin: 0; font-family: 'Times New Roman', serif; background: #fff; }
-                    .paper {
-                        width: 210mm;
-                        min-height: 297mm;
-                        margin: 0 auto;
-                        box-sizing: border-box;
-                        padding: 18mm 16mm;
-                    }
+                    .paper { width: 210mm; min-height: 297mm; margin: 0 auto; box-sizing: border-box; padding: 18mm 16mm; }
                     table { width: 100%; border-collapse: collapse; }
                     td, th { border: 1px solid #d1d5db; padding: 6px; vertical-align: top; }
                     p { margin: 0 0 6px; line-height: 1.45; font-size: 10pt; }
@@ -1050,11 +1052,7 @@ export class BookingDetailComponent implements OnInit {
             </head>
             <body>
                 <div class="paper">${this.contractPreviewRawHtml}</div>
-                <script>
-                    window.onload = function () {
-                        window.print();
-                    };
-                <\/script>
+                <script>window.onload = function () { window.print(); };<\/script>
             </body>
             </html>
         `;
@@ -1064,9 +1062,7 @@ export class BookingDetailComponent implements OnInit {
         printWindow.document.close();
     }
 
-    goBack() {
-        this.router.navigate(['/pages/booking']);
-    }
+    goBack() { this.router.navigate(['/pages/booking']); }
 
     shiftLabel(value?: string): string {
         const map: Record<string, string> = {
@@ -1091,23 +1087,11 @@ export class BookingDetailComponent implements OnInit {
     }
 
     statusBg(value?: string): string {
-        const map: Record<string, string> = {
-            DRAFT: '#fef3c7',
-            ACTIVE: '#dcfce7',
-            LIQUIDATED: '#dbeafe',
-            CANCELLED: '#fee2e2',
-        };
-        return map[value ?? ''] ?? '#e2e8f0';
+        return { DRAFT: '#fef3c7', ACTIVE: '#dcfce7', LIQUIDATED: '#dbeafe', CANCELLED: '#fee2e2' }[value ?? ''] ?? '#e2e8f0';
     }
 
     statusColor(value?: string): string {
-        const map: Record<string, string> = {
-            DRAFT: '#92400e',
-            ACTIVE: '#166534',
-            LIQUIDATED: '#1d4ed8',
-            CANCELLED: '#b91c1c',
-        };
-        return map[value ?? ''] ?? '#334155';
+        return { DRAFT: '#92400e', ACTIVE: '#166534', LIQUIDATED: '#1d4ed8', CANCELLED: '#b91c1c' }[value ?? ''] ?? '#334155';
     }
 
     formatDate(value?: string): string {
