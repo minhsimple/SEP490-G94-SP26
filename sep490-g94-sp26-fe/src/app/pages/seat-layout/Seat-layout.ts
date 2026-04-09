@@ -1,409 +1,660 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
-import { CheckboxModule } from 'primeng/checkbox';
 import { MessageService } from 'primeng/api';
-import { BookingService, Booking } from '../service/booking.service';
+import { BookingService, Booking, BookingUpsertPayload, TableLayoutRequest } from '../service/booking.service';
 
-export interface ZoneConfig {
+interface ZoneGroup {
     id: string;
-    label: string;           // "Khu A", "Khu B", ...
-    tableCount: number;
-    side: 'GROOM' | 'BRIDE'; // Nhà trai / Nhà gái
-    guestGroup: 'FAMILY' | 'FRIENDS' | 'COLLEAGUE' | 'OTHER';
-    color: 'blue' | 'pink';
+    groupName: string;
+    numberOfTables: number;
+    colorIndex: number;
+}
+
+interface SeatZone {
+    id: string;
+    enumKey: string;
+    label: string;
+    groups: ZoneGroup[];
+    collapsed: boolean;
+    expectedTables: number;
+}
+
+interface ZoneDetailGroup {
+    groupName: string;
+    count: number;
+    start: number;
+    end: number;
+    seats: number[];
+    colorIndex: number;
+}
+
+interface ZoneDetailSection {
+    zoneLabel: string;
+    groups: ZoneDetailGroup[];
 }
 
 @Component({
     selector: 'app-seat-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule, ButtonModule, ToastModule, CheckboxModule],
+    imports: [CommonModule, FormsModule, ButtonModule, ToastModule],
     providers: [MessageService, BookingService],
     styles: [`
-        :host {
-            display: block;
-            font-family: 'Segoe UI', sans-serif;
-        }
-
-        /* ── Page header ── */
         .page-header {
             display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem 1.5rem 0.75rem;
-            border-bottom: 1px solid #e8edf3;
-            background: #fff;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
         }
-        .page-title {
-            font-size: 1.1rem;
+        .page-header-left {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        .page-header h1 {
+            font-size: 1.25rem;
             font-weight: 700;
             color: #1e293b;
             margin: 0;
         }
-        .page-subtitle {
+        .page-header p {
             font-size: 0.82rem;
             color: #64748b;
-            margin-top: 0.1rem;
+            margin: 0.15rem 0 0;
         }
-        .spacer { flex: 1; }
-        .btn-save {
-            background: #2563eb;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 0.5rem 1.25rem;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
+        .header-actions {
             display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            transition: background 0.15s;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
-        .btn-save:hover { background: #1d4ed8; }
-
-        /* ── Info bar ── */
-        .info-bar {
-            display: flex;
-            gap: 1rem;
-            padding: 1rem 1.5rem;
+        .layout-content {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 1.5rem;
+            align-items: start;
+        }
+        .section-card {
             background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
         }
-        .info-card {
-            flex: 1;
-            border: 1px solid #e2e8f0;
+
+        .canvas {
             border-radius: 10px;
-            padding: 0.6rem 1rem;
-        }
-        .info-card label {
-            font-size: 0.72rem;
-            color: #94a3b8;
-            display: block;
-            margin-bottom: 0.2rem;
-            font-weight: 500;
-        }
-        .info-card .info-value {
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 0.9rem;
+            background: #f8fafc;
+            border: 1px solid #eef2f7;
+            padding: 0.85rem;
         }
 
-        /* ── Layout canvas ── */
-        .layout-canvas {
-            padding: 1rem 1.5rem 2rem;
-            background: #f4f6f9;
-            min-height: calc(100vh - 200px);
-        }
-        .canvas-title {
-            font-weight: 600;
-            color: #1e293b;
-            font-size: 0.95rem;
-            margin-bottom: 1rem;
-        }
-
-        /* Stage */
-        .stage-row {
+        .stage-wrap {
             display: flex;
             justify-content: center;
-            margin-bottom: 1.25rem;
-        }
-        .stage-badge {
-            background: #fff;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 8px;
-            padding: 0.35rem 2.5rem;
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: #475569;
-            letter-spacing: 0.08em;
+            margin-bottom: 0.55rem;
         }
 
-        /* Zone grid */
-        .zones-grid {
+        .stage {
+            background: #e5e7eb;
+            color: #6b7280;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            letter-spacing: 0.03em;
+            padding: 0.45rem 2.8rem;
+        }
+
+        .zone-canvas-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1rem;
+            gap: 0.45rem;
         }
 
-        .zone-card {
-            border-radius: 14px;
-            padding: 1.25rem;
-            border: 1.5px solid transparent;
-        }
-        .zone-card.blue {
-            background: #eff6ff;
-            border-color: #bfdbfe;
-        }
-        .zone-card.pink {
-            background: #fff1f5;
-            border-color: #fecdd3;
-        }
-
-        .zone-header {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-        .zone-name {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #1e293b;
-            margin: 0;
-        }
-        .zone-table-count {
-            font-size: 0.82rem;
-            color: #64748b;
-            margin-top: 0.1rem;
-        }
-
-        .field-group {
-            margin-bottom: 0.75rem;
-        }
-        .field-label {
-            font-size: 0.75rem;
-            color: #64748b;
-            margin-bottom: 0.3rem;
-            font-weight: 500;
-        }
-        .field-select {
-            width: 100%;
-            padding: 0.4rem 0.65rem;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            color: #1e293b;
-            background: #fff;
-            appearance: none;
-            -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 0.65rem center;
-            cursor: pointer;
-        }
-        .field-select:focus {
-            outline: none;
-            border-color: #93c5fd;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
-        }
-
-        /* Chips */
-        .zone-chips {
+        .zone-canvas-item {
+            border: 2px dashed #d1d5db;
+            border-radius: 10px;
+            min-height: 220px;
+            background: #ffffff;
+            padding: 0.55rem 0.5rem;
             display: flex;
-            gap: 0.4rem;
-            flex-wrap: wrap;
-            margin-top: 0.5rem;
+            flex-direction: column;
         }
-        .zone-chip {
-            font-size: 0.72rem;
+
+        .zone-canvas-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.02rem;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .zone-canvas-header small {
+            font-size: 0.84rem;
+            color: #64748b;
             font-weight: 600;
-            padding: 0.22rem 0.6rem;
+        }
+
+        .dot-wrap {
+            flex: 1;
+            display: flex;
+            align-content: flex-start;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            padding: 0.3rem;
+        }
+
+        .dot {
+            width: 34px;
+            height: 34px;
             border-radius: 999px;
-        }
-        .zone-chip.blue {
-            background: #2563eb;
-            color: #fff;
-        }
-        .zone-chip.pink {
-            background: #fb7185;
-            color: #fff;
-        }
-        .zone-chip.outline {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.86rem;
+            font-weight: 700;
             background: #fff;
-            border: 1px solid #cbd5e1;
+            border: 2px solid #cbd5e1;
+            color: #334155;
+        }
+
+        .dot.family {
+            border-color: #fb923c;
+            background: #fff7ed;
+            color: #c2410c;
+        }
+
+        .dot.friends {
+            border-color: #4ade80;
+            background: #f0fdf4;
+            color: #15803d;
+        }
+
+        .dot.colleague {
+            border-color: #818cf8;
+            background: #eef2ff;
+            color: #4338ca;
+        }
+
+        .dot.other {
+            border-color: #94a3b8;
+            background: #f8fafc;
             color: #475569;
         }
 
-        /* Legend */
-        .legend-row {
+        /* Auto color variants */
+        .dot.color-0 { border-color: #fb923c; background: #fff7ed; color: #c2410c; }
+        .dot.color-1 { border-color: #4ade80; background: #f0fdf4; color: #15803d; }
+        .dot.color-2 { border-color: #818cf8; background: #eef2ff; color: #4338ca; }
+        .dot.color-3 { border-color: #f87171; background: #fee2e2; color: #991b1b; }
+        .dot.color-4 { border-color: #06b6d4; background: #ecf0f1; color: #0e7490; }
+        .dot.color-5 { border-color: #a78bfa; background: #f3f0ff; color: #5b21b6; }
+
+        .legend {
+            margin-top: 0.8rem;
             display: flex;
             justify-content: center;
-            gap: 1.25rem;
-            margin-top: 1.25rem;
-            padding-top: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            border: 2px solid #cbd5e1;
+            background: #fff;
+        }
+
+        .legend-dot.family { border-color: #fb923c; background: #fff7ed; }
+        .legend-dot.friends { border-color: #4ade80; background: #f0fdf4; }
+        .legend-dot.colleague { border-color: #818cf8; background: #eef2ff; }
+        .legend-dot.other { border-color: #94a3b8; background: #f8fafc; }
+
+        /* Auto color variants for legend */
+        .legend-dot.color-0 { border-color: #fb923c; background: #fff7ed; }
+        .legend-dot.color-1 { border-color: #4ade80; background: #f0fdf4; }
+        .legend-dot.color-2 { border-color: #818cf8; background: #eef2ff; }
+        .legend-dot.color-3 { border-color: #f87171; background: #fee2e2; }
+        .legend-dot.color-4 { border-color: #06b6d4; background: #ecf0f1; }
+        .legend-dot.color-5 { border-color: #a78bfa; background: #f3f0ff; }
+
+        .right-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+            position: sticky;
+            top: 1rem;
+        }
+
+        .zone-editor-card {
+            margin: 0;
+            overflow: hidden;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .zone-editor-card:last-child {
+            border-bottom: none;
+        }
+
+        .zone-editor-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0.9rem;
+            cursor: pointer;
+            background: #f8fafc;
+        }
+
+        .zone-editor-head:hover {
+            background: #f1f5f9;
+        }
+
+        .zone-editor-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .zone-editor-title small {
+            margin-left: 0.35rem;
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .zone-editor-body {
+            border-top: 1px solid #e2e8f0;
+            padding: 0.55rem 0.8rem 0.75rem;
+            background: #fff;
+        }
+
+        .group-row {
+            display: grid;
+            grid-template-columns: 1fr 58px 26px;
+            gap: 0.35rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .group-select,
+        .table-input {
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            height: 33px;
+            font-size: 0.95rem;
+            color: #334155;
+            padding: 0 0.55rem;
+            background: #fff;
+        }
+
+        .group-select:focus,
+        .table-input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .table-input {
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .trash-btn {
+            border: none;
+            background: transparent;
+            color: #111827;
+            cursor: pointer;
+            border-radius: 6px;
+            width: 26px;
+            height: 33px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .trash-btn:hover {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .add-row-btn {
+            border: none;
+            background: transparent;
+            color: #334155;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.2rem;
+            margin-left: 0.2rem;
+            font-size: 0.9rem;
+        }
+
+        .add-row-btn:hover:not(:disabled) {
+            color: #2563eb;
+        }
+
+        .add-row-btn:disabled {
+            cursor: not-allowed;
+            color: #cbd5e1;
+        }
+
+        .detail-btn-wrap {
+            padding: 0.8rem 0.7rem;
+            background: #f8fafc;
             border-top: 1px solid #e2e8f0;
         }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-            font-size: 0.78rem;
-            color: #64748b;
-        }
-        .legend-box {
-            width: 14px;
-            height: 14px;
-            border-radius: 3px;
-        }
-        .legend-box.blue  { background: #bfdbfe; border: 1.5px solid #93c5fd; }
-        .legend-box.pink  { background: #fecdd3; border: 1.5px solid #fda4af; }
 
-        /* Table count editor */
-        .table-count-row {
+        .detail-btn {
+            width: 100%;
+            border: none;
+            border-radius: 8px;
+            background: #ede9fe;
+            color: #1f2937;
+            font-weight: 700;
+            height: 37px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 200ms;
+        }
+
+        .detail-btn:hover {
+            background: #ddd6fe;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            z-index: 1200;
             display: flex;
             align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-card {
+            width: min(620px, 92vw);
+            max-height: 82vh;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: auto;
+            padding: 0.95rem 1.05rem 1rem;
+        }
+
+        .modal-head {
+            display: flex;
             justify-content: space-between;
-            background: rgba(255,255,255,0.65);
-            border-radius: 8px;
-            padding: 0.4rem 0.65rem;
+            align-items: center;
             margin-bottom: 0.75rem;
         }
-        .table-count-label { font-size: 0.78rem; color: #64748b; }
-        .table-count-controls {
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0;
+            color: #0f172a;
+        }
+
+        .icon-btn {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: #334155;
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            font-size: 1rem;
+        }
+
+        .icon-btn:hover {
+            background: #f1f5f9;
+        }
+
+        .modal-zone {
+            border-top: 1px solid #dbe3ec;
+            padding-top: 0.7rem;
+            margin-top: 0.7rem;
+        }
+
+        .modal-zone h4 {
+            margin: 0 0 0.45rem;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .modal-row {
+            margin-bottom: 0.58rem;
+        }
+
+        .modal-row-head {
             display: flex;
             align-items: center;
             gap: 0.4rem;
+            font-size: 0.95rem;
+            color: #0f172a;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
         }
-        .count-btn {
-            width: 24px; height: 24px;
-            border-radius: 50%;
-            border: 1px solid #d1d5db;
-            background: #fff;
-            font-size: 1rem;
-            line-height: 1;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-            color: #475569;
-            transition: background 0.12s;
-        }
-        .count-btn:hover { background: #f1f5f9; }
-        .count-val { font-weight: 700; font-size: 0.9rem; color: #1e293b; min-width: 20px; text-align: center; }
 
-        @media (max-width: 768px) {
-            .zones-grid { grid-template-columns: 1fr; }
-            .info-bar { flex-wrap: wrap; }
+        .seat-chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.42rem;
+        }
+
+        .seat-chip {
+            width: 39px;
+            height: 39px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border: 2px solid #cbd5e1;
+            background: #fff;
+            color: #334155;
+        }
+
+        .seat-chip.family { border-color: #fb923c; background: #fff7ed; color: #c2410c; }
+        .seat-chip.friends { border-color: #4ade80; background: #f0fdf4; color: #15803d; }
+        .seat-chip.colleague { border-color: #818cf8; background: #eef2ff; color: #4338ca; }
+        .seat-chip.other { border-color: #94a3b8; background: #f8fafc; color: #475569; }
+
+        .summary-card {
+            position: sticky;
+            top: 1rem;
+        }
+
+        @media (max-width: 1200px) {
+            .layout-content {
+                grid-template-columns: 1fr;
+            }
+            .right-card,
+            .summary-card {
+                position: static;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .zone-canvas-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-title {
+                font-size: 1.2rem;
+            }
+
+            .layout-content {
+                gap: 1rem;
+            }
         }
     `],
     template: `
         <p-toast />
 
-        <!-- Page header -->
         <div class="page-header">
-            <button class="count-btn" style="width:32px;height:32px;font-size:1.1rem" (click)="goBack()">
-                <i class="pi pi-arrow-left"></i>
-            </button>
-            <div>
-                <div class="page-title">Sơ đồ chỗ ngồi</div>
-                <div class="page-subtitle" *ngIf="booking">
-                    {{ booking.brideName || '-' }} &amp; {{ booking.groomName || '-' }}
-                    &nbsp;—&nbsp;{{ hallName || 'Sảnh #' + booking.hallId }}
-                    &nbsp;—&nbsp;{{ totalTables }} bàn
+            <div class="page-header-left">
+                <p-button icon="pi pi-arrow-left" [text]="true" severity="secondary" (onClick)="goBack()" />
+                <div>
+                    <h1>Thiết lập sơ đồ chỗ ngồi</h1>
+                    <p>Cấu hình bàn ngồi cho các khu vực</p>
                 </div>
             </div>
-            <div class="spacer"></div>
-            <button class="btn-save" (click)="saveLayout()">
-                <i class="pi pi-save"></i> Lưu
-            </button>
-        </div>
 
-        <!-- Info bar -->
-        <div class="info-bar">
-            <div class="info-card">
-                <label>Khách hàng</label>
-                <div class="info-value">{{ customerName || '-' }}</div>
-            </div>
-            <div class="info-card">
-                <label>Sảnh</label>
-                <div class="info-value">{{ hallName || (booking?.hallId ? 'Sảnh #' + booking?.hallId : '-') }}</div>
-            </div>
-            <div class="info-card">
-                <label>Tổng bàn</label>
-                <div class="info-value">{{ totalTables }} bàn</div>
-            </div>
-            <div class="info-card">
-                <label>Ngày tổ chức</label>
-                <div class="info-value">{{ formatDate(booking?.bookingDate) }}</div>
+            <div class="header-actions">
+                <p-button
+                    label="Xác nhận"
+                    icon="pi pi-check"
+                    (onClick)="saveLayout()"
+                />
             </div>
         </div>
 
-        <!-- Canvas -->
-        <div class="layout-canvas" *ngIf="!loading">
-            <div class="canvas-title">Sơ đồ bố trí {{ zones.length }} khu</div>
-
-            <!-- Stage -->
-            <div class="stage-row">
-                <div class="stage-badge">SÂN KHẤU</div>
-            </div>
-
-            <!-- Zones -->
-            <div class="zones-grid">
-                <div
-                    *ngFor="let z of zones"
-                    class="zone-card"
-                    [ngClass]="z.color"
-                >
-                    <div class="zone-header">
-                        <div class="zone-name">{{ z.label }}</div>
-                        <div class="zone-table-count">{{ z.tableCount }} bàn</div>
-                    </div>
-
-                    <!-- Table count -->
-                    <div class="table-count-row">
-                        <span class="table-count-label">Số bàn</span>
-                        <div class="table-count-controls">
-                            <button class="count-btn" (click)="decreaseTable(z)">−</button>
-                            <span class="count-val">{{ z.tableCount }}</span>
-                            <button class="count-btn" (click)="increaseTable(z)">+</button>
+        <ng-container *ngIf="!loading; else loadingTpl">
+        <div class="layout-content">
+            <div>
+                <div class="section-card">
+                    <div class="canvas">
+                        <div class="stage-wrap"><div class="stage">SÂN KHẤU</div></div>
+                        <div class="zone-canvas-grid">
+                            <div class="zone-canvas-item" *ngFor="let zone of zones">
+                                <div class="zone-canvas-header">
+                                    <span>{{ zone.label }}</span>
+                                    <small>{{ zoneTableCount(zone) }} bàn</small>
+                                </div>
+                                <div class="dot-wrap">
+                                    <span class="dot" [ngStyle]="groupColorStyle(group.colorIndex)" *ngFor="let group of zoneSeatDots(zone)">{{ group.no }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="legend">
+                            <span class="legend-item" *ngFor="let entry of legendGroups()">
+                                <i class="legend-dot" [ngStyle]="legendColorStyle(entry.colorIndex)"></i> {{ entry.groupName }}
+                            </span>
                         </div>
                     </div>
-
-                    <!-- Side dropdown -->
-                    <div class="field-group">
-                        <div class="field-label">Bên</div>
-                        <select class="field-select" [(ngModel)]="z.side" (ngModelChange)="onSideChange(z)">
-                            <option value="GROOM">Nhà trai</option>
-                            <option value="BRIDE">Nhà gái</option>
-                        </select>
-                    </div>
-
-                    <!-- Guest group dropdown -->
-                    <div class="field-group">
-                        <div class="field-label">Nhóm khách</div>
-                        <select class="field-select" [(ngModel)]="z.guestGroup">
-                            <option value="FAMILY">Người thân</option>
-                            <option value="FRIENDS">Bạn bè</option>
-                            <option value="COLLEAGUE">Đồng nghiệp</option>
-                            <option value="OTHER">Khác</option>
-                        </select>
-                    </div>
-
-                    <!-- Chips preview -->
-                    <div class="zone-chips">
-                        <span class="zone-chip" [ngClass]="z.color">{{ sideLabel(z.side) }}</span>
-                        <span class="zone-chip outline">{{ guestGroupLabel(z.guestGroup) }}</span>
-                    </div>
                 </div>
             </div>
 
-            <!-- Legend -->
-            <div class="legend-row">
-                <div class="legend-item">
-                    <div class="legend-box blue"></div>
-                    <span>Nhà trai</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-box pink"></div>
-                    <span>Nhà gái</span>
+            <div>
+                <div class="right-card">
+                    <div class="zone-editor-card" *ngFor="let zone of zones">
+                        <div class="zone-editor-head" (click)="toggleZone(zone)">
+                            <div class="zone-editor-title">{{ zone.label }} <small>{{ zoneTableCount(zone) }} bàn</small></div>
+                            <i class="pi" [class.pi-chevron-up]="!zone.collapsed" [class.pi-chevron-down]="zone.collapsed"></i>
+                        </div>
+                        <div class="zone-editor-body" *ngIf="!zone.collapsed">
+                            <div style="font-size: 0.82rem; color: #64748b; margin-bottom: 0.5rem;">
+                                Dự kiến: {{ zone.expectedTables }} bàn | Hiện tại: {{ zoneTableCount(zone) }} bàn
+                            </div>
+                            <div class="group-row" *ngFor="let row of zone.groups; let idx = index">
+                                <input class="group-select" type="text" [(ngModel)]="row.groupName" placeholder="Tên nhóm (vd: Người thân)" />
+                                <input 
+                                    class="table-input" 
+                                    type="number" 
+                                    min="1" 
+                                    [(ngModel)]="row.numberOfTables" 
+                                    (change)="normalizeRow(row, zone)"
+                                />
+                                <button class="trash-btn" (click)="removeGroup(zone, row)"><i class="pi pi-trash"></i></button>
+                            </div>
+                            <button 
+                                class="add-row-btn" 
+                                (click)="addGroup(zone)"
+                                [style.opacity]="canAddMoreTables(zone) ? '1' : '0.5'"
+                                [disabled]="!canAddMoreTables(zone)"
+                            >
+                                <i class="pi pi-plus"></i> Thêm nhóm
+                            </button>
+                        </div>
+                    </div>
+                    <div class="detail-btn-wrap">
+                        <button class="detail-btn" (click)="openDetailModal()">
+                            <i class="pi pi-list" style="margin-right:0.35rem"></i>
+                            Xem chi tiết bàn
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+        </ng-container>
 
-        <div *ngIf="loading" style="text-align:center; padding:3rem; color:#64748b">
-            Đang tải...
+        <ng-template #loadingTpl>
+            <div style="text-align:center; padding:3rem; color:#64748b">Đang tải...</div>
+        </ng-template>
+
+        <div class="modal-backdrop" *ngIf="showDetailModal" (click)="closeDetailModal()">
+            <div class="modal-card" (click)="$event.stopPropagation()">
+                <div class="modal-head">
+                    <h3 class="modal-title">Chi tiết sắp xếp bàn ({{ totalTables }} bàn)</h3>
+                    <button class="icon-btn" (click)="closeDetailModal()"><i class="pi pi-times"></i></button>
+                </div>
+
+                <div class="modal-zone" *ngFor="let section of detailSections()">
+                    <h4>{{ section.zoneLabel }}</h4>
+                    <div class="modal-row" *ngFor="let row of section.groups">
+                        <div class="modal-row-head">
+                            <i class="legend-dot" [ngStyle]="legendColorStyle(row.colorIndex)"></i>
+                            <span>{{ row.groupName }}</span>
+                            <small style="color:#64748b; font-weight:600;">- Bàn {{ row.start }}-{{ row.end }} ({{ row.count }} bàn)</small>
+                        </div>
+                        <div class="seat-chip-list">
+                            <span class="seat-chip" [ngStyle]="groupColorStyle(row.colorIndex)" *ngFor="let seat of row.seats">{{ seat }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     `,
 })
 export class SeatLayoutComponent implements OnInit {
+    @Input() bookingId: number | null = null;
+    @Input() embeddedMode = false;
+    @Input() draftBooking: Partial<Booking> | null = null;
+    @Input() draftCustomerName = '';
+    @Input() draftHallName = '';
+    @Output() requestClose = new EventEmitter<void>();
+
     loading = false;
     booking: Booking | null = null;
     customerName = '';
     hallName = '';
+    showDetailModal = false;
 
-    zones: ZoneConfig[] = [];
+    private returnUrl = '/pages/booking';
+    private draftTableLayoutRequest: TableLayoutRequest | null = null;
+
+    zones: SeatZone[] = [];
+    totalExpectedTables = 0;
+    private colorStyleCache = new Map<number, { border: string; background: string; text: string }>();
 
     get totalTables(): number {
-        return this.zones.reduce((s, z) => s + z.tableCount, 0);
+        return this.zones.reduce((sum, zone) => sum + this.zoneTableCount(zone), 0);
     }
 
     constructor(
@@ -415,8 +666,38 @@ export class SeatLayoutComponent implements OnInit {
     ) {}
 
     ngOnInit() {
-        const id = Number(this.route.snapshot.paramMap.get('id'));
-        if (!Number.isFinite(id) || id <= 0) { this.goBack(); return; }
+        const navState = history.state ?? {};
+        if (typeof navState.returnUrl === 'string' && navState.returnUrl.trim()) {
+            this.returnUrl = navState.returnUrl;
+        }
+        this.draftTableLayoutRequest = navState?.draftTableLayoutRequest ?? null;
+
+        const routeId = Number(this.route.snapshot.paramMap.get('id'));
+        const id = Number(this.bookingId ?? routeId);
+        if (!Number.isFinite(id) || id <= 0) {
+            const stateDraftBooking = navState.draftBooking as Partial<Booking> | undefined;
+            const stateDraftCustomerName = String(navState.draftCustomerName ?? '');
+            const stateDraftHallName = String(navState.draftHallName ?? '');
+
+            if (this.embeddedMode || stateDraftBooking) {
+                this.booking = {
+                    id: 0,
+                    ...(stateDraftBooking ?? this.draftBooking),
+                } as Booking;
+                this.customerName = stateDraftCustomerName || this.draftCustomerName || '';
+                this.hallName = stateDraftHallName || this.draftHallName || this.booking?.hallName || '';
+                const total = Number(this.booking?.expectedTables ?? this.booking?.tableCount ?? 0);
+                if (this.draftTableLayoutRequest?.tableLayoutDetailRequestList?.length) {
+                    this.buildZonesFromRequest(this.draftTableLayoutRequest, total > 0 ? total : null);
+                } else {
+                    this.buildZones(total > 0 ? total : 20);
+                }
+                this.cdr.detectChanges();
+                return;
+            }
+            this.goBack();
+            return;
+        }
         this.loadBooking(id);
     }
 
@@ -425,70 +706,459 @@ export class SeatLayoutComponent implements OnInit {
         this.bookingService.getById(id).subscribe({
             next: (res) => {
                 this.booking = res.data;
-                const total = Number(this.booking?.expectedTables ?? this.booking?.tableCount ?? 0);
-                this.buildZones(total > 0 ? total : 28);
+                const expectedTotal = Number(this.booking?.expectedTables ?? this.booking?.tableCount ?? 0);
+                const fromResponse = this.extractLayoutRequest(this.booking);
+                if (fromResponse?.tableLayoutDetailRequestList?.length) {
+                    this.buildZonesFromRequest(fromResponse, expectedTotal > 0 ? expectedTotal : null);
+                } else if (this.draftTableLayoutRequest?.tableLayoutDetailRequestList?.length) {
+                    this.buildZonesFromRequest(this.draftTableLayoutRequest, expectedTotal > 0 ? expectedTotal : null);
+                } else {
+                    this.buildZones(expectedTotal > 0 ? expectedTotal : 20);
+                }
                 this.loading = false;
                 this.cdr.detectChanges();
             },
-            error: () => { this.loading = false; this.goBack(); },
+            error: () => {
+                this.loading = false;
+                this.goBack();
+            },
         });
     }
 
-    /** Chia đều tổng bàn thành 4 khu A-D */
     private buildZones(total: number) {
-        const base  = Math.floor(total / 4);
+        const base = Math.floor(total / 4);
         const extra = total % 4;
+        const counts = [base, base, base, base].map((v, i) => v + (i < extra ? 1 : 0));
 
-        const zoneSetup: Array<{ id: string; label: string; side: ZoneConfig['side']; group: ZoneConfig['guestGroup']; color: 'blue' | 'pink' }> = [
-            { id: 'A', label: 'Khu A', side: 'GROOM', group: 'FAMILY',   color: 'blue' },
-            { id: 'B', label: 'Khu B', side: 'GROOM', group: 'FRIENDS',  color: 'blue' },
-            { id: 'C', label: 'Khu C', side: 'BRIDE', group: 'FAMILY',   color: 'pink' },
-            { id: 'D', label: 'Khu D', side: 'BRIDE', group: 'FRIENDS',  color: 'pink' },
+        this.totalExpectedTables = total;
+        this.zones = [
+            this.newZone('A', counts[0]),
+            this.newZone('B', counts[1]),
+            this.newZone('C', counts[2]),
+            this.newZone('D', counts[3]),
+        ];
+    }
+
+    private newZone(id: 'A' | 'B' | 'C' | 'D', tables: number): SeatZone {
+        return {
+            id,
+            enumKey: `SIDE_${id}`,
+            label: `Khu ${id}`,
+            groups: tables > 0 ? [{ id: `${id}-1`, groupName: '', numberOfTables: Math.max(1, tables), colorIndex: 0 }] : [],
+            collapsed: id !== 'A',
+            expectedTables: tables,
+        };
+    }
+
+    private buildZonesFromRequest(request: TableLayoutRequest, expectedTotal?: number | null) {
+        const zones = [
+            this.newZone('A', 1),
+            this.newZone('B', 1),
+            this.newZone('C', 1),
+            this.newZone('D', 1),
         ];
 
-        this.zones = zoneSetup.map((z, i) => ({
-            id: z.id,
-            label: z.label,
-            tableCount: base + (i < extra ? 1 : 0),
-            side: z.side,
-            guestGroup: z.group,
-            color: z.color,
-        }));
+        for (const zone of zones) {
+            zone.groups = [];
+        }
+
+        let colorIndex = 0;
+        for (const item of request.tableLayoutDetailRequestList ?? []) {
+            const enumKey = String(item.tableLayoutEnum ?? '').toUpperCase();
+            const zone = zones.find((z) => z.enumKey === enumKey);
+            if (!zone) continue;
+            zone.groups.push({
+                id: `${zone.id}-${zone.groups.length + 1}`,
+                groupName: String(item.groupName ?? ''),
+                numberOfTables: Math.max(1, Number(item.numberOfTables ?? 1)),
+                colorIndex,
+            });
+            colorIndex++;
+        }
+
+        for (const zone of zones) {
+            if (zone.groups.length === 0) {
+                zone.groups = [];
+            }
+            zone.expectedTables = this.zoneTableCount(zone);
+            zone.collapsed = zone.id !== 'A';
+        }
+
+        this.zones = zones;
+        this.totalExpectedTables = Number.isFinite(Number(expectedTotal)) && Number(expectedTotal) > 0
+            ? Number(expectedTotal)
+            : this.totalTables;
     }
 
-    onSideChange(zone: ZoneConfig) {
-        zone.color = zone.side === 'GROOM' ? 'blue' : 'pink';
+    toggleZone(zone: SeatZone) {
+        zone.collapsed = !zone.collapsed;
     }
 
-    increaseTable(zone: ZoneConfig) { zone.tableCount++; }
-    decreaseTable(zone: ZoneConfig) { if (zone.tableCount > 1) zone.tableCount--; }
+    addGroup(zone: SeatZone) {
+        const colorIndex = this.nextColorIndex();
+        zone.groups.push({
+            id: `${zone.id}-${Date.now()}-${zone.groups.length}`,
+            groupName: '',
+            numberOfTables: 1,
+            colorIndex,
+        });
+    }
+
+    removeGroup(zone: SeatZone, row: ZoneGroup) {
+        if (zone.groups.length === 1) {
+            row.numberOfTables = Math.max(1, Number(row.numberOfTables ?? 1));
+            return;
+        }
+        zone.groups = zone.groups.filter((g) => g.id !== row.id);
+    }
+
+    normalizeRow(row: ZoneGroup, zone: SeatZone) {
+        const val = Number(row.numberOfTables ?? 1);
+        row.numberOfTables = Number.isFinite(val) && val > 0 ? Math.floor(val) : 1;
+        
+        const total = this.totalTables;
+        if (total > this.totalExpectedTables) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Cảnh báo',
+                detail: `Tổng số bàn đã vượt quá ${this.totalExpectedTables} bàn (hiện tại: ${total} bàn)`,
+                life: 3000,
+            });
+        }
+    }
+
+    canAddMoreTables(zone: SeatZone): boolean {
+        return this.totalTables < this.totalExpectedTables;
+    }
+
+    zoneTableCount(zone: SeatZone): number {
+        return zone.groups.reduce((sum, g) => sum + Math.max(1, Number(g.numberOfTables ?? 1)), 0);
+    }
+
+    zoneSeatDots(zone: SeatZone): Array<{ no: number; colorIndex: number }> {
+        const dots: Array<{ no: number; colorIndex: number }> = [];
+        let count = 0;
+        for (const group of zone.groups) {
+            const tables = Math.max(1, Number(group.numberOfTables ?? 1));
+            for (let i = 0; i < tables; i++) {
+                count += 1;
+                dots.push({ no: count, colorIndex: group.colorIndex });
+            }
+        }
+        return dots;
+    }
+
+    openDetailModal() {
+        this.showDetailModal = true;
+    }
+
+    closeDetailModal() {
+        this.showDetailModal = false;
+    }
+
+    detailSections(): ZoneDetailSection[] {
+        let seatCursor = 1;
+        return this.zones.map((zone) => {
+            const groups: ZoneDetailGroup[] = zone.groups.map((g) => {
+                const count = Math.max(1, Number(g.numberOfTables ?? 1));
+                const start = seatCursor;
+                const end = seatCursor + count - 1;
+                const seats = Array.from({ length: count }, (_, i) => seatCursor + i);
+                seatCursor = end + 1;
+                return {
+                    groupName: g.groupName || '(Không tên)',
+                    count,
+                    start,
+                    end,
+                    seats,
+                    colorIndex: g.colorIndex,
+                };
+            });
+            return { zoneLabel: zone.label, groups };
+        });
+    }
 
     saveLayout() {
-        // TODO: gọi API lưu zone layout
+        // Validate total tables
+        if (this.totalTables > this.totalExpectedTables) {
+            this.messageService.add({
+                severity: 'error',
+                summary: 'Lỗi',
+                detail: `Tổng số bàn vượt quá giới hạn (${this.totalExpectedTables} bàn). Hiện tại: ${this.totalTables} bàn`,
+                life: 4000,
+            });
+            return;
+        }
+
+        if (this.totalTables < this.totalExpectedTables) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Cảnh báo',
+                detail: `Vui lòng điền đủ số bàn (dự kiến: ${this.totalExpectedTables} bàn, hiện tại: ${this.totalTables} bàn)`,
+                life: 4000,
+            });
+            return;
+        }
+
+        const tableLayoutRequest = this.toTableLayoutRequest();
+
+        if (!this.embeddedMode && this.booking?.id && this.booking.id > 0) {
+            const payload = this.buildUpdatePayloadForLayout(tableLayoutRequest);
+            if (!payload) {
+                this.messageService.add({
+                    severity: 'warn',
+                    summary: 'Thiếu dữ liệu',
+                    detail: 'Không đủ dữ liệu để lưu layout vào hợp đồng.',
+                    life: 3000,
+                });
+                return;
+            }
+
+            this.loading = true;
+            this.bookingService.update(this.booking.id, payload).subscribe({
+                next: (res) => {
+                    this.loading = false;
+                    this.booking = res.data ?? this.booking;
+                    this.navigateBackWithLayout(tableLayoutRequest, true);
+                },
+                error: (err) => {
+                    this.loading = false;
+                    this.messageService.add({
+                        severity: 'error',
+                        summary: 'Lỗi',
+                        detail: err?.error?.message ?? 'Không thể lưu layout vào hệ thống',
+                        life: 3500,
+                    });
+                },
+            });
+            return;
+        }
+
+        if (!this.embeddedMode && this.returnUrl) {
+            this.navigateBackWithLayout(tableLayoutRequest, false);
+            return;
+        }
+
         this.messageService.add({
             severity: 'success',
             summary: 'Đã lưu',
-            detail: `Sơ đồ chỗ ngồi đã được lưu (${this.totalTables} bàn, ${this.zones.length} khu).`,
+            detail: `Sơ đồ chỗ ngồi đã được lưu (${this.totalTables} bàn).`,
             life: 3000,
         });
     }
 
     goBack() {
+        if (this.embeddedMode) {
+            this.requestClose.emit();
+            return;
+        }
+
+        if (this.returnUrl) {
+            this.router.navigateByUrl(this.returnUrl);
+            return;
+        }
+
         const id = this.route.snapshot.paramMap.get('id');
         if (id) this.router.navigate(['/pages/booking', id]);
         else this.router.navigate(['/pages/booking']);
     }
 
-    sideLabel(v: ZoneConfig['side']): string {
-        return v === 'GROOM' ? 'Nhà trai' : 'Nhà gái';
+    private toTableLayoutRequest(): TableLayoutRequest {
+        return {
+            tableLayoutDetailRequestList: this.zones.flatMap((zone) =>
+                zone.groups
+                    .filter((g) => Number(g.numberOfTables ?? 0) > 0)
+                    .map((g) => ({
+                        tableLayoutEnum: zone.enumKey,
+                        groupName: g.groupName || '(Không tên)',
+                        numberOfTables: Math.max(1, Number(g.numberOfTables ?? 1)),
+                    }))
+            ),
+        };
     }
 
-    guestGroupLabel(v: ZoneConfig['guestGroup']): string {
-        return { FAMILY: 'Người thân', FRIENDS: 'Bạn bè', COLLEAGUE: 'Đồng nghiệp', OTHER: 'Khác' }[v] ?? v;
+    legendGroups(): Array<{ groupName: string; colorIndex: number }> {
+        const nameCounts = new Map<string, number>();
+        for (const zone of this.zones) {
+            for (const group of zone.groups) {
+                const groupName = String(group.groupName ?? '').trim();
+                if (groupName && group.numberOfTables > 0) {
+                    const key = groupName.toLowerCase();
+                    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+                }
+            }
+        }
+
+        const displayCounts = new Map<string, number>();
+        const entries: Array<{ groupName: string; colorIndex: number }> = [];
+
+        for (const zone of this.zones) {
+            for (const group of zone.groups) {
+                const groupName = String(group.groupName ?? '').trim();
+                if (!groupName || group.numberOfTables <= 0) {
+                    continue;
+                }
+
+                const key = groupName.toLowerCase();
+                const totalByName = nameCounts.get(key) ?? 0;
+                let displayName = totalByName > 1 ? `${groupName} (${zone.label})` : groupName;
+
+                const displayKey = displayName.toLowerCase();
+                const seenDisplay = (displayCounts.get(displayKey) ?? 0) + 1;
+                displayCounts.set(displayKey, seenDisplay);
+                if (seenDisplay > 1) {
+                    displayName = `${displayName} #${seenDisplay}`;
+                }
+
+                entries.push({
+                    groupName: displayName,
+                    colorIndex: this.normalizeColorIndex(group.colorIndex),
+                });
+            }
+        }
+
+        return entries;
     }
 
-    formatDate(value?: string): string {
-        if (!value) return '-';
-        return new Date(value).toLocaleDateString('vi-VN');
+    groupColorStyle(colorIndex: number): Record<string, string> {
+        const token = this.resolveColorToken(colorIndex);
+        return {
+            'border-color': token.border,
+            background: token.background,
+            color: token.text,
+        };
+    }
+
+    legendColorStyle(colorIndex: number): Record<string, string> {
+        const token = this.resolveColorToken(colorIndex);
+        return {
+            'border-color': token.border,
+            background: token.background,
+        };
+    }
+
+    private nextColorIndex(): number {
+        let max = -1;
+        for (const zone of this.zones) {
+            for (const group of zone.groups) {
+                const current = this.normalizeColorIndex(group.colorIndex);
+                if (current > max) {
+                    max = current;
+                }
+            }
+        }
+        return max + 1;
+    }
+
+    private normalizeColorIndex(colorIndex: number): number {
+        const value = Number(colorIndex);
+        if (!Number.isFinite(value) || value < 0) {
+            return 0;
+        }
+        return Math.floor(value);
+    }
+
+    private resolveColorToken(colorIndex: number): { border: string; background: string; text: string } {
+        const key = this.normalizeColorIndex(colorIndex);
+        const cached = this.colorStyleCache.get(key);
+        if (cached) {
+            return cached;
+        }
+
+        // Golden-angle hue spacing keeps adjacent colors visually distinct as group count grows.
+        const hue = (key * 137.508) % 360;
+        const saturation = 70 + (key % 3) * 6;
+        const lightness = 90 - (Math.floor(key / 3) % 3) * 8;
+
+        const token = {
+            border: `hsl(${hue} ${Math.min(94, saturation + 6)}% ${Math.max(38, lightness - 26)}%)`,
+            background: `hsl(${hue} ${Math.min(90, saturation)}% ${Math.max(62, lightness)}%)`,
+            text: `hsl(${hue} ${Math.min(96, saturation + 8)}% ${Math.max(18, lightness - 54)}%)`,
+        };
+
+        this.colorStyleCache.set(key, token);
+        return token;
+    }
+
+    private extractLayoutRequest(booking: Booking | null): TableLayoutRequest | null {
+        const details = booking?.tableLayoutResponse?.tableLayoutDetails;
+        if (!details) return null;
+
+        const knownOrder = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
+        const knownItems = knownOrder.flatMap((key) => (details[key] ?? []).map((item) => ({ key, item })));
+        const fallbackItems = Object.entries(details)
+            .filter(([key]) => !knownOrder.includes(key))
+            .flatMap(([, arr]) => arr.map((item) => ({ item })));
+
+        const source = knownItems.length > 0 ? knownItems : fallbackItems;
+        if (source.length === 0) return null;
+
+        return {
+            tableLayoutDetailRequestList: source.map((entry, index) => ({
+                tableLayoutEnum: (entry as any).key ?? knownOrder[index % knownOrder.length],
+                groupName: String(entry.item?.groupName ?? 'Khách mời'),
+                numberOfTables: Number(entry.item?.numberOfTables ?? 1),
+            })),
+        };
+    }
+
+    private buildUpdatePayloadForLayout(tableLayoutRequest: TableLayoutRequest): BookingUpsertPayload | null {
+        const b = this.booking;
+        if (!b) return null;
+
+        const customerId = Number(b.customerId ?? 0);
+        const hallId = Number(b.hallId ?? 0);
+        const bookingDate = String(b.bookingDate ?? b.eventDate ?? '').trim();
+        const bookingTime = String(b.bookingTime ?? b.shift ?? '').trim();
+        const expectedTables = Number(b.expectedTables ?? b.tableCount ?? this.totalExpectedTables ?? this.totalTables ?? 0);
+        const expectedGuests = Number(b.expectedGuests ?? b.guestCount ?? 0);
+        const brideName = String(b.brideName ?? '').trim();
+        const groomName = String(b.groomName ?? '').trim();
+
+        if (!customerId || !hallId || !bookingDate || !bookingTime || !expectedTables || !expectedGuests || !brideName || !groomName) {
+            return null;
+        }
+
+        return {
+            customerId,
+            hallId,
+            bookingDate,
+            bookingTime,
+            expectedTables,
+            expectedGuests,
+            assignCoordinatorId: b.assignCoordinatorId ?? null,
+            packageId: b.packageId ?? null,
+            setMenuId: b.setMenuId ?? null,
+            salesId: b.salesId ?? null,
+            reservedUntil: b.reservedUntil ?? null,
+            notes: b.notes ?? undefined,
+            brideName,
+            brideAge: b.brideAge ?? null,
+            groomName,
+            groomAge: b.groomAge ?? null,
+            brideFatherName: b.brideFatherName ?? undefined,
+            brideMotherName: b.brideMotherName ?? undefined,
+            groomFatherName: b.groomFatherName ?? undefined,
+            groomMotherName: b.groomMotherName ?? undefined,
+            tableLayoutRequest,
+        };
+    }
+
+    private navigateBackWithLayout(tableLayoutRequest: TableLayoutRequest, savedToDb: boolean) {
+        try {
+            sessionStorage.setItem('bookingCreateTableLayoutDraft', JSON.stringify(tableLayoutRequest));
+            sessionStorage.setItem('bookingCreateTableLayoutSavedToDb', savedToDb ? '1' : '0');
+        } catch {
+            // Ignore storage failures.
+        }
+
+        this.router.navigateByUrl(this.returnUrl, {
+            state: {
+                tableLayoutRequest,
+                layoutSaved: true,
+                layoutSavedToDb: savedToDb,
+                tableLayoutSavedAt: Date.now(),
+            },
+        });
     }
 }

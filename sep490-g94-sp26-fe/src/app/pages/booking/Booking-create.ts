@@ -12,7 +12,7 @@ import { TextareaModule } from 'primeng/textarea';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { Booking, BookingService, BookingUpsertPayload } from '../service/booking.service';
+import { Booking, BookingService, BookingUpsertPayload, TableLayoutRequest } from '../service/booking.service';
 import { CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
 import { LocationService } from '../service/location.service';
@@ -216,6 +216,111 @@ interface SalesOption {
         .empty-state span {
             font-size: 0.82rem;
         }
+        .btn-setup {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.9rem;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #475569;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            white-space: nowrap;
+        }
+        .btn-setup:hover:not(:disabled) {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+        .btn-setup:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .seat-card-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem 0;
+            color: #94a3b8;
+        }
+        .seat-card-empty i {
+            font-size: 2rem;
+            color: #cbd5e1;
+        }
+        .layout-preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 0.4rem;
+        }
+        .layout-zone-card {
+            border: 2px solid #d6dde8;
+            border-radius: 8px;
+            padding: 0.8rem 0.75rem;
+            background: #f8fafc;
+        }
+        .layout-zone-header {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        .layout-zone-groups {
+            font-size: 0.78rem;
+            color: #475569;
+        }
+        .layout-group-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .layout-group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .layout-group-left {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            min-width: 0;
+            flex: 1;
+        }
+        .layout-group-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            border: 2px solid #cbd5e1;
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .layout-group-name {
+            font-weight: 500;
+            color: #334155;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .layout-group-count {
+            font-weight: 600;
+            color: #64748b;
+            white-space: nowrap;
+        }
+        .layout-zone-empty {
+            color: #cbd5e1;
+            font-style: italic;
+            font-size: 0.74rem;
+        }
         .summary-card {
             position: sticky;
             top: 1rem;
@@ -264,7 +369,8 @@ interface SalesOption {
             .two-col,
             .three-col,
             .menu-grid,
-            .person-grid {
+            .person-grid,
+            .layout-preview-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -525,6 +631,43 @@ interface SalesOption {
                 </div>
 
                 <div class="section-card">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin:0 0 0.75rem">
+                        <h2 class="section-title" style="margin:0">Layout chỗ ngồi</h2>
+                        <button class="btn-setup" (click)="openSeatLayout()">
+                            Chỉnh sửa
+                        </button>
+                    </div>
+                    <div *ngIf="layoutEntries.length > 0; else noLayoutPreview">
+                        <div class="layout-preview-grid">
+                            <div class="layout-zone-card" *ngFor="let zone of groupLayoutByZone()">
+                                <div class="layout-zone-header">{{ zone.zoneLabel }}</div>
+                                <div class="layout-zone-groups">
+                                    <div *ngIf="zone.groups.length > 0; else noGroupsInZone" class="layout-group-list">
+                                        <div class="layout-group-item" *ngFor="let group of zone.groups">
+                                            <span class="layout-group-left">
+                                                <i class="layout-group-dot" [ngStyle]="layoutLegendDotStyle(group.colorIndex)"></i>
+                                                <span class="layout-group-name">{{ group.groupName }}</span>
+                                            </span>
+                                            <span class="layout-group-count">Bàn {{ group.startSeat }}-{{ group.endSeat }} · {{ group.numberOfTables }} bàn</span>
+                                        </div>
+                                    </div>
+                                    <ng-template #noGroupsInZone>
+                                        <div class="layout-zone-empty">Không có nhóm</div>
+                                    </ng-template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <ng-template #noLayoutPreview>
+                    <div class="seat-card-empty">
+                        <i class="pi pi-stop"></i>
+                        <span style="font-size:0.88rem">Chưa có sơ đồ chỗ ngồi</span>
+                        <span style="font-size:0.78rem">Nhấn "Thiết lập" để cấu hình layout</span>
+                    </div>
+                    </ng-template>
+                </div>
+
+                <div class="section-card">
                     <div class="section-title">Ghi chú</div>
                     <textarea
                         pTextarea
@@ -611,9 +754,12 @@ interface SalesOption {
                 <div style="font-size:0.86rem">Màn hình sẽ hiển thị khi dữ liệu chi tiết và các lựa chọn liên quan đã sẵn sàng.</div>
             </div>
         </ng-template>
+
     `,
 })
 export class BookingCreateComponent implements OnInit {
+    private readonly createDraftStorageKey = 'bookingCreateFormDraft';
+
     bookingId: number | null = null;
     bookingCode = '';
     submitting = false;
@@ -638,6 +784,8 @@ export class BookingCreateComponent implements OnInit {
     selectedCustomer: CustomerOption | null = null;
     salesNameMap: Record<number, string> = {};
     saleRoleIds = new Set<number>();
+    tableLayoutRequestDraft: TableLayoutRequest | null = null;
+    private readonly layoutColorStyleCache = new Map<number, { border: string; background: string }>();
 
     shiftOptions = [
         { label: 'Ca sáng (10:00 - 14:00)', value: 'SLOT_1' },
@@ -656,6 +804,7 @@ export class BookingCreateComponent implements OnInit {
         packageId: Number(localStorage.getItem('packageId')) || null,
         setMenuId: null as number | null,
         salesId: Number(localStorage.getItem('userId')) || null,
+        assignCoordinatorId: null as number | null,
         reservedUntil: null as Date | null,
         notes: '',
         brideName: '',
@@ -686,6 +835,26 @@ export class BookingCreateComponent implements OnInit {
         return this.isSaleAccount && !this.isEditMode;
     }
 
+    get layoutEntries() {
+        return this.tableLayoutRequestDraft?.tableLayoutDetailRequestList ?? [];
+    }
+
+    get totalLayoutTables(): number {
+        return this.layoutEntries.reduce((sum, item) => sum + Number(item.numberOfTables ?? 0), 0);
+    }
+
+    get seatLayoutDraftBooking(): Partial<Booking> {
+        return {
+            hallId: this.form.hallId ?? undefined,
+            hallName: this.summary.hallName || undefined,
+            bookingDate: this.toISODate(this.form.bookingDate),
+            expectedTables: this.form.expectedTables,
+            tableCount: this.form.expectedTables,
+            brideName: this.form.brideName || undefined,
+            groomName: this.form.groomName || undefined,
+        };
+    }
+
     constructor(
         private http: HttpClient,
         private route: ActivatedRoute,
@@ -703,10 +872,45 @@ export class BookingCreateComponent implements OnInit {
     ) {}
 
     ngOnInit() {
+        const navState = history.state ?? {};
+        const stateLayout = navState?.tableLayoutRequest as TableLayoutRequest | undefined;
+
+        let storageLayout: TableLayoutRequest | null = null;
+        let storageSavedToDb = false;
+        try {
+            const rawLayout = sessionStorage.getItem('bookingCreateTableLayoutDraft');
+            if (rawLayout) {
+                storageLayout = JSON.parse(rawLayout) as TableLayoutRequest;
+            }
+            storageSavedToDb = sessionStorage.getItem('bookingCreateTableLayoutSavedToDb') === '1';
+            sessionStorage.removeItem('bookingCreateTableLayoutDraft');
+            sessionStorage.removeItem('bookingCreateTableLayoutSavedToDb');
+        } catch {
+            storageLayout = null;
+        }
+
+        const incomingLayout = stateLayout?.tableLayoutDetailRequestList?.length
+            ? stateLayout
+            : (storageLayout?.tableLayoutDetailRequestList?.length ? storageLayout : null);
+
+        if (incomingLayout) {
+            this.tableLayoutRequestDraft = incomingLayout;
+            this.messageService.add({
+                severity: 'success',
+                summary: 'Lưu thành công',
+                detail: (navState?.layoutSavedToDb || storageSavedToDb)
+                    ? 'Đã lưu layout vào hệ thống và cập nhật lên hợp đồng.'
+                    : 'Đã lưu layout tạm thời cho hợp đồng đang tạo.',
+                life: 2600,
+            });
+        }
+
         const id = Number(this.route.snapshot.paramMap.get('id'));
         if (Number.isFinite(id) && id > 0) {
             this.bookingId = id;
         }
+
+        this.restoreFormDraft();
 
         this.loadLocations();
         this.loadCurrentUserContext();
@@ -714,8 +918,6 @@ export class BookingCreateComponent implements OnInit {
 
         if (this.bookingId) {
             this.loadBooking(this.bookingId);
-        } else {
-            this.applySaleCreateDefaults();
         }
     }
 
@@ -776,10 +978,17 @@ export class BookingCreateComponent implements OnInit {
         }
 
         if (this.loggedInLocationId > 0) {
-            const needsReload = this.form.locationId !== this.loggedInLocationId || this.hallOptions.length === 0;
+            const isDifferentLocation = this.form.locationId !== this.loggedInLocationId;
             this.form.locationId = this.loggedInLocationId;
-            if (needsReload) {
+
+            if (isDifferentLocation) {
                 this.onLocationChange();
+                return;
+            }
+
+            if (this.hallOptions.length === 0) {
+                const selectedHallId = this.toNumberOrNull(this.form.hallId) ?? undefined;
+                this.loadHalls(this.loggedInLocationId, selectedHallId).subscribe(() => this.cdr.detectChanges());
             }
         }
     }
@@ -856,6 +1065,7 @@ export class BookingCreateComponent implements OnInit {
         this.form.packageId = this.toNumberOrNull(booking.packageId);
         this.form.setMenuId = this.toNumberOrNull(booking.setMenuId);
         this.form.salesId = this.toNumberOrNull(booking.salesId) ?? this.form.salesId;
+        this.form.assignCoordinatorId = this.toNumberOrNull(booking.assignCoordinatorId);
         if (this.form.salesId) {
             this.ensureSalesName(this.form.salesId);
         }
@@ -869,6 +1079,7 @@ export class BookingCreateComponent implements OnInit {
         this.form.brideMotherName = booking.brideMotherName ?? '';
         this.form.groomFatherName = booking.groomFatherName ?? '';
         this.form.groomMotherName = booking.groomMotherName ?? '';
+        this.tableLayoutRequestDraft = this.extractTableLayoutRequestFromBooking(booking);
     }
 
     private loadSalesOptions() {
@@ -1302,7 +1513,7 @@ export class BookingCreateComponent implements OnInit {
                 });
 
                 if (!this.isEditMode && booking?.id) {
-                    setTimeout(() => this.router.navigate(['/pages/booking', booking.id]), 800);
+                    setTimeout(() => this.router.navigate(['/pages/booking', booking.id, 'edit']), 800);
                 } else if (booking) {
                     this.patchFormFromBooking(booking);
                     this.bookingCode = booking.contractNo ?? booking.bookingNo ?? this.bookingCode;
@@ -1393,7 +1604,7 @@ export class BookingCreateComponent implements OnInit {
             ? this.loggedInUserId
             : this.form.salesId;
 
-        return {
+        const payload: BookingUpsertPayload = {
             customerId: this.form.customerId!,
             hallId: this.form.hallId!,
             bookingDate: this.toISODate(this.form.bookingDate)!,
@@ -1414,10 +1625,233 @@ export class BookingCreateComponent implements OnInit {
             groomFatherName: this.form.groomFatherName?.trim() || undefined,
             groomMotherName: this.form.groomMotherName?.trim() || undefined,
         };
+
+        payload.assignCoordinatorId = this.form.assignCoordinatorId ?? enforcedSalesId ?? null;
+        if (this.tableLayoutRequestDraft?.tableLayoutDetailRequestList?.length) {
+            payload.tableLayoutRequest = this.tableLayoutRequestDraft;
+        }
+
+        return payload;
     }
 
     goBack() {
         this.router.navigate(['/pages/booking']);
+    }
+
+    openSeatLayout() {
+        this.persistFormDraft();
+
+        if (this.bookingId) {
+            this.router.navigate(['/pages/seat-layout', this.bookingId], {
+                state: {
+                    returnUrl: this.router.url,
+                    draftTableLayoutRequest: this.tableLayoutRequestDraft,
+                }
+            });
+            return;
+        }
+
+        this.router.navigate(['/pages/seat-layout'], {
+            state: {
+                returnUrl: this.router.url,
+                draftBooking: this.seatLayoutDraftBooking,
+                draftCustomerName: this.selectedCustomer?.label || '',
+                draftHallName: this.summary.hallName || '',
+                draftTableLayoutRequest: this.tableLayoutRequestDraft,
+            }
+        });
+    }
+
+    private persistFormDraft() {
+        if (this.isEditMode) return;
+
+        const draft = {
+            ...this.form,
+            bookingDate: this.form.bookingDate ? this.form.bookingDate.toISOString() : null,
+            reservedUntil: this.form.reservedUntil ? this.form.reservedUntil.toISOString() : null,
+            selectedCustomer: this.selectedCustomer,
+            summary: this.summary,
+        };
+
+        try {
+            sessionStorage.setItem(this.createDraftStorageKey, JSON.stringify(draft));
+        } catch {
+            // Ignore storage failures.
+        }
+    }
+
+    private restoreFormDraft() {
+        if (this.isEditMode) return;
+
+        try {
+            const raw = sessionStorage.getItem(this.createDraftStorageKey);
+            if (!raw) return;
+
+            const draft = JSON.parse(raw);
+            sessionStorage.removeItem(this.createDraftStorageKey);
+
+            this.form = {
+                ...this.form,
+                ...draft,
+                bookingDate: draft?.bookingDate ? new Date(draft.bookingDate) : this.form.bookingDate,
+                reservedUntil: draft?.reservedUntil ? new Date(draft.reservedUntil) : this.form.reservedUntil,
+            };
+
+            if (draft?.selectedCustomer) {
+                this.selectedCustomer = draft.selectedCustomer;
+            }
+
+            if (draft?.summary) {
+                this.summary = { ...this.summary, ...draft.summary };
+            }
+
+            this.recalcEstimatedTotal();
+            this.restoreDraftSelectionContext();
+        } catch {
+            // Ignore invalid draft payload.
+        }
+    }
+
+    private restoreDraftSelectionContext() {
+        if (this.isEditMode) return;
+
+        const locationId = this.toNumberOrNull(this.form.locationId);
+        if (!locationId) {
+            return;
+        }
+
+        const hallId = this.toNumberOrNull(this.form.hallId);
+        const setMenuId = this.toNumberOrNull(this.form.setMenuId);
+        const packageId = this.toNumberOrNull(this.form.packageId);
+
+        const requests: Observable<void>[] = [this.loadHalls(locationId, hallId ?? undefined)];
+
+        if (hallId) {
+            requests.push(
+                this.loadSetMenus(locationId, setMenuId),
+                this.loadPackages(locationId, packageId)
+            );
+        }
+
+        forkJoin(requests).subscribe({
+            next: () => {
+                this.syncHallSummary();
+                this.syncSetMenuSummary();
+                this.syncPackageSummary();
+                this.recalcEstimatedTotal();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.recalcEstimatedTotal();
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    private extractTableLayoutRequestFromBooking(booking: Booking): TableLayoutRequest | null {
+        const details = booking.tableLayoutResponse?.tableLayoutDetails;
+        if (!details) return null;
+
+        const knownOrder = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
+        const knownList = knownOrder
+            .flatMap((key) => (details[key] ?? []).map((item) => ({ key, item })));
+
+        const fallbackList = Object.entries(details)
+            .filter(([key]) => !knownOrder.includes(key))
+            .flatMap(([, arr]) => arr.map((item) => ({ item })));
+
+        const source = knownList.length > 0 ? knownList : fallbackList;
+        if (source.length === 0) return null;
+
+        const mapped = source.map((entry, index) => {
+            const fallbackKey = knownOrder[index % knownOrder.length];
+            const tableLayoutEnum = (entry as any).key ?? fallbackKey;
+            const numberOfTables = Number(entry.item?.numberOfTables ?? 0);
+            return {
+                tableLayoutEnum,
+                groupName: String(entry.item?.groupName ?? 'Khách mời'),
+                numberOfTables: Number.isFinite(numberOfTables) ? Math.max(1, numberOfTables) : 1,
+            };
+        });
+
+        return { tableLayoutDetailRequestList: mapped };
+    }
+
+    groupLayoutByZone() {
+        const zones = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
+        let seatCursor = 1;
+
+        const grouped = zones.map((zoneEnum) => {
+            const groups = this.layoutEntries
+                .map((item, index) => ({ item, index }))
+                .filter((entry) => String(entry.item.tableLayoutEnum ?? '').toUpperCase() === zoneEnum)
+                .map((entry) => {
+                    const numberOfTables = Math.max(1, Number(entry.item.numberOfTables ?? 1));
+                    const startSeat = seatCursor;
+                    const endSeat = seatCursor + numberOfTables - 1;
+                    seatCursor = endSeat + 1;
+
+                    return {
+                        groupName: String(entry.item.groupName ?? 'Khách mời'),
+                        numberOfTables,
+                        startSeat,
+                        endSeat,
+                        colorIndex: entry.index,
+                    };
+                });
+
+            return {
+                zoneEnum,
+                zoneLabel: this.getLayoutAreaLabel(zoneEnum),
+                groups,
+            };
+        });
+        return grouped;
+    }
+
+    layoutLegendDotStyle(colorIndex: number): Record<string, string> {
+        const token = this.resolveLayoutColorToken(colorIndex);
+        return {
+            'border-color': token.border,
+            background: token.background,
+        };
+    }
+
+    private resolveLayoutColorToken(colorIndex: number): { border: string; background: string } {
+        const key = this.normalizeLayoutColorIndex(colorIndex);
+        const cached = this.layoutColorStyleCache.get(key);
+        if (cached) {
+            return cached;
+        }
+
+        const hue = (key * 137.508) % 360;
+        const saturation = 70 + (key % 3) * 6;
+        const lightness = 88 - (Math.floor(key / 3) % 3) * 8;
+        const token = {
+            border: `hsl(${hue} ${Math.min(94, saturation + 8)}% ${Math.max(34, lightness - 28)}%)`,
+            background: `hsl(${hue} ${Math.min(90, saturation)}% ${Math.max(64, lightness)}%)`,
+        };
+        this.layoutColorStyleCache.set(key, token);
+        return token;
+    }
+
+    private normalizeLayoutColorIndex(colorIndex: number): number {
+        const value = Number(colorIndex);
+        if (!Number.isFinite(value) || value < 0) {
+            return 0;
+        }
+        return Math.floor(value);
+    }
+
+    getLayoutAreaLabel(value?: string): string {
+        const key = String(value ?? '').toUpperCase();
+        const map: Record<string, string> = {
+            SIDE_A: 'Khu A',
+            SIDE_B: 'Khu B',
+            SIDE_C: 'Khu C',
+            SIDE_D: 'Khu D',
+        };
+        return map[key] ?? (value || 'Khu');
     }
 
     private warn(detail: string) {
