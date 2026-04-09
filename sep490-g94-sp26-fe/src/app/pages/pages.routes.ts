@@ -25,9 +25,13 @@ import { PaymentsComponent } from './payment/Payment';
 import { InvoicesComponent } from './invoice/Invoice';
 import { InvoiceDetailComponent } from './invoice/Invoice-detail';
 import { EventCalendarComponent } from './calender/calender';
+import { BeoComponent } from './beo/beo';
+import { BeoDetailComponent } from './beo/beo-detail';
 
 
 export default [
+    { path: 'beo', component: BeoComponent },
+    { path: 'beo/:id', component: BeoDetailComponent },
     { path: 'calender', component: EventCalendarComponent },
     { path: 'crud', component: Crud },
     { path: 'users', component: Users },
