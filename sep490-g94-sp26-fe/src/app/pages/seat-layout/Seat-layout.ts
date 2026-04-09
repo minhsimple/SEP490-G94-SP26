@@ -762,6 +762,9 @@ export class SeatLayoutComponent implements OnInit {
             zone.groups = [];
         }
 
+
+
+        
         let colorIndex = 0;
         for (const item of request.tableLayoutDetailRequestList ?? []) {
             const enumKey = String(item.tableLayoutEnum ?? '').toUpperCase();
