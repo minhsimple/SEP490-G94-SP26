@@ -42,10 +42,18 @@ import { LocationService } from '../service/location.service';
             </div>
 
             <div *ngIf="service">
-                <div class="detail-hero">
-                    <div class="detail-hero-overlay no-image">
+                <div class="detail-hero" [class.has-video]="!!service.videoUrl">
+                    <video
+                        *ngIf="service.videoUrl"
+                        class="detail-hero-video"
+                        [src]="service.videoUrl"
+                        controls
+                        preload="metadata"
+                    ></video>
+
+                    <div class="detail-hero-overlay" [class.no-image]="!service.videoUrl">
                         <h2 class="detail-hero-title">{{ service.name || '-' }}</h2>
-                        <div class="flex gap-2 mt-2 flex-wrap items-center">
+                        <div class="flex gap-2 mt-2 flex-wrap items-center justify-end">
                             <span class="detail-tag">
                                 <i class="pi pi-map-marker mr-1"></i>{{ getLocationName(service) }}
                             </span>
@@ -67,10 +75,6 @@ import { LocationService } from '../service/location.service';
                         </div>
                         <div class="detail-info-list">
                             <div class="detail-info-item">
-                                <span class="text-500 text-sm">Mã dịch vụ</span>
-                                <span class="font-semibold text-900">{{ service.code || '-' }}</span>
-                            </div>
-                            <div class="detail-info-item">
                                 <span class="text-500 text-sm">Tên dịch vụ</span>
                                 <span class="font-semibold text-900">{{ service.name || '-' }}</span>
                             </div>
@@ -91,10 +95,6 @@ import { LocationService } from '../service/location.service';
                                 <span class="font-semibold" [style.color]="isInactive(service.status) ? '#ef4444' : '#22c55e'">
                                     {{ isInactive(service.status) ? 'Không hoạt động' : 'Đang cung cấp' }}
                                 </span>
-                            </div>
-                            <div class="detail-info-item">
-                                <span class="text-500 text-sm">Video key</span>
-                                <span class="font-semibold text-900">{{ service.video_key || '-' }}</span>
                             </div>
                         </div>
                     </div>
@@ -176,8 +176,26 @@ import { LocationService } from '../service/location.service';
                         </div>
 
                         <div>
-                            <label class="block font-semibold mb-2 text-sm">Video key</label>
-                            <input type="text" pInputText [(ngModel)]="editingService.video_key" fluid />
+                            <label class="block font-semibold mb-2 text-sm">Video mới (mp4, không bắt buộc)</label>
+                            <input
+                                type="file"
+                                accept="video/mp4"
+                                (change)="onEditVideoSelected($event)"
+                                class="w-full p-2 border-1 surface-border border-round"
+                            />
+                            <small class="text-500" *ngIf="selectedEditVideoName">Đã chọn: {{ selectedEditVideoName }}</small>
+                        </div>
+
+                        <div class="video-preview-grid">
+                            <div class="video-preview-card" *ngIf="service?.videoUrl">
+                                <div class="video-preview-title">Video hiện tại</div>
+                                <video class="video-preview-player" [src]="service?.videoUrl" controls preload="metadata"></video>
+                            </div>
+
+                            <div class="video-preview-card" *ngIf="selectedEditVideoPreviewUrl">
+                                <div class="video-preview-title">Video sau khi cập nhật</div>
+                                <video class="video-preview-player" [src]="selectedEditVideoPreviewUrl" controls preload="metadata"></video>
+                            </div>
                         </div>
 
                         <div class="flex items-center justify-between py-2 px-3 border-round"
@@ -189,7 +207,7 @@ import { LocationService } from '../service/location.service';
                 </ng-template>
                 <ng-template #footer>
                     <div class="flex justify-end gap-2">
-                        <p-button label="Hủy" icon="pi pi-times" text (click)="editDialog = false" />
+                        <p-button label="Hủy" icon="pi pi-times" text (click)="closeEditDialog()" />
                         <p-button label="Cập nhật" icon="pi pi-check" severity="primary" (click)="saveEdit()" [loading]="saving" />
                     </div>
                 </ng-template>
@@ -213,18 +231,46 @@ import { LocationService } from '../service/location.service';
             overflow: hidden;
             background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #3b82a0 100%);
         }
+        .detail-hero.has-video {
+            min-height: 0;
+            height: clamp(340px, 56vh, 560px);
+            background: #020617;
+        }
+        .detail-hero-video {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: right center;
+            background: #020617;
+        }
         .detail-hero-overlay {
             width: 100%;
-            padding: 1.5rem;
-            background: linear-gradient(transparent 0%, rgba(0,0,0,0.65) 100%);
-            position: relative;
-            z-index: 1;
+            height: 100%;
+            padding: 4rem 1.5rem 4.4rem;
+            background: linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.62) 100%);
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-end;
+            text-align: right;
+            z-index: 2;
+            pointer-events: none;
         }
         .detail-hero-overlay.no-image {
+            position: relative;
+            height: auto;
             min-height: 180px;
             display: flex;
             flex-direction: column;
-            justify-content: flex-end;
+            justify-content: flex-start;
+            align-items: flex-end;
+            text-align: right;
+            padding: 1.5rem;
+            background: linear-gradient(transparent 0%, rgba(0,0,0,0.65) 100%);
         }
         .detail-hero-title {
             color: white;
@@ -245,8 +291,8 @@ import { LocationService } from '../service/location.service';
         }
         .detail-status-badge {
             position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
+            top: 1rem;
+            right: 1rem;
             display: inline-flex;
             align-items: center;
             color: white;
@@ -255,6 +301,7 @@ import { LocationService } from '../service/location.service';
             font-size: 0.8rem;
             font-weight: 600;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 3;
         }
         .detail-content-grid {
             display: grid;
@@ -282,7 +329,29 @@ import { LocationService } from '../service/location.service';
         .detail-info-item:last-child {
             border-bottom: none;
         }
-
+        .video-preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        .video-preview-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            padding: 0.6rem;
+        }
+        .video-preview-title {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.45rem;
+        }
+        .video-preview-player {
+            width: 100%;
+            max-height: 140px;
+            border-radius: 8px;
+            background: #020617;
+        }
         :host ::ng-deep {
             .p-dialog .p-dialog-header {
                 padding: 1.25rem 1.5rem 0.5rem;
@@ -299,7 +368,14 @@ import { LocationService } from '../service/location.service';
         }
 
         @media (max-width: 768px) {
+            .detail-hero.has-video {
+                height: clamp(240px, 42vh, 360px);
+            }
+            .detail-hero-overlay { padding: 3.5rem 1rem 3.8rem; }
             .detail-content-grid {
+                grid-template-columns: 1fr;
+            }
+            .video-preview-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -316,6 +392,9 @@ export class ServiceDetailComponent implements OnInit {
     editDialog = false;
     submitted = false;
     editingService: Partial<Service> = {};
+    selectedEditVideoFile: File | null = null;
+    selectedEditVideoName = '';
+    selectedEditVideoPreviewUrl: string | null = null;
     editedServiceActive = true;
 
     locationOptions: { label: string; value: number }[] = [];
@@ -391,9 +470,38 @@ export class ServiceDetailComponent implements OnInit {
     openEdit() {
         if (!this.service) return;
         this.editingService = { ...this.service };
+        this.selectedEditVideoFile = null;
+        this.selectedEditVideoName = '';
+        this.clearEditVideoPreview();
         this.editedServiceActive = !this.isInactive(this.service.status);
         this.submitted = false;
         this.editDialog = true;
+    }
+
+    closeEditDialog() {
+        this.editDialog = false;
+        this.submitted = false;
+        this.selectedEditVideoFile = null;
+        this.selectedEditVideoName = '';
+        this.clearEditVideoPreview();
+    }
+
+    onEditVideoSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0] ?? null;
+        this.selectedEditVideoFile = file;
+        this.selectedEditVideoName = file?.name ?? '';
+        this.clearEditVideoPreview();
+        if (file) {
+            this.selectedEditVideoPreviewUrl = URL.createObjectURL(file);
+        }
+    }
+
+    private clearEditVideoPreview() {
+        if (this.selectedEditVideoPreviewUrl) {
+            URL.revokeObjectURL(this.selectedEditVideoPreviewUrl);
+        }
+        this.selectedEditVideoPreviewUrl = null;
     }
 
     saveEdit() {
@@ -407,7 +515,6 @@ export class ServiceDetailComponent implements OnInit {
             code: this.editingService.code,
             name: this.editingService.name,
             description: this.editingService.description,
-            video_key: this.editingService.video_key,
             unit: this.editingService.unit,
             basePrice: this.editingService.basePrice ?? 0,
             locationId: this.editingService.locationId,
@@ -416,7 +523,11 @@ export class ServiceDetailComponent implements OnInit {
         const currentlyActive = !this.isInactive(this.service.status);
         const needsStatusChange = this.editedServiceActive !== currentlyActive;
 
-        this.serviceService.updateService(this.service.id, payload).subscribe({
+        this.serviceService.updateService(
+            this.service.id,
+            payload,
+            this.selectedEditVideoFile ?? undefined
+        ).subscribe({
             next: () => {
                 if (needsStatusChange) {
                     this.serviceService.changeStatus(this.service!.id).subscribe({
@@ -446,7 +557,7 @@ export class ServiceDetailComponent implements OnInit {
             detail: 'Đã cập nhật dịch vụ',
             life: 3000,
         });
-        this.editDialog = false;
+        this.closeEditDialog();
         this.saving = false;
         if (this.service?.id) {
             this.loadService(String(this.service.id));

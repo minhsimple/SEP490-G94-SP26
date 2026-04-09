@@ -7,6 +7,7 @@ import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TooltipModule } from 'primeng/tooltip';
+import { catchError, map, of, forkJoin } from 'rxjs';
 import { ServicePackageService, ServicePackage } from '../service/service-package.service';
 import { ServiceService, Service } from '../service/service.service';
 import { LocationService, Location } from '../service/location.service';
@@ -200,6 +201,7 @@ export class ComboServiceDetailComponent implements OnInit {
     togglingStatus = false;
     
     allServices = signal<Service[]>([]);
+    packageServices = signal<Service[]>([]);
     locations = signal<Location[]>([]);
 
     private route = inject(ActivatedRoute);
@@ -234,10 +236,11 @@ export class ComboServiceDetailComponent implements OnInit {
     }
 
     loadServices() {
-        this.serviceService.searchServices({}).subscribe({
+        this.serviceService.searchServices({ page: 0, size: 500 }).subscribe({
             next: (res) => {
                 if (res?.data?.content) {
                     this.allServices.set(res.data.content);
+                    this.loadPackageServices();
                 }
             }
         });
@@ -251,8 +254,10 @@ export class ComboServiceDetailComponent implements OnInit {
                 console.log('Service package response:', res);
                 if (res?.code === 200 && res.data) {
                     this.item = res.data;
+                    this.loadPackageServices();
                 } else {
                     this.item = null;
+                    this.packageServices.set([]);
                 }
                 this.loading = false;
                 this.cdr.detectChanges();
@@ -260,6 +265,7 @@ export class ComboServiceDetailComponent implements OnInit {
             error: (err) => {
                 console.error('Error loading service package:', err);
                 this.item = null;
+                this.packageServices.set([]);
                 this.loading = false;
                 this.messageService.add({ 
                     severity: 'error', 
@@ -278,6 +284,7 @@ export class ComboServiceDetailComponent implements OnInit {
             next: (res) => {
                 if (res?.code === 200 && res.data) {
                     this.item = res.data;
+                    this.loadPackageServices();
                 }
                 this.cdr.detectChanges();
             }
@@ -285,9 +292,13 @@ export class ComboServiceDetailComponent implements OnInit {
     }
 
     getServices(): Service[] {
+        if (this.packageServices().length > 0) {
+            return this.packageServices();
+        }
+
         if (!this.item?.serviceResponseList) return [];
-        const serviceIds = this.item.serviceResponseList.map(sr => sr.serviceId);
-        return this.allServices().filter(s => serviceIds.includes(s.id!));
+        const serviceIdSet = new Set(this.item.serviceResponseList.map(sr => Number(sr.serviceId)));
+        return this.allServices().filter(s => serviceIdSet.has(Number(s.id)));
     }
 
     toggleStatus() {
@@ -345,5 +356,67 @@ export class ComboServiceDetailComponent implements OnInit {
     getLocationName(locationId: number): string {
         const location = this.locations().find(l => l.id === locationId);
         return location?.name ?? '-';
+    }
+
+    private loadPackageServices() {
+        const serviceResponses = this.item?.serviceResponseList ?? [];
+        if (serviceResponses.length === 0) {
+            this.packageServices.set([]);
+            return;
+        }
+
+        const serviceIds = Array.from(new Set(
+            serviceResponses
+                .map(sr => Number(sr.serviceId))
+                .filter(id => Number.isFinite(id) && id > 0)
+        ));
+
+        if (serviceIds.length === 0) {
+            this.packageServices.set([]);
+            return;
+        }
+
+        const allServicesMap = new Map<number, Service>();
+        this.allServices().forEach((service) => {
+            const id = Number(service.id);
+            if (Number.isFinite(id)) {
+                allServicesMap.set(id, service);
+            }
+        });
+
+        const foundServices = serviceIds
+            .map(id => allServicesMap.get(id))
+            .filter((service): service is Service => !!service);
+
+        const missingIds = serviceIds.filter(id => !allServicesMap.has(id));
+        if (missingIds.length === 0) {
+            this.packageServices.set(foundServices);
+            return;
+        }
+
+        forkJoin(
+            missingIds.map(id =>
+                this.serviceService.getServiceById(id).pipe(
+                    map(res => res?.data ?? null),
+                    catchError(() => of(null))
+                )
+            )
+        ).subscribe((loadedServices) => {
+            const loadedMap = new Map<number, Service>();
+            loadedServices.forEach((service) => {
+                if (!service) return;
+                const id = Number(service.id);
+                if (Number.isFinite(id)) {
+                    loadedMap.set(id, service);
+                }
+            });
+
+            const orderedServices = serviceIds
+                .map(id => allServicesMap.get(id) ?? loadedMap.get(id))
+                .filter((service): service is Service => !!service);
+
+            this.packageServices.set(orderedServices);
+            this.cdr.markForCheck();
+        });
     }
 }

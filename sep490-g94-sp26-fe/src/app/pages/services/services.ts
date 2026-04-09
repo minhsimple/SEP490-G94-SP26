@@ -269,14 +269,19 @@ interface Column {
                         </div>
 
                         <div>
-                            <label class="block font-semibold mb-2 text-sm">Video key</label>
+                            <label class="block font-semibold mb-2 text-sm">
+                                File video (mp4) <span class="text-red-500">*</span>
+                            </label>
                             <input
-                                type="text"
-                                pInputText
-                                [(ngModel)]="newService.video_key"
-                                fluid
-                                placeholder="Nhập video key"
+                                type="file"
+                                accept="video/mp4"
+                                (change)="onCreateVideoSelected($event)"
+                                class="w-full p-2 border-1 surface-border border-round"
                             />
+                            <small class="text-500" *ngIf="selectedCreateVideoName">Đã chọn: {{ selectedCreateVideoName }}</small>
+                            <small class="text-red-500 block" *ngIf="submitted && !selectedCreateVideoFile">
+                                Vui lòng chọn file video mp4.
+                            </small>
                         </div>
 
                         <div class="flex items-center justify-between py-2 px-3 border-round"
@@ -383,14 +388,14 @@ interface Column {
                         </div>
 
                         <div>
-                            <label class="block font-semibold mb-2 text-sm">Video key</label>
+                            <label class="block font-semibold mb-2 text-sm">Video mới (mp4, không bắt buộc)</label>
                             <input
-                                type="text"
-                                pInputText
-                                [(ngModel)]="editedService.video_key"
-                                fluid
-                                placeholder="Nhập video key"
+                                type="file"
+                                accept="video/mp4"
+                                (change)="onEditVideoSelected($event)"
+                                class="w-full p-2 border-1 surface-border border-round"
                             />
+                            <small class="text-500" *ngIf="selectedEditVideoName">Đã chọn: {{ selectedEditVideoName }}</small>
                         </div>
 
                         <div class="flex items-center justify-between py-2 px-3 border-round"
@@ -484,6 +489,10 @@ export class ServicesComponent implements OnInit {
     // Form models
     newService: Partial<Service> = { basePrice: 0, unit: 'gói' };
     newServiceActive = true;
+    selectedCreateVideoFile: File | null = null;
+    selectedCreateVideoName = '';
+    selectedEditVideoFile: File | null = null;
+    selectedEditVideoName = '';
     editedService: Partial<Service> = {};
     editedServiceActive = true;
     isSale = localStorage.getItem('codeRole') === 'SALE';
@@ -604,6 +613,8 @@ export class ServicesComponent implements OnInit {
         unit: 'gói',
         code: this.generateUUID()  // ← tự gen UUID
     };
+    this.selectedCreateVideoFile = null;
+    this.selectedCreateVideoName = '';
     this.newServiceActive = true;
     this.submitted = false;
     this.createDialog = true;
@@ -618,11 +629,20 @@ private generateUUID(): string {
     hideCreateDialog() {
         this.createDialog = false;
         this.submitted = false;
+        this.selectedCreateVideoFile = null;
+        this.selectedCreateVideoName = '';
+    }
+
+    onCreateVideoSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0] ?? null;
+        this.selectedCreateVideoFile = file;
+        this.selectedCreateVideoName = file?.name ?? '';
     }
 
     saveNewService() {
         this.submitted = true;
-        if (!this.newService.name?.trim() || !this.newService.locationId) return;
+        if (!this.newService.name?.trim() || !this.newService.locationId || !this.selectedCreateVideoFile) return;
 
         this.saving = true;
      // Payload trong saveNewService() — giữ nguyên, code đã có sẵn trong newService
@@ -630,17 +650,18 @@ const payload = {
     code:        this.newService.code,  // ← UUID đã được gen sẵn
     name:        this.newService.name!,
     description: this.newService.description,
-    video_key:   this.newService.video_key,
     unit:        this.newService.unit,
     basePrice:   this.newService.basePrice ?? 0,
     locationId:  this.newService.locationId
 };
 
-        this.serviceService.createService(payload).subscribe({
+        this.serviceService.createService(payload, this.selectedCreateVideoFile).subscribe({
             next: () => {
                 this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã thêm dịch vụ mới', life: 3000 });
                 this.createDialog = false;
                 this.saving = false;
+                this.selectedCreateVideoFile = null;
+                this.selectedCreateVideoName = '';
                 this.loadServices(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
             },
             error: () => {
@@ -658,6 +679,8 @@ const payload = {
 
     editService(service: Service) {
         this.editedService = { ...service };
+        this.selectedEditVideoFile = null;
+        this.selectedEditVideoName = '';
         this.editedServiceActive = !this.isInactiveStatus(service.status);
         this.editSubmitted = false;
         this.editDialog = true;
@@ -666,6 +689,15 @@ const payload = {
     hideEditDialog() {
         this.editDialog = false;
         this.editSubmitted = false;
+        this.selectedEditVideoFile = null;
+        this.selectedEditVideoName = '';
+    }
+
+    onEditVideoSelected(event: Event) {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0] ?? null;
+        this.selectedEditVideoFile = file;
+        this.selectedEditVideoName = file?.name ?? '';
     }
 
     saveEditService() {
@@ -678,7 +710,6 @@ const payload = {
     code:        this.editedService.code ?? this.generateUUID(), // ← fallback nếu record cũ không có code
     name:        this.editedService.name,
     description: this.editedService.description,
-    video_key:   this.editedService.video_key,
     unit:        this.editedService.unit,
     basePrice:   this.editedService.basePrice,
     locationId:  this.editedService.locationId
@@ -687,7 +718,11 @@ const payload = {
         const currentlyActive = !this.isInactiveStatus(this.editedService.status);
         const needsStatusChange = this.editedServiceActive !== currentlyActive;
 
-        this.serviceService.updateService(this.editedService.id, updatePayload).subscribe({
+        this.serviceService.updateService(
+            this.editedService.id,
+            updatePayload,
+            this.selectedEditVideoFile ?? undefined
+        ).subscribe({
             next: () => {
                 if (needsStatusChange) {
                     this.serviceService.changeStatus(this.editedService.id).subscribe({
@@ -708,6 +743,8 @@ const payload = {
     private afterSaveEdit() {
         this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật dịch vụ', life: 3000 });
         this.editDialog = false;
+        this.selectedEditVideoFile = null;
+        this.selectedEditVideoName = '';
         this.saving = false;
         this.loadServices(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
     }
