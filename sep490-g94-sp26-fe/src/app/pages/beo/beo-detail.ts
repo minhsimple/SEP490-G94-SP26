@@ -210,53 +210,8 @@ export interface TaskCategory {
             </div>
         </div>
 
-        <!-- Dialog: Add category -->
-        <p-dialog
-            header="Thêm nhóm công việc"
-            [(visible)]="showAddCategoryDialog"
-            [modal]="true"
-            [style]="{ width: '380px' }"
-            [draggable]="false"
-            [resizable]="false"
-        >
-            <div class="flex flex-column gap-3 pt-2">
-                <div>
-                    <label class="text-sm font-semibold text-700 mb-1 block">Tên nhóm</label>
-                    <input
-                        pInputText
-                        type="text"
-                        [(ngModel)]="newCategoryLabel"
-                        placeholder="VD: Trang trí, Âm nhạc..."
-                        class="w-full"
-                        (keydown.enter)="confirmAddCategory()"
-                    />
-                </div>
-                <div>
-                    <label class="text-sm font-semibold text-700 mb-2 block">Chọn icon</label>
-                    <div class="flex flex-wrap gap-2">
-                        <button
-                            *ngFor="let ic of iconOptions"
-                            type="button"
-                            class="flex align-items-center justify-content-center border-round cursor-pointer"
-                            style="width:36px;height:36px;border:1.5px solid;transition:all 0.15s;background:none;"
-                            [style.border-color]="newCategoryIcon === ic ? '#4f6ef7' : '#e2e8f0'"
-                            [style.background]="newCategoryIcon === ic ? '#eef1fe' : 'transparent'"
-                            (click)="newCategoryIcon = ic"
-                        >
-                            <i [class]="'pi ' + ic" [style.color]="newCategoryIcon === ic ? '#4f6ef7' : '#94a3b8'"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <ng-template pTemplate="footer">
-                <p-button label="Hủy" [text]="true" severity="secondary"
-                          (click)="showAddCategoryDialog = false" />
-                <p-button label="Thêm nhóm" severity="primary"
-                          [disabled]="!newCategoryLabel.trim()"
-                          (click)="confirmAddCategory()" />
-            </ng-template>
-        </p-dialog>
+        
+        
     `,
     providers: [MessageService, BookingService],
 })
