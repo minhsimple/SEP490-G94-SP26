@@ -4,16 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { SelectModule } from 'primeng/select';
-import { TagModule } from 'primeng/tag';
-import { TooltipModule } from 'primeng/tooltip';
-import { InputIconModule } from 'primeng/inputicon';
-import { IconFieldModule } from 'primeng/iconfield';
 import { ToastModule } from 'primeng/toast';
-import { TabsModule } from 'primeng/tabs';
-import { CheckboxChangeEvent, CheckboxModule } from 'primeng/checkbox';
+import { TooltipModule } from 'primeng/tooltip';
+import { CheckboxModule } from 'primeng/checkbox';
 import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
+import { CheckboxChangeEvent } from 'primeng/checkbox';
 import { BookingService, Booking } from '../service/booking.service';
 import { HallService } from '../service/hall.service';
 
@@ -22,7 +18,6 @@ export interface TaskItem {
     name: string;
     done: boolean;
     categoryKey: string;
-    note?: string;
 }
 
 export interface TaskCategory {
@@ -36,180 +31,182 @@ export interface TaskCategory {
     standalone: true,
     imports: [
         CommonModule, FormsModule, RouterModule,
-        ButtonModule, InputTextModule, SelectModule,
-        TagModule, InputIconModule, IconFieldModule,
-        ToastModule, TooltipModule, TabsModule,
+        ButtonModule, InputTextModule,
+        ToastModule, TooltipModule,
         CheckboxModule, DialogModule,
     ],
     template: `
-        <div class="card">
-            <p-toast />
+        <p-toast />
 
-            <!-- Back + Header -->
-            <div class="mb-5">
-                <p-button
-                    icon="pi pi-arrow-left"
-                    label="Quay lại"
-                    [text]="true"
-                    severity="secondary"
+        <div style="max-width:960px; margin:0 auto; padding:24px 16px;">
+
+            <!-- Back -->
+            <div class="mb-4">
+                <button
+                    class="flex items-center gap-2 text-sm text-600 cursor-pointer bg-transparent border-none p-0"
+                    style="font-size:0.875rem;color:#64748b;"
                     (click)="goBack()"
-                    styleClass="mb-3"
-                />
-
-                <ng-container *ngIf="booking(); else loadingHeader">
-                    <div class="surface-card border-round-xl shadow-1 p-4">
-                        <div class="flex items-start justify-between flex-wrap gap-3">
-                            <div>
-                                <div class="flex items-center gap-3 mb-2">
-                                    <h2 class="text-2xl font-bold text-900 m-0">
-                                        {{ booking()!.groomName }} & {{ booking()!.brideName }}
-                                    </h2>
-                                </div>
-                                <div class="flex items-center gap-4 flex-wrap">
-                                    <span class="text-xs font-semibold px-2 py-1 border-round surface-200 text-600">
-                                        {{ booking()!.contractNo ?? booking()!.bookingNo ?? ('#' + booking()!.id) }}
-                                    </span>
-                                    <span class="text-sm text-500 flex items-center gap-1">
-                                        <i class="pi pi-calendar text-xs"></i>
-                                        {{ formatDate(booking()!.bookingDate ?? booking()!.eventDate) }}
-                                        — {{ getShiftLabel(booking()!.shift ?? booking()!.bookingTime) }}
-                                    </span>
-                                    <span class="text-sm text-500 flex items-center gap-1">
-                                        <i class="pi pi-building text-xs"></i>
-                                        {{ getHallLabel(booking()!) }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- Overall progress -->
-                            <div class="text-right" style="min-width:140px;">
-                                <div class="text-sm text-500 mb-1">Tiến độ tổng thể</div>
-                                <div class="text-2xl font-bold text-primary mb-1">
-                                    {{ doneCount }}/{{ tasks().length }}
-                                </div>
-                                <div class="w-full border-round overflow-hidden" style="height:6px;background:#e2e8f0;">
-                                    <div
-                                        class="border-round"
-                                        style="height:100%;background:linear-gradient(90deg,#6c63ff,#a78bfa);transition:width 0.4s;"
-                                        [style.width]="overallPercent + '%'"
-                                    ></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </ng-container>
-                <ng-template #loadingHeader>
-                    <div class="surface-card border-round-xl shadow-1 p-4 text-center text-500">
-                        <i class="pi pi-spin pi-spinner text-2xl"></i>
-                    </div>
-                </ng-template>
+                >
+                    <i class="pi pi-arrow-left" style="font-size:0.8rem;"></i>
+                    Quay lại
+                </button>
             </div>
 
-            <!-- Tab content -->
-            <div class="surface-card border-round-xl shadow-1 overflow-hidden">
-                <p-tabs [(value)]="activeTabKey">
-
-                    <p-tablist>
-                        <p-tab *ngFor="let cat of categories" [value]="cat.key">
-                            <span class="flex items-center gap-2">
-                                <i [class]="'pi ' + cat.icon"></i>
-                                <span>{{ cat.label }}</span>
-                                <span
-                                    *ngIf="getTasksForCat(cat.key).length"
-                                    class="text-xs font-semibold px-2 py-1 border-round"
-                                    style="background:#ede9fe;color:#4f46e5;"
-                                >
-                                    {{ getDoneForCat(cat.key) }}/{{ getTasksForCat(cat.key).length }}
-                                </span>
-                            </span>
-                        </p-tab>
-
-                        <!-- Add category button -->
-                        <p-tab value="__add__" styleClass="add-cat-tab">
-                            <span
-                                class="flex items-center gap-1"
-                                style="color:#94a3b8;font-size:0.85rem;"
-                                (click)="openAddCategory($event)"
-                            >
-                                <i class="pi pi-plus-circle"></i>
-                                <span>Thêm mục</span>
-                            </span>
-                        </p-tab>
-                    </p-tablist>
-
-                    <p-tabpanels>
-                        <p-tabpanel *ngFor="let cat of categories" [value]="cat.key">
-                            <!-- Only render content when this tab is active -->
-                            <div *ngIf="activeTabKey === cat.key" class="p-4">
-
-                                <!-- Add task input -->
-                                <div class="flex items-center gap-2 mb-4">
-                                    <input
-                                        pInputText
-                                        type="text"
-                                        [(ngModel)]="newTaskNameMap[cat.key]"
-                                        (keydown.enter)="addTask(cat.key)"
-                                        [placeholder]="'Thêm ' + cat.label.toLowerCase() + '...'"
-                                        style="flex:1;"
-                                    />
-                                    <p-button
-                                        icon="pi pi-plus"
-                                        severity="primary"
-                                        [rounded]="true"
-                                        (click)="addTask(cat.key)"
-                                        pTooltip="Thêm"
-                                        tooltipPosition="top"
-                                    />
-                                </div>
-
-                                <!-- Task list for this category -->
-                                <ng-container *ngIf="getTasksForCat(cat.key).length; else emptyState">
-                                    <div
-                                        *ngFor="let task of getTasksForCat(cat.key); trackBy: trackById"
-                                        class="flex items-center gap-3 py-3 border-bottom-1 surface-border"
-                                        [class.opacity-60]="task.done"
-                                    >
-                                        <p-checkbox
-                                            [ngModel]="task.done"
-                                            [binary]="true"
-                                            (onChange)="onTaskToggle(task, $event)"
-                                        />
-                                        <span
-                                            class="flex-1 text-sm text-900"
-                                            [class.line-through]="task.done"
-                                            [class.text-400]="task.done"
-                                        >
-                                            {{ task.name }}
-                                        </span>
-                                        <p-button
-                                            icon="pi pi-trash"
-                                            [text]="true"
-                                            [rounded]="true"
-                                            severity="danger"
-                                            size="small"
-                                            (click)="removeTask(task)"
-                                            pTooltip="Xóa"
-                                            tooltipPosition="top"
-                                        />
-                                    </div>
-                                </ng-container>
-
-                                <ng-template #emptyState>
-                                    <div class="text-center py-8 text-500">
-                                        <i class="pi pi-inbox text-4xl mb-3 block text-300"></i>
-                                        <div class="text-sm">Chưa có mục nào.</div>
-                                        <div class="text-xs text-400 mt-1">Nhập tên và nhấn + để thêm</div>
-                                    </div>
-                                </ng-template>
-
+            <!-- Header card -->
+            <ng-container *ngIf="booking(); else loadingHeader">
+                <div class="surface-card border-round-xl mb-4 px-5 py-4"
+                     style="border:1px solid #e8edf2;">
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                            <div class="font-bold text-900 mb-1" style="font-size:1.1rem;">
+                                {{ booking()!.groomName }} & {{ booking()!.brideName }}
                             </div>
-                        </p-tabpanel>
+                            <div class="flex items-center gap-3 flex-wrap" style="font-size:0.78rem;color:#94a3b8;">
+                                <span
+                                    class="font-medium border-round"
+                                    style="background:#e2e8f0;color:#64748b;padding:1px 7px;border-radius:4px;"
+                                >
+                                    {{ booking()!.contractNo ?? booking()!.bookingNo ?? ('#' + booking()!.id) }}
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <i class="pi pi-calendar" style="font-size:0.7rem;"></i>
+                                    {{ formatDate(booking()!.bookingDate ?? booking()!.eventDate) }}
+                                    — {{ getShiftLabel(booking()!.shift ?? booking()!.bookingTime) }}
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <i class="pi pi-building" style="font-size:0.7rem;"></i>
+                                    {{ getHallLabel(booking()!) }}
+                                </span>
+                            </div>
+                        </div>
 
-                        <!-- Dummy panel for __add__ tab -->
-                        <p-tabpanel value="__add__"></p-tabpanel>
-                    </p-tabpanels>
+                        <!-- Progress -->
+                        <div class="flex items-center gap-3" style="min-width:160px;">
+                            <div class="flex-1 border-round overflow-hidden" style="height:5px;background:#e2e8f0;min-width:80px;">
+                                <div
+                                    class="border-round"
+                                    style="height:100%;background:linear-gradient(90deg,#4f6ef7,#7c9cf8);transition:width 0.4s;"
+                                    [style.width]="overallPercent + '%'"
+                                ></div>
+                            </div>
+                            <span class="text-sm font-semibold text-600" style="white-space:nowrap;">
+                                {{ doneCount }}/{{ tasks().length }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </ng-container>
+            <ng-template #loadingHeader>
+                <div class="surface-card border-round-xl mb-4 px-5 py-4 text-center text-500"
+                     style="border:1px solid #e8edf2;">
+                    <i class="pi pi-spin pi-spinner"></i>
+                </div>
+            </ng-template>
 
-                </p-tabs>
+            <!-- Category tabs + add button -->
+            <div class="surface-card border-round-xl overflow-hidden" style="border:1px solid #e8edf2;">
+
+                <!-- Tab bar -->
+                <div class="flex items-center border-bottom-1 surface-border px-3"
+                     style="gap:0;overflow-x:auto;">
+                    <button
+                        *ngFor="let cat of categories"
+                        type="button"
+                        class="flex items-center gap-2 cursor-pointer bg-transparent border-none py-3 px-4"
+                        style="font-size:0.85rem;font-weight:500;border-bottom:2px solid transparent;transition:all 0.15s;white-space:nowrap;"
+                        [style.border-bottom-color]="activeTabKey === cat.key ? '#4f6ef7' : 'transparent'"
+                        [style.color]="activeTabKey === cat.key ? '#4f6ef7' : '#64748b'"
+                        (click)="activeTabKey = cat.key"
+                    >
+                        <i [class]="'pi ' + cat.icon" style="font-size:0.8rem;"></i>
+                        <span>{{ cat.label }}</span>
+                        <span
+                            *ngIf="getTasksForCat(cat.key).length"
+                            class="text-xs font-semibold"
+                            style="color:#94a3b8;"
+                        >
+                            {{ getDoneForCat(cat.key) }}/{{ getTasksForCat(cat.key).length }}
+                        </span>
+                    </button>
+
+                    <!-- Add category button -->
+                    <button
+                        type="button"
+                        class="flex items-center gap-1 cursor-pointer bg-transparent border-none py-3 px-3 ml-1"
+                        style="font-size:0.82rem;color:#94a3b8;white-space:nowrap;border-bottom:2px solid transparent;"
+                        (click)="openAddCategory()"
+                    >
+                        <i class="pi pi-plus" style="font-size:0.75rem;"></i>
+                        <span>Thêm mục</span>
+                    </button>
+                </div>
+
+                <!-- Tab panel -->
+                <div class="p-4">
+                    <ng-container *ngFor="let cat of categories">
+                        <div *ngIf="activeTabKey === cat.key">
+
+                            <!-- Add task input -->
+                            <div class="flex items-center gap-2 mb-4">
+                                <input
+                                    pInputText
+                                    type="text"
+                                    [(ngModel)]="newTaskNameMap[cat.key]"
+                                    (keydown.enter)="addTask(cat.key)"
+                                    [placeholder]="'Thêm ' + cat.label.toLowerCase() + '...'"
+                                    style="flex:1;"
+                                />
+                                <p-button
+                                    icon="pi pi-plus"
+                                    severity="primary"
+                                    [rounded]="true"
+                                    (click)="addTask(cat.key)"
+                                />
+                            </div>
+
+                            <!-- Task list -->
+                            <ng-container *ngIf="getTasksForCat(cat.key).length; else emptyState">
+                                <div
+                                    *ngFor="let task of getTasksForCat(cat.key); trackBy: trackById"
+                                    class="flex items-center gap-3 py-2"
+                                    style="border-bottom:1px solid #f1f5f9;"
+                                >
+                                    <p-checkbox
+                                        [ngModel]="task.done"
+                                        [binary]="true"
+                                        (onChange)="onTaskToggle(task, $event)"
+                                    />
+                                    <span
+                                        class="flex-1 text-sm"
+                                        [style.text-decoration]="task.done ? 'line-through' : 'none'"
+                                        [style.color]="task.done ? '#94a3b8' : '#1e293b'"
+                                    >
+                                        {{ task.name }}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        class="bg-transparent border-none cursor-pointer p-1"
+                                        style="color:#cbd5e1;"
+                                        (click)="removeTask(task)"
+                                        pTooltip="Xóa" tooltipPosition="top"
+                                    >
+                                        <i class="pi pi-trash" style="font-size:0.8rem;"></i>
+                                    </button>
+                                </div>
+                            </ng-container>
+
+                            <ng-template #emptyState>
+                                <div class="text-center py-8 text-500">
+                                    <i class="pi pi-inbox text-4xl mb-3 block text-300"></i>
+                                    <div class="text-sm">Chưa có mục nào.</div>
+                                    <div class="text-xs text-400 mt-1">Nhập tên và nhấn + để thêm</div>
+                                </div>
+                            </ng-template>
+
+                        </div>
+                    </ng-container>
+                </div>
+
             </div>
         </div>
 
@@ -242,46 +239,25 @@ export interface TaskCategory {
                             type="button"
                             class="flex align-items-center justify-content-center border-round cursor-pointer"
                             style="width:36px;height:36px;border:1.5px solid;transition:all 0.15s;background:none;"
-                            [style.border-color]="newCategoryIcon === ic ? '#6c63ff' : '#e2e8f0'"
-                            [style.background]="newCategoryIcon === ic ? '#ede9fe' : 'transparent'"
+                            [style.border-color]="newCategoryIcon === ic ? '#4f6ef7' : '#e2e8f0'"
+                            [style.background]="newCategoryIcon === ic ? '#eef1fe' : 'transparent'"
                             (click)="newCategoryIcon = ic"
                         >
-                            <i [class]="'pi ' + ic" [style.color]="newCategoryIcon === ic ? '#4f46e5' : '#94a3b8'"></i>
+                            <i [class]="'pi ' + ic" [style.color]="newCategoryIcon === ic ? '#4f6ef7' : '#94a3b8'"></i>
                         </button>
                     </div>
                 </div>
             </div>
 
             <ng-template pTemplate="footer">
-                <p-button
-                    label="Hủy"
-                    [text]="true"
-                    severity="secondary"
-                    (click)="showAddCategoryDialog = false"
-                />
-                <p-button
-                    label="Thêm nhóm"
-                    severity="primary"
-                    [disabled]="!newCategoryLabel.trim()"
-                    (click)="confirmAddCategory()"
-                />
+                <p-button label="Hủy" [text]="true" severity="secondary"
+                          (click)="showAddCategoryDialog = false" />
+                <p-button label="Thêm nhóm" severity="primary"
+                          [disabled]="!newCategoryLabel.trim()"
+                          (click)="confirmAddCategory()" />
             </ng-template>
         </p-dialog>
     `,
-    styles: [`
-        :host ::ng-deep {
-            .p-tabs .p-tablist { border-bottom: 1px solid #e2e8f0; }
-            .p-tabs .p-tab { padding: 0.85rem 1.1rem; font-size: 0.875rem; font-weight: 500; }
-            .p-tabpanels { padding: 0; }
-            .p-checkbox { flex-shrink: 0; }
-
-            .add-cat-tab { opacity: 1 !important; }
-            .add-cat-tab.p-tab-active {
-                border-bottom-color: transparent !important;
-                color: #94a3b8 !important;
-            }
-        }
-    `],
     providers: [MessageService, BookingService],
 })
 export class BeoDetailComponent implements OnInit {
@@ -334,28 +310,13 @@ export class BeoDetailComponent implements OnInit {
         // TODO: load booking by this.bookingId
     }
 
-    private loadHallName(hallId: number) {
-        this.hallService.getHallById(hallId).subscribe({
-            next: (res) => {
-                if (res.data?.name) {
-                    this.hallNameMap[hallId] = res.data.name;
-                    this.cdr.markForCheck();
-                }
-            },
-            error: () => {},
-        });
-    }
-
     loadTasks() {
         // TODO: replace with real API
         this.tasks.set([]);
     }
 
     // ── Category management ───────────────────────────────────────────────────
-    openAddCategory(event: Event) {
-        event.stopPropagation();
-        const last = this.categories[this.categories.length - 1];
-        if (last) setTimeout(() => { this.activeTabKey = last.key; this.cdr.markForCheck(); }, 0);
+    openAddCategory() {
         this.newCategoryLabel = '';
         this.newCategoryIcon  = 'pi-bookmark';
         this.showAddCategoryDialog = true;
@@ -388,15 +349,15 @@ export class BeoDetailComponent implements OnInit {
     }
 
     onTaskToggle(task: TaskItem, event: CheckboxChangeEvent) {
-    this.tasks.update(prev =>
-        prev.map(t => t.id === task.id ? { ...t, done: !!event.checked } : t)
-    );
-    this.cdr.markForCheck();
+        this.tasks.update(prev =>
+            prev.map(t => t.id === task.id ? { ...t, done: !!event.checked } : t)
+        );
+        this.cdr.markForCheck();
     }
 
     trackById(_: number, item: TaskItem) { return item.id; }
 
-    // ── Derived helpers ───────────────────────────────────────────────────────
+    // ── Derived ───────────────────────────────────────────────────────────────
     getTasksForCat(key: string): TaskItem[] {
         return this.tasks().filter(t => t.categoryKey === key);
     }
@@ -405,8 +366,8 @@ export class BeoDetailComponent implements OnInit {
         return this.getTasksForCat(key).filter(t => t.done).length;
     }
 
-    get doneCount() { return this.tasks().filter(t => t.done).length; }
-    get overallPercent() {
+    get doneCount()       { return this.tasks().filter(t => t.done).length; }
+    get overallPercent()  {
         const total = this.tasks().length;
         return total ? Math.round((this.doneCount / total) * 100) : 0;
     }
@@ -428,12 +389,8 @@ export class BeoDetailComponent implements OnInit {
 
     getShiftLabel(shift?: string): string {
         const m: Record<string, string> = {
-            SLOT_1:    'Ca sáng (10:00 - 14:00)',
-            SLOT_2:    'Ca chiều (17:00 - 21:00)',
-            SLOT_3:    'Cả ngày (09:00 - 17:00)',
-            AFTERNOON: 'Ca sáng (10:00 - 14:00)',
-            EVENING:   'Ca chiều (17:00 - 21:00)',
-            FULL_DAY:  'Cả ngày (09:00 - 17:00)',
+            SLOT_1: 'Trưa', SLOT_2: 'Tối', SLOT_3: 'Cả ngày',
+            AFTERNOON: 'Trưa', EVENING: 'Tối', FULL_DAY: 'Cả ngày',
         };
         return m[shift ?? ''] ?? shift ?? '-';
     }
