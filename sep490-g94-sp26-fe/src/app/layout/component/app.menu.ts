@@ -67,7 +67,7 @@ export class AppMenu implements OnInit, OnDestroy {
     RECEPTIONIST: ['leads'],
     MANAGER:      'all',
     ADMIN:        'all',
-    COORDINATOR:  [],
+    COORDINATOR:  ['calender', 'booking', 'beo'],
   };
 
   constructor(private authService: AuthService) {}
