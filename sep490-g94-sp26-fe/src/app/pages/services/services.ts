@@ -398,6 +398,18 @@ interface Column {
                             <small class="text-500" *ngIf="selectedEditVideoName">Đã chọn: {{ selectedEditVideoName }}</small>
                         </div>
 
+                        <div class="video-preview-grid">
+                            <div class="video-preview-card" *ngIf="editedService?.videoUrl">
+                                <div class="video-preview-title">Video hiện tại</div>
+                                <video class="video-preview-player" [src]="editedService?.videoUrl" controls preload="metadata"></video>
+                            </div>
+
+                            <div class="video-preview-card" *ngIf="selectedEditVideoPreviewUrl">
+                                <div class="video-preview-title">Video sau khi cập nhật</div>
+                                <video class="video-preview-player" [src]="selectedEditVideoPreviewUrl" controls preload="metadata"></video>
+                            </div>
+                        </div>
+
                         <div class="flex items-center justify-between py-2 px-3 border-round"
                              style="background: #f8fafc; border: 1px solid #e2e8f0;">
                             <span class="font-semibold text-sm text-700">Trạng thái hoạt động</span>
@@ -426,6 +438,33 @@ interface Column {
         </div>
     `,
     styles: [`
+        .video-preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .video-preview-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: white;
+            padding: 0.6rem;
+        }
+
+        .video-preview-title {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.45rem;
+        }
+
+        .video-preview-player {
+            width: 100%;
+            max-height: 140px;
+            border-radius: 8px;
+            background: #020617;
+        }
+
         :host ::ng-deep {
             .p-datatable .p-datatable-thead > tr > th {
                 background: #f8fafc;
@@ -466,6 +505,12 @@ interface Column {
                 border-top: 1px solid #f1f5f9;
             }
         }
+
+        @media (max-width: 768px) {
+            .video-preview-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     `],
     providers: [MessageService, ServiceService, ConfirmationService, LocationService]
 })
@@ -493,6 +538,7 @@ export class ServicesComponent implements OnInit {
     selectedCreateVideoName = '';
     selectedEditVideoFile: File | null = null;
     selectedEditVideoName = '';
+    selectedEditVideoPreviewUrl: string | null = null;
     editedService: Partial<Service> = {};
     editedServiceActive = true;
     isSale = localStorage.getItem('codeRole') === 'SALE';
@@ -681,6 +727,7 @@ const payload = {
         this.editedService = { ...service };
         this.selectedEditVideoFile = null;
         this.selectedEditVideoName = '';
+        this.clearEditVideoPreview();
         this.editedServiceActive = !this.isInactiveStatus(service.status);
         this.editSubmitted = false;
         this.editDialog = true;
@@ -691,6 +738,7 @@ const payload = {
         this.editSubmitted = false;
         this.selectedEditVideoFile = null;
         this.selectedEditVideoName = '';
+        this.clearEditVideoPreview();
     }
 
     onEditVideoSelected(event: Event) {
@@ -698,6 +746,17 @@ const payload = {
         const file = input.files?.[0] ?? null;
         this.selectedEditVideoFile = file;
         this.selectedEditVideoName = file?.name ?? '';
+        this.clearEditVideoPreview();
+        if (file) {
+            this.selectedEditVideoPreviewUrl = URL.createObjectURL(file);
+        }
+    }
+
+    private clearEditVideoPreview() {
+        if (this.selectedEditVideoPreviewUrl) {
+            URL.revokeObjectURL(this.selectedEditVideoPreviewUrl);
+        }
+        this.selectedEditVideoPreviewUrl = null;
     }
 
     saveEditService() {
@@ -745,6 +804,7 @@ const payload = {
         this.editDialog = false;
         this.selectedEditVideoFile = null;
         this.selectedEditVideoName = '';
+        this.clearEditVideoPreview();
         this.saving = false;
         this.loadServices(this.currentPage, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
     }
