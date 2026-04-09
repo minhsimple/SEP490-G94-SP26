@@ -8,6 +8,25 @@ export interface Service {
     name?: string;
     description?: string;
     video_key?: string;
+    videoUrl?: string;
+    imageUrl?: string;
+    thumbnailUrl?: string;
+    imageUrls?: {
+        originalUrl?: string;
+        thumbnailUrl?: string;
+        mediumUrl?: string;
+        largeUrl?: string;
+    };
+    mediaAssets?: Array<{
+        type?: string;
+        mediaType?: string;
+        url?: string;
+        originalUrl?: string;
+        thumbnailUrl?: string;
+        mediumUrl?: string;
+        largeUrl?: string;
+        videoUrl?: string;
+    }>;
     unit?: string;
     basePrice?: number;
     locationId?: number;
@@ -60,6 +79,13 @@ export class ServiceService {
         });
     }
 
+    private getAuthHeaders(): HttpHeaders {
+        const token = localStorage.getItem('accessToken');
+        return new HttpHeaders({
+            Authorization: `Bearer ${token}`
+        });
+    }
+
     searchServices(params: ServiceSearchParams = {}): Observable<ApiResponse<PageResponse<Service>>> {
         let httpParams = new HttpParams()
             .set('page', params.page ?? 0)
@@ -90,13 +116,19 @@ export class ServiceService {
         code?: string;
         name: string;
         description?: string;
-        video_key?: string;
         unit?: string;
         basePrice?: number;
         locationId?: number;
-    }): Observable<ApiResponse<Service>> {
-        return this.http.post<ApiResponse<Service>>(`${this.baseUrl}/create`, service, {
-            headers: this.getHeaders()
+    }, videoFile: File): Observable<ApiResponse<Service>> {
+        const formData = new FormData();
+        formData.append(
+            'serviceRequest',
+            new Blob([JSON.stringify(service)], { type: 'application/json' })
+        );
+        formData.append('videoFile', videoFile);
+
+        return this.http.post<ApiResponse<Service>>(`${this.baseUrl}/create`, formData, {
+            headers: this.getAuthHeaders()
         });
     }
 
@@ -104,13 +136,21 @@ export class ServiceService {
         code?: string;
         name?: string;
         description?: string;
-        video_key?: string;
         unit?: string;
         basePrice?: number;
         locationId?: number;
-    }): Observable<ApiResponse<Service>> {
-        return this.http.put<ApiResponse<Service>>(`${this.baseUrl}/update`, service, {
-            headers: this.getHeaders(),
+    }, videoFile?: File): Observable<ApiResponse<Service>> {
+        const formData = new FormData();
+        formData.append(
+            'serviceRequest',
+            new Blob([JSON.stringify(service)], { type: 'application/json' })
+        );
+        if (videoFile) {
+            formData.append('videoFile', videoFile);
+        }
+
+        return this.http.put<ApiResponse<Service>>(`${this.baseUrl}/update`, formData, {
+            headers: this.getAuthHeaders(),
             params: new HttpParams().set('serviceId', id)
         });
     }
