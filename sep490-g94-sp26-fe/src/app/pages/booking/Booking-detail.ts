@@ -294,12 +294,82 @@ import { Payment, PaymentService } from '../service/payment.service';
             font-size: 2rem;
             color: #cbd5e1;
         }
+        .layout-preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 0.4rem;
+        }
+        .layout-zone-card {
+            border: 2px solid #d6dde8;
+            border-radius: 8px;
+            padding: 0.8rem 0.75rem;
+            background: #f8fafc;
+        }
+        .layout-zone-header {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+        }
+        .layout-zone-groups {
+            font-size: 0.78rem;
+            color: #475569;
+        }
+        .layout-group-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .layout-group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .layout-group-left {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            min-width: 0;
+            flex: 1;
+        }
+        .layout-group-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            border: 2px solid #cbd5e1;
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .layout-group-name {
+            font-weight: 500;
+            color: #334155;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .layout-group-count {
+            font-weight: 600;
+            color: #64748b;
+            white-space: nowrap;
+        }
+        .layout-zone-empty {
+            color: #cbd5e1;
+            font-style: italic;
+            font-size: 0.74rem;
+        }
         @media (max-width: 992px) {
             .layout {
                 grid-template-columns: 1fr;
             }
             .meta-grid,
-            .detail-grid {
+            .detail-grid,
+            .layout-preview-grid {
                 grid-template-columns: 1fr;
             }
             .hero-right {
@@ -438,20 +508,40 @@ import { Payment, PaymentService } from '../service/payment.service';
                         <div class="value" style="margin-top:0.3rem; font-weight:500">{{ customer?.address || '-' }}</div>
                     </div>
 
-                    <!-- Layout chỗ ngồi -->
+                    <!-- Layout chỗ ngồi (chỉ xem) -->
                     <div class="card" style="margin-bottom:1rem">
-                        <div class="line" style="align-items:center; justify-content:space-between; margin:0 0 0.75rem">
-                            <h2 class="section-title" style="margin:0">Layout chỗ ngồi</h2>
-                            <button class="btn-setup" (click)="openSeatLayout()">
-                                <i class="pi pi-table" style="font-size:0.8rem"></i>
-                                Thiết lập
-                            </button>
+                        <h2 class="section-title" style="margin-bottom:0.65rem">Layout chỗ ngồi</h2>
+                        <div *ngIf="totalLayoutTables() > 0; else noTableLayoutTpl">
+                            <div class="line" style="margin:0 0 0.6rem">
+                                <span class="muted">Tổng số bàn theo layout</span>
+                                <strong>{{ totalLayoutTables() }} bàn</strong>
+                            </div>
+                            <div class="layout-preview-grid">
+                                <div class="layout-zone-card" *ngFor="let zone of groupedLayoutByZone()">
+                                    <div class="layout-zone-header">{{ zone.zoneLabel }}</div>
+                                    <div class="layout-zone-groups">
+                                        <div *ngIf="zone.groups.length > 0; else noGroupsInZone" class="layout-group-list">
+                                            <div class="layout-group-item" *ngFor="let group of zone.groups">
+                                                <span class="layout-group-left">
+                                                    <i class="layout-group-dot" [ngStyle]="layoutLegendDotStyle(group.colorIndex)"></i>
+                                                    <span class="layout-group-name">{{ group.groupName }}</span>
+                                                </span>
+                                                <span class="layout-group-count">Bàn {{ group.startSeat }}-{{ group.endSeat }} · {{ group.numberOfTables }} bàn</span>
+                                            </div>
+                                        </div>
+                                        <ng-template #noGroupsInZone>
+                                            <div class="layout-zone-empty">Không có nhóm</div>
+                                        </ng-template>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="seat-card-empty">
-                            <i class="pi pi-stop"></i>
-                            <span style="font-size:0.88rem">Chưa có sơ đồ chỗ ngồi</span>
-                            <span style="font-size:0.78rem">Nhấn "Thiết lập" để cấu hình layout</span>
-                        </div>
+                        <ng-template #noTableLayoutTpl>
+                            <div class="seat-card-empty" style="padding:1.2rem 0 0.8rem">
+                                <i class="pi pi-stop"></i>
+                                <span style="font-size:0.88rem">Chưa có sơ đồ chỗ ngồi</span>
+                            </div>
+                        </ng-template>
                     </div>
 
                     <!-- Lịch sử thanh toán -->
@@ -595,6 +685,7 @@ export class BookingDetailComponent implements OnInit {
     setMenuPrice = 0;
     packageName = '';
     packagePrice = 0;
+    private readonly layoutColorStyleCache = new Map<number, { border: string; background: string }>();
     invoicePreview: Invoice | null = null;
     paymentHistory: Payment[] = [];
 
@@ -608,8 +699,6 @@ export class BookingDetailComponent implements OnInit {
     contractDialogVisible = false;
     contractZoom = 1;
     zoomPercent = 100;
-
-    showSeatLayout = false;
 
     constructor(
         private route: ActivatedRoute,
@@ -667,11 +756,6 @@ export class BookingDetailComponent implements OnInit {
                 this.goBack();
             },
         });
-    }
-
-    openSeatLayout(): void {
-        if (!this.booking?.id) return;
-        this.router.navigate(['/pages/seat-layout', this.booking.id]);
     }
 
     private loadInvoicePreview(contractId: number) {
@@ -1117,5 +1201,101 @@ export class BookingDetailComponent implements OnInit {
     isPaidState(value?: string): boolean {
         const state = String(value ?? '').toUpperCase();
         return state === 'SUCCESS' || state === 'CONFIRMED' || state === 'PAID';
+    }
+
+    groupedLayoutByZone(): Array<{
+        zoneEnum: string;
+        zoneLabel: string;
+        groups: Array<{ groupName: string; numberOfTables: number; startSeat: number; endSeat: number; colorIndex: number }>;
+    }> {
+        const details = this.booking?.tableLayoutResponse?.tableLayoutDetails;
+        const zoneEnums = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
+        let seatCursor = 1;
+        let colorCursor = 0;
+
+        return zoneEnums.map((zoneEnum) => {
+            const rows = details?.[zoneEnum] ?? [];
+            const groups = (rows ?? [])
+                .map((row) => {
+                    const numberOfTables = Number(row.numberOfTables ?? 0);
+                    const safeTables = Number.isFinite(numberOfTables) && numberOfTables > 0 ? Math.floor(numberOfTables) : 0;
+                    if (safeTables <= 0) {
+                        return null;
+                    }
+
+                    const startSeat = seatCursor;
+                    const endSeat = seatCursor + safeTables - 1;
+                    const colorIndex = colorCursor;
+                    seatCursor = endSeat + 1;
+                    colorCursor += 1;
+
+                    return {
+                        groupName: row.groupName || 'Khách mời',
+                        numberOfTables: safeTables,
+                        startSeat,
+                        endSeat,
+                        colorIndex,
+                    };
+                })
+                .filter((row): row is { groupName: string; numberOfTables: number; startSeat: number; endSeat: number; colorIndex: number } => row !== null);
+
+            return {
+                zoneEnum,
+                zoneLabel: this.layoutAreaLabel(zoneEnum),
+                groups,
+            };
+        });
+    }
+
+    layoutLegendDotStyle(colorIndex: number): Record<string, string> {
+        const token = this.resolveLayoutColorToken(colorIndex);
+        return {
+            'border-color': token.border,
+            background: token.background,
+        };
+    }
+
+    private resolveLayoutColorToken(colorIndex: number): { border: string; background: string } {
+        const key = this.normalizeLayoutColorIndex(colorIndex);
+        const cached = this.layoutColorStyleCache.get(key);
+        if (cached) {
+            return cached;
+        }
+
+        const hue = (key * 137.508) % 360;
+        const saturation = 70 + (key % 3) * 6;
+        const lightness = 88 - (Math.floor(key / 3) % 3) * 8;
+        const token = {
+            border: `hsl(${hue} ${Math.min(94, saturation + 8)}% ${Math.max(34, lightness - 28)}%)`,
+            background: `hsl(${hue} ${Math.min(90, saturation)}% ${Math.max(64, lightness)}%)`,
+        };
+        this.layoutColorStyleCache.set(key, token);
+        return token;
+    }
+
+    private normalizeLayoutColorIndex(colorIndex: number): number {
+        const value = Number(colorIndex);
+        if (!Number.isFinite(value) || value < 0) {
+            return 0;
+        }
+        return Math.floor(value);
+    }
+
+    totalLayoutTables(): number {
+        return this.groupedLayoutByZone().reduce(
+            (zoneSum, zone) => zoneSum + zone.groups.reduce((groupSum, group) => groupSum + Number(group.numberOfTables ?? 0), 0),
+            0
+        );
+    }
+
+    private layoutAreaLabel(key: string): string {
+        const normalized = String(key ?? '').toUpperCase();
+        const map: Record<string, string> = {
+            SIDE_A: 'Khu A',
+            SIDE_B: 'Khu B',
+            SIDE_C: 'Khu C',
+            SIDE_D: 'Khu D',
+        };
+        return map[normalized] ?? key;
     }
 }

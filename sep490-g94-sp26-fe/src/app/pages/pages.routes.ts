@@ -20,6 +20,7 @@ import { CombosComponent } from './services/combo-services';
 import { BookingsComponent } from './booking/Booking';
 import { BookingCreateComponent } from './booking/Booking-create';
 import { BookingDetailComponent } from './booking/Booking-detail';
+import { SeatLayoutComponent } from './seat-layout/Seat-layout';
 import { ComboServiceDetailComponent } from './services/combo-service-detail.component';
 import { PaymentsComponent } from './payment/Payment';
 import { InvoicesComponent } from './invoice/Invoice';
@@ -59,6 +60,8 @@ export default [
     { path: 'booking/:id/edit', component: BookingCreateComponent },
     { path: 'booking/:id/view', component: BookingDetailComponent },
     { path: 'booking/:id', component: BookingDetailComponent },
+    { path: 'seat-layout', component: SeatLayoutComponent },
+    { path: 'seat-layout/:id', component: SeatLayoutComponent },
     { path: 'booking', component: BookingsComponent },
     // ⚠️ invoice route cụ thể phải đứng trước route chung
     { path: 'invoice/:id', component: InvoiceDetailComponent },

@@ -27,6 +27,8 @@ export interface Booking {
     contractState?: string;
     bookingState?: string;
     salesId?: number | null;
+    assignCoordinatorId?: number | null;
+    assignCoordinatorName?: string;
     reservedUntil?: string | null;
     notes?: string;
     brideName?: string;
@@ -40,6 +42,28 @@ export interface Booking {
     totalAmount?: number;
     status?: string;
     updatedAt?: string;
+    tableLayoutResponse?: TableLayoutResponse;
+}
+
+export interface TableLayoutDetailRequest {
+    tableLayoutEnum: string;
+    groupName: string;
+    numberOfTables: number;
+}
+
+export interface TableLayoutRequest {
+    tableLayoutDetailRequestList: TableLayoutDetailRequest[];
+}
+
+export interface TableLayoutDetailResponse {
+    id?: number;
+    groupName?: string;
+    numberOfTables?: number;
+}
+
+export interface TableLayoutResponse {
+    contractId?: number;
+    tableLayoutDetails?: Record<string, TableLayoutDetailResponse[]>;
 }
 
 export interface BookingSearchParams {
@@ -68,6 +92,7 @@ export interface BookingUpsertPayload {
     bookingTime: string;
     expectedTables: number;
     expectedGuests: number;
+    assignCoordinatorId?: number | null;
     packageId?: number | null;
     setMenuId?: number | null;
     salesId?: number | null;
@@ -81,6 +106,7 @@ export interface BookingUpsertPayload {
     brideMotherName?: string;
     groomFatherName?: string;
     groomMotherName?: string;
+    tableLayoutRequest?: TableLayoutRequest;
 }
 
 export interface UpdateBookingStatePayload {
@@ -157,7 +183,7 @@ export class BookingService {
     update(id: number, payload: BookingUpsertPayload): Observable<ApiResponse<Booking>> {
         return this.http.put<ApiResponse<Booking>>(`${BASE}/contract/update`, payload, {
             headers: this.getHeaders(),
-            params: new HttpParams().set('contractId', id),
+            params: new HttpParams().set('bookingId', id),
         });
     }
 
