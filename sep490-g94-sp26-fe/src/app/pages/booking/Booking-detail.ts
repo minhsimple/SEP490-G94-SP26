@@ -2,21 +2,25 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { Booking, BookingService } from '../service/booking.service';
+import { Booking, BookingService, BookingUpsertPayload, TableLayoutRequest } from '../service/booking.service';
 import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
 import { SetMenuService } from '../service/set-menu';
 import { ServicePackageService } from '../service/service-package.service';
 import { Invoice, InvoiceService } from '../service/invoice.service';
 import { Payment, PaymentService } from '../service/payment.service';
+import { UserService } from '../service/users.service';
+import { RoleService } from '../service/role.service';
 
 @Component({
     selector: 'app-booking-detail',
     standalone: true,
-    imports: [CommonModule, ButtonModule, ToastModule],
+    imports: [CommonModule, FormsModule, ButtonModule, SelectModule, ToastModule],
     providers: [BookingService, MessageService, InvoiceService, PaymentService],
     styles: [`
         .page-title {
@@ -182,6 +186,39 @@ import { Payment, PaymentService } from '../service/payment.service';
             flex-wrap: nowrap;
             align-items: center;
             overflow-x: auto;
+        }
+        .coordinator-panel {
+            margin-top: 0.9rem;
+            padding-top: 0.8rem;
+            border-top: 1px dashed #dbe2ea;
+            display: grid;
+            gap: 0.55rem;
+        }
+        .coordinator-panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .coordinator-panel-title {
+            font-size: 0.84rem;
+            font-weight: 600;
+            color: #334155;
+        }
+        .coordinator-panel-current {
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+        .coordinator-panel-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .coordinator-select {
+            min-width: 240px;
+            flex: 1;
         }
         .contract-overlay {
             position: fixed;
@@ -640,6 +677,30 @@ import { Payment, PaymentService } from '../service/payment.service';
                                 <p-button label="Xem hợp đồng" icon="pi pi-file" (onClick)="openContractDialog()" />
                                 <p-button label="In hợp đồng" icon="pi pi-print" severity="secondary" (onClick)="printContract()" />
                             </div>
+                            <div class="coordinator-panel" *ngIf="isAdminAccount">
+                                <div class="coordinator-panel-head">
+                                    <span class="coordinator-panel-title">Phân công điều phối viên cho hợp đồng</span>
+                                    <span class="coordinator-panel-current">Hiện tại: {{ coordinatorDisplayName() }}</span>
+                                </div>
+                                <div class="coordinator-panel-actions">
+                                    <p-select
+                                        class="coordinator-select"
+                                        [options]="coordinatorOptions"
+                                        [(ngModel)]="selectedCoordinatorId"
+                                        optionLabel="label"
+                                        optionValue="id"
+                                        placeholder="Chọn coordinator"
+                                        [showClear]="true"
+                                    />
+                                    <p-button
+                                        label="Phân công"
+                                        icon="pi pi-user-plus"
+                                        (onClick)="assignCoordinator()"
+                                        [loading]="assigningCoordinator"
+                                        [disabled]="assigningCoordinator || !booking.id || selectedCoordinatorId == null"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -686,6 +747,15 @@ export class BookingDetailComponent implements OnInit {
     packageName = '';
     packagePrice = 0;
     private readonly layoutColorStyleCache = new Map<number, { border: string; background: string }>();
+    readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
+    readonly isAdminAccount = this.codeRole.includes('ADMIN');
+    readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
+    coordinatorRoleIds = new Set<number>();
+    coordinatorNameMap: Record<number, string> = {};
+    coordinatorOptions: Array<{ id: number; label: string }> = [];
+    selectedCoordinatorId: number | null = null;
+    assigningCoordinator = false;
     invoicePreview: Invoice | null = null;
     paymentHistory: Payment[] = [];
 
@@ -710,6 +780,8 @@ export class BookingDetailComponent implements OnInit {
         private servicePackageService: ServicePackageService,
         private invoiceService: InvoiceService,
         private paymentService: PaymentService,
+        private userService: UserService,
+        private roleService: RoleService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef,
         private sanitizer: DomSanitizer,
@@ -721,6 +793,11 @@ export class BookingDetailComponent implements OnInit {
             this.goBack();
             return;
         }
+
+        if (this.isAdminAccount) {
+            this.loadCoordinatorOptions();
+        }
+
         this.loadDetail(id);
     }
 
@@ -730,6 +807,23 @@ export class BookingDetailComponent implements OnInit {
         this.bookingService.getById(id).subscribe({
             next: (res) => {
                 this.booking = res.data;
+
+                if (!this.canCurrentUserAccessBooking(this.booking)) {
+                    this.loading = false;
+                    this.booking = null;
+                    this.messageService.add({
+                        severity: 'warn',
+                        summary: 'Không có quyền truy cập',
+                        detail: 'Bạn chỉ được xem hợp đồng được phân công cho mình.',
+                        life: 3200,
+                    });
+                    this.cdr.detectChanges();
+                    this.goBack();
+                    return;
+                }
+
+                this.selectedCoordinatorId = this.toNumberOrNull(this.booking?.assignCoordinatorId);
+                this.ensureCoordinatorName(this.selectedCoordinatorId, this.booking?.assignCoordinatorName);
 
                 if (this.booking?.customerId) this.loadCustomer(this.booking.customerId);
                 if (this.booking?.hallId) this.loadHall(this.booking.hallId);
@@ -756,6 +850,281 @@ export class BookingDetailComponent implements OnInit {
                 this.goBack();
             },
         });
+    }
+
+    private loadCoordinatorOptions() {
+        this.roleService.searchRoles({ page: 0, size: 100, sort: 'updatedAt,DESC' }).subscribe({
+            next: (res) => {
+                const roles = res.data?.content ?? [];
+                this.coordinatorRoleIds = new Set(
+                    roles
+                        .filter((role: any) => this.isCoordinatorRole(role))
+                        .map((role: any) => Number(role.id))
+                        .filter((id: number) => Number.isFinite(id) && id > 0)
+                );
+                this.fetchCoordinatorUsers();
+            },
+            error: () => {
+                this.coordinatorRoleIds.clear();
+                this.fetchCoordinatorUsers();
+            },
+        });
+    }
+
+    private fetchCoordinatorUsers() {
+        this.userService.searchUsers({ page: 0, size: 200, sort: 'fullName,ASC' }).subscribe({
+            next: (res) => {
+                const users = res.data?.content ?? [];
+                this.coordinatorOptions = users
+                    .filter((user: any) => this.isCoordinatorUser(user))
+                    .map((user: any) => {
+                        const id = Number(user.id);
+                        const label = user.fullName?.trim() || `Coordinator #${id}`;
+                        this.coordinatorNameMap[id] = label;
+                        return {
+                            id,
+                            label,
+                        };
+                    })
+                    .filter((item) => Number.isFinite(item.id) && item.id > 0);
+
+                this.ensureCoordinatorName(this.selectedCoordinatorId, this.booking?.assignCoordinatorName);
+
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.coordinatorOptions = [];
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    private isCoordinatorRole(role: any): boolean {
+        const code = String(role?.code ?? '').toUpperCase();
+        const name = String(role?.name ?? '').toUpperCase();
+        return code.includes('COORDINATOR') || code.includes('COORD') || name.includes('COORDINATOR') || name.includes('COORD');
+    }
+
+    private isCoordinatorUser(user: any): boolean {
+        const roleId = Number(user?.roleId ?? user?.role?.id);
+        if (Number.isFinite(roleId) && roleId > 0 && this.coordinatorRoleIds.has(roleId)) {
+            return true;
+        }
+
+        const roleCandidates = [
+            user?.role,
+            user?.roleCode,
+            user?.codeRole,
+            user?.roleName,
+            user?.role?.code,
+            user?.role?.name,
+        ]
+            .filter((value) => value != null)
+            .map((value) => String(value).toUpperCase());
+
+        return roleCandidates.some((value) => value.includes('COORDINATOR') || value.includes('COORD'));
+    }
+
+    coordinatorDisplayName(): string {
+        if (this.selectedCoordinatorId == null) {
+            return 'Chưa phân công';
+        }
+
+        const selected = this.coordinatorOptions.find((item) => item.id === this.selectedCoordinatorId);
+        const mapped = this.coordinatorNameMap[this.selectedCoordinatorId];
+        return selected?.label || mapped || `Coordinator #${this.selectedCoordinatorId}`;
+    }
+
+    assignCoordinator() {
+        if (!this.isAdminAccount || !this.booking?.id || this.selectedCoordinatorId == null) {
+            return;
+        }
+
+        const payload = this.buildUpdatePayloadForCoordinator(this.selectedCoordinatorId);
+        if (!payload) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Thiếu dữ liệu',
+                detail: 'Không đủ dữ liệu để cập nhật coordinator. Vui lòng kiểm tra lại thông tin bố trí bàn của hợp đồng.',
+                life: 3000,
+            });
+            return;
+        }
+
+        this.assigningCoordinator = true;
+        this.bookingService.update(this.booking.id, payload).subscribe({
+            next: (res) => {
+                this.assigningCoordinator = false;
+                this.booking = res.data ?? this.booking;
+                this.selectedCoordinatorId = this.toNumberOrNull(this.booking?.assignCoordinatorId) ?? this.selectedCoordinatorId;
+                this.ensureCoordinatorName(this.selectedCoordinatorId, this.booking?.assignCoordinatorName);
+                this.messageService.add({
+                    severity: 'success',
+                    summary: 'Thành công',
+                    detail: 'Đã phân công coordinator cho hợp đồng.',
+                    life: 2500,
+                });
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                this.assigningCoordinator = false;
+                this.messageService.add({
+                    severity: 'error',
+                    summary: 'Lỗi',
+                    detail: err?.error?.message ?? 'Không thể phân công coordinator.',
+                    life: 3500,
+                });
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    private buildUpdatePayloadForCoordinator(assignCoordinatorId: number): BookingUpsertPayload | null {
+        const b = this.booking;
+        if (!b) return null;
+
+        const customerId = Number(b.customerId ?? 0);
+        const hallId = Number(b.hallId ?? 0);
+        const bookingDate = String(b.bookingDate ?? b.eventDate ?? '').trim();
+        const bookingTime = String(b.bookingTime ?? b.shift ?? '').trim();
+        const expectedTables = Number(b.expectedTables ?? b.tableCount ?? 0);
+        const expectedGuests = Number(b.expectedGuests ?? b.guestCount ?? 0);
+        const brideName = String(b.brideName ?? '').trim();
+        const groomName = String(b.groomName ?? '').trim();
+        const tableLayoutRequest = this.extractTableLayoutRequestFromBooking(b);
+
+        if (!customerId || !hallId || !bookingDate || !bookingTime || !expectedTables || !expectedGuests || !brideName || !groomName) {
+            return null;
+        }
+
+        if (!tableLayoutRequest?.tableLayoutDetailRequestList?.length) {
+            return null;
+        }
+
+        return {
+            customerId,
+            hallId,
+            bookingDate,
+            bookingTime,
+            expectedTables,
+            expectedGuests,
+            assignCoordinatorId,
+            packageId: b.packageId ?? null,
+            setMenuId: b.setMenuId ?? null,
+            salesId: b.salesId ?? null,
+            reservedUntil: b.reservedUntil ?? null,
+            notes: b.notes ?? undefined,
+            brideName,
+            brideAge: b.brideAge ?? null,
+            groomName,
+            groomAge: b.groomAge ?? null,
+            brideFatherName: b.brideFatherName ?? undefined,
+            brideMotherName: b.brideMotherName ?? undefined,
+            groomFatherName: b.groomFatherName ?? undefined,
+            groomMotherName: b.groomMotherName ?? undefined,
+            tableLayoutRequest,
+        };
+    }
+
+    private extractTableLayoutRequestFromBooking(booking: Booking): TableLayoutRequest | null {
+        const details = booking.tableLayoutResponse?.tableLayoutDetails;
+        if (!details) return null;
+
+        const knownOrder = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
+        const knownItems = knownOrder.flatMap((key) =>
+            (details[key] ?? []).map((item) => ({ key, item }))
+        );
+        const fallbackItems = Object.entries(details)
+            .filter(([key]) => !knownOrder.includes(key))
+            .flatMap(([, arr]) => arr.map((item) => ({ item })));
+
+        const source = knownItems.length > 0 ? knownItems : fallbackItems;
+        if (source.length === 0) {
+            return null;
+        }
+
+        const mapped = source
+            .map((entry, index) => {
+                const fallbackKey = knownOrder[index % knownOrder.length];
+                const tableLayoutEnum = (entry as any).key ?? fallbackKey;
+                const numberOfTables = Number(entry.item?.numberOfTables ?? 0);
+                return {
+                    tableLayoutEnum,
+                    groupName: String(entry.item?.groupName ?? 'Khách mời'),
+                    numberOfTables: Number.isFinite(numberOfTables) ? Math.max(1, Math.floor(numberOfTables)) : 1,
+                };
+            })
+            .filter((item) => Number(item.numberOfTables ?? 0) > 0);
+
+        if (mapped.length === 0) {
+            return null;
+        }
+
+        return {
+            tableLayoutDetailRequestList: mapped,
+        };
+    }
+
+    private toNumberOrNull(value: unknown): number | null {
+        const num = Number(value);
+        return Number.isFinite(num) && num > 0 ? num : null;
+    }
+
+    private ensureCoordinatorName(coordinatorId: number | null, fallbackName?: string | null) {
+        if (!coordinatorId) {
+            return;
+        }
+
+        const existing = this.coordinatorOptions.find((item) => item.id === coordinatorId);
+        if (existing) {
+            this.coordinatorNameMap[coordinatorId] = existing.label;
+            return;
+        }
+
+        const cleanedFallback = String(fallbackName ?? '').trim();
+
+        this.userService.getUser(coordinatorId).subscribe({
+            next: (res) => {
+                const user = res.data;
+                if (user && this.isCoordinatorUser(user)) {
+                    const fullName = user.fullName?.trim() || cleanedFallback || `Coordinator #${coordinatorId}`;
+                    this.coordinatorNameMap[coordinatorId] = fullName;
+                    this.upsertCoordinatorOption(coordinatorId, fullName);
+                } else {
+                    this.removeCoordinatorOption(coordinatorId);
+                    delete this.coordinatorNameMap[coordinatorId];
+                    if (this.selectedCoordinatorId === coordinatorId) {
+                        this.selectedCoordinatorId = null;
+                    }
+                    if (this.booking && Number(this.booking.assignCoordinatorId) === coordinatorId) {
+                        this.booking.assignCoordinatorId = null;
+                        this.booking.assignCoordinatorName = undefined;
+                    }
+                }
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.removeCoordinatorOption(coordinatorId);
+                delete this.coordinatorNameMap[coordinatorId];
+                if (this.selectedCoordinatorId === coordinatorId) {
+                    this.selectedCoordinatorId = null;
+                }
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    private upsertCoordinatorOption(id: number, label: string) {
+        const idx = this.coordinatorOptions.findIndex((item) => item.id === id);
+        if (idx >= 0) {
+            this.coordinatorOptions[idx] = { id, label };
+        } else {
+            this.coordinatorOptions = [{ id, label }, ...this.coordinatorOptions];
+        }
+    }
+
+    private removeCoordinatorOption(id: number) {
+        this.coordinatorOptions = this.coordinatorOptions.filter((item) => item.id !== id);
     }
 
     private loadInvoicePreview(contractId: number) {
@@ -1297,5 +1666,18 @@ export class BookingDetailComponent implements OnInit {
             SIDE_D: 'Khu D',
         };
         return map[normalized] ?? key;
+    }
+
+    private canCurrentUserAccessBooking(booking: Booking | null): boolean {
+        if (!booking) {
+            return false;
+        }
+        if (!this.isCoordinatorAccount) {
+            return true;
+        }
+        if (this.currentUserId <= 0) {
+            return false;
+        }
+        return Number(booking.assignCoordinatorId) === this.currentUserId;
     }
 }

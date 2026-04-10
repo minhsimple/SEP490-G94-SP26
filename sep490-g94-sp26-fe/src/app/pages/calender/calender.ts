@@ -751,6 +751,9 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     filterBranch: string | null = null;
     filterHall:   string | null = null;
     listFilterDate: string | null = null;
+    readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
+    readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
 
     branchOptions: { label: string; value: string }[] = [];
     hallOptions:   { label: string; value: string }[] = [];
@@ -1098,10 +1101,12 @@ export class EventCalendarComponent implements OnInit, OnChanges {
             sort: 'startTime,ASC',
             bookingDateFrom: `${year}-${monthStr}-01`,
             bookingDateTo: `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`,
+            assignCoordinatorId: this.isCoordinatorAccount && this.currentUserId > 0 ? this.currentUserId : undefined,
         }).subscribe({
             next: (res) => {
                 const rows = (res.data?.content ?? []).filter((booking) =>
                     this.isCalendarVisibleStatus(booking.contractState ?? booking.bookingState ?? booking.status)
+                    && this.isBookingVisibleForCurrentUser(booking)
                 );
                 const mapped = rows
                     .map((booking) => this.mapBookingToCalendarEvent(booking))
@@ -1176,5 +1181,15 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     private isCalendarVisibleStatus(status: unknown): boolean {
         if (status === null || status === undefined) return true;
         return String(status).trim().toUpperCase() !== 'DRAFT';
+    }
+
+    private isBookingVisibleForCurrentUser(booking: Booking): boolean {
+        if (!this.isCoordinatorAccount) {
+            return true;
+        }
+        if (this.currentUserId <= 0) {
+            return false;
+        }
+        return Number(booking.assignCoordinatorId) === this.currentUserId;
     }
 }

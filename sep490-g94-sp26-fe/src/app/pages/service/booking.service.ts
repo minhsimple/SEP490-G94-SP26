@@ -6,6 +6,7 @@ const BASE = 'http://localhost:8080/api/v1';
 
 export interface Booking {
     id: number;
+    taskListId?: number;
     contractNo?: string;
     bookingNo?: string;
     customerId?: number;
@@ -79,6 +80,7 @@ export interface BookingSearchParams {
     contractState?: string;
     bookingState?: string;
     salesId?: number;
+    assignCoordinatorId?: number;
     brideName?: string;
     groomName?: string;
     status?: string;
@@ -158,6 +160,7 @@ export class BookingService {
         if (params.bookingTime)     p = p.set('bookingTime',     params.bookingTime);
         if (contractState)          p = p.set('contractState',   contractState);
         if (params.salesId)         p = p.set('salesId',         params.salesId);
+        if (params.assignCoordinatorId) p = p.set('assignCoordinatorId', params.assignCoordinatorId);
         if (params.brideName)       p = p.set('brideName',       params.brideName);
         if (params.groomName)       p = p.set('groomName',       params.groomName);
         if (params.status)          p = p.set('status',          params.status);

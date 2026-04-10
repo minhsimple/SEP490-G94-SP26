@@ -4,8 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { BookingService, Booking } from '../service/booking.service';
-import { HallService } from '../service/hall.service';
+import { TaskListService, TaskList, TaskListTask } from '../service/beo.service';
 
 @Component({
     selector: 'app-beo',
@@ -49,13 +48,13 @@ import { HallService } from '../service/hall.service';
                 ></div>
             </ng-container>
 
-            <!-- Booking card list -->
+            <!-- Task list card list -->
             <ng-container *ngIf="!loading">
                 <div
-                    *ngFor="let booking of bookings(); trackBy: trackById"
+                    *ngFor="let item of taskLists(); trackBy: trackById"
                     class="surface-card border-round-xl mb-2 cursor-pointer booking-row"
                     style="border:1px solid #e8edf2;transition:box-shadow 0.18s,border-color 0.18s;"
-                    (click)="viewTasks(booking)"
+                    (click)="viewTasks(item)"
                 >
                     <div class="flex items-center justify-between px-5 py-4">
                         <div style="flex:1;min-width:0;">
@@ -63,9 +62,9 @@ import { HallService } from '../service/hall.service';
                             <!-- Name + progress badge -->
                             <div class="flex items-center gap-2 mb-1 flex-wrap">
                                 <span class="font-semibold text-900" style="font-size:0.975rem;">
-                                    {{ booking.groomName }} & {{ booking.brideName }}
+                                    {{ item.name || item.contractNo || ('Danh sách #' + item.id) }}
                                 </span>
-                                <ng-container *ngIf="getTaskProgress(booking) as prog">
+                                <ng-container *ngIf="getTaskProgress(item) as prog">
                                     <span
                                         class="text-xs font-semibold px-2 border-round"
                                         style="background:transparent;color:#64748b;"
@@ -81,21 +80,20 @@ import { HallService } from '../service/hall.service';
                                     class="font-medium border-round"
                                     style="background:#e2e8f0;color:#64748b;padding:1px 7px;font-size:0.72rem;border-radius:4px;"
                                 >
-                                    {{ booking.contractNo ?? booking.bookingNo ?? ('#' + booking.id) }}
+                                    {{ item.contractNo ?? ('#' + item.id) }}
                                 </span>
                                 <span class="flex items-center gap-1">
-                                    <i class="pi pi-calendar" style="font-size:0.72rem;"></i>
-                                    {{ formatDate(booking.bookingDate ?? booking.eventDate) }}
-                                    &mdash; {{ getShiftLabel(booking.shift ?? booking.bookingTime) }}
+                                    <i class="pi pi-clock" style="font-size:0.72rem;"></i>
+                                    {{ getShiftLabel(item.bookingTime) }}
                                 </span>
                                 <span class="flex items-center gap-1">
                                     <i class="pi pi-building" style="font-size:0.72rem;"></i>
-                                    {{ getHallLabel(booking) }}
+                                    {{ item.hallName || '-' }}
                                 </span>
                             </div>
 
                             <!-- Progress bar (only shown when there are tasks) -->
-                            <ng-container *ngIf="getTaskProgress(booking) as prog">
+                            <ng-container *ngIf="getTaskProgress(item) as prog">
                                 <div
                                     class="border-round mt-2 overflow-hidden"
                                     style="height:3px;background:#e8edf2;max-width:260px;"
@@ -116,7 +114,7 @@ import { HallService } from '../service/hall.service';
                 </div>
 
                 <!-- Empty state -->
-                <div *ngIf="!bookings().length" class="text-center py-12 text-500">
+                <div *ngIf="!taskLists().length" class="text-center py-12 text-500">
                     <i class="pi pi-inbox text-5xl mb-3 block text-300"></i>
                     <div class="text-sm">Không có công việc nào</div>
                 </div>
@@ -136,27 +134,28 @@ import { HallService } from '../service/hall.service';
             }
         }
     `],
-    providers: [MessageService, BookingService],
+    providers: [MessageService],
 })
 export class BeoComponent implements OnInit {
 
-    bookings  = signal<Booking[]>([]);
+    taskLists  = signal<TaskList[]>([]);
     loading   = false;
     skeletonRows = Array(6);
-
-    hallOptions: { label: string; value: number }[] = [];
+    readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
+    readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
 
     get completedCount() {
-        return this.bookings().filter(b => this.isCompleted(b)).length;
+        return this.taskLists().filter((list) => this.isCompleted(list)).length;
     }
     get pendingCount() {
-        return this.bookings().filter(b => !this.isCompleted(b)).length;
+        return this.taskLists().filter((list) => !this.isCompleted(list)).length;
     }
     get stats() {
         return [
             {
                 label: 'Tổng công việc',
-                value: this.bookings().length,
+                value: this.taskLists().length,
                 icon:  'pi pi-align-justify',   // ≡ list lines icon
                 color: '#4f6ef7',
                 bg:    '#eef1fe',
@@ -179,43 +178,33 @@ export class BeoComponent implements OnInit {
     }
 
     constructor(
-        private bookingService: BookingService,
-        private hallService: HallService,
+        private taskListService: TaskListService,
         private messageService: MessageService,
         private router: Router,
         private cdr: ChangeDetectorRef,
     ) {}
 
     ngOnInit() {
-        this.loadHallOptions();
-        this.loadBookings();
+        if (this.isCoordinatorAccount && this.currentUserId <= 0) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Thiếu thông tin tài khoản',
+                detail: 'Không xác định được tài khoản coordinator hiện tại.',
+                life: 3000,
+            });
+        }
+        this.loadTaskLists();
     }
 
-    loadHallOptions() {
-        this.hallService.searchHalls({ page: 0, size: 200, sort: 'name,ASC' }).subscribe({
-            next: (res) => {
-                this.hallOptions = (res.data?.content ?? []).map(hall => ({
-                    label: hall.name ?? `Sảnh #${hall.id}`,
-                    value: Number(hall.id),
-                }));
-                this.cdr.markForCheck();
-            },
-            error: () => { this.hallOptions = []; },
-        });
-    }
-
-    loadBookings() {
+    loadTaskLists() {
         this.loading = true;
 
-        this.bookingService.searchBookings({
-            page: 0,
-            size: 200,
-            sort: 'updatedAt,DESC',
+        this.taskListService.searchTaskLists({
+            status: 'active',
+            coordinatorId: this.isCoordinatorAccount && this.currentUserId > 0 ? this.currentUserId : undefined,
         }).subscribe({
             next: (res) => {
-                if (res?.data) {
-                    this.bookings.set(res.data.content ?? []);
-                }
+                this.taskLists.set(res?.data ?? []);
                 this.loading = false;
                 this.cdr.markForCheck();
             },
@@ -229,21 +218,10 @@ export class BeoComponent implements OnInit {
         });
     }
 
-    trackById(_: number, b: Booking) { return b.id; }
+    trackById(_: number, item: TaskList) { return item.id; }
 
-    viewTasks(booking: Booking) {
-        this.router.navigate(['/pages/beo', booking.id]);
-    }
-
-    formatDate(d?: string): string {
-        if (!d) return '-';
-        return new Date(d).toLocaleDateString('vi-VN');
-    }
-
-    getHallLabel(booking: Booking): string {
-        if (booking.hallName) return booking.hallName;
-        const hall = this.hallOptions.find(h => h.value === booking.hallId);
-        return hall?.label ?? (booking.hallId ? `Sảnh #${booking.hallId}` : '-');
+    viewTasks(item: TaskList) {
+        this.router.navigate(['/pages/beo', item.id]);
     }
 
     getShiftLabel(shift?: string): string {
@@ -254,20 +232,21 @@ export class BeoComponent implements OnInit {
         return m[shift ?? ''] ?? shift ?? '-';
     }
 
-    getTaskProgress(booking: Booking): { done: number; total: number } | null {
-        const row   = booking as any;
-        const total = Number(row.totalTasks ?? row.taskCount ?? 0);
+    getTaskProgress(item: TaskList): { done: number; total: number } | null {
+        const groups = item.taskCategoryGroups ?? [];
+        const tasks: TaskListTask[] = groups.flatMap((group) => group.tasks ?? []);
+        const total = tasks.length;
         if (!Number.isFinite(total) || total <= 0) return null;
-        const done  = Number(row.completedTasks ?? row.doneCount ?? 0);
-        return { done: Number.isFinite(done) ? done : 0, total };
+        const done = tasks.filter((task) => String(task.state ?? '').toUpperCase() === 'COMPLETED').length;
+        return { done, total };
     }
 
     getProgressPercent(prog: { done: number; total: number }): number {
         return prog.total ? Math.round((prog.done / prog.total) * 100) : 0;
     }
 
-    private isCompleted(booking: Booking): boolean {
-        const prog = this.getTaskProgress(booking);
+    private isCompleted(item: TaskList): boolean {
+        const prog = this.getTaskProgress(item);
         return prog ? prog.done >= prog.total : false;
     }
 }

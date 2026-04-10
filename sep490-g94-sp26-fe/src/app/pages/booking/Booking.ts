@@ -94,6 +94,7 @@ import { ServicePackageService } from '../service/service-package.service';
                 </div>
 
                 <p-button
+                    *ngIf="!isCoordinatorAccount"
                     label="Hợp đồng mới"
                     icon="pi pi-plus"
                     severity="primary"
@@ -196,6 +197,7 @@ import { ServicePackageService } from '../service/service-package.service';
                             <!-- Thao tác -->
                             <td>
                                 <p-button
+                                    *ngIf="!isCoordinatorAccount"
                                     icon="pi pi-pencil"
                                     [rounded]="true"
                                     [text]="true"
@@ -290,6 +292,9 @@ export class BookingsComponent implements OnInit {
     hallPriceMap: Record<number, number> = {};
     setMenuPriceMap: Record<number, number> = {};
     packagePriceMap: Record<number, number> = {};
+    readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
+    readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
 
     @ViewChild('dt') dt!: Table;
 
@@ -305,6 +310,14 @@ export class BookingsComponent implements OnInit {
     ) {}
 
     ngOnInit() {
+        if (this.isCoordinatorAccount && this.currentUserId <= 0) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Thiếu thông tin tài khoản',
+                detail: 'Không xác định được tài khoản coordinator hiện tại.',
+                life: 3000,
+            });
+        }
         this.loadHallOptions();
         this.loadBookings();
     }
@@ -347,24 +360,38 @@ export class BookingsComponent implements OnInit {
             bookingDateTo   = `${year}-${m}-${lastDay}`;
         }
 
+        const queryPage = this.isCoordinatorAccount ? 0 : page;
+        const querySize = this.isCoordinatorAccount ? 500 : size;
+
         this.bookingService.searchBookings({
-            page,
-            size,
+            page: queryPage,
+            size: querySize,
             sort: 'updatedAt,DESC',
             contractNo:   this.searchKeyword || undefined,
             hallId:       this.filterHallId  || undefined,
             bookingTime:  this.filterShift   || undefined,
             contractState:this.filterStatus  || undefined,
+            assignCoordinatorId: this.isCoordinatorAccount && this.currentUserId > 0 ? this.currentUserId : undefined,
             bookingDateFrom,
             bookingDateTo,
         }).subscribe({
             next: (res) => {
                 if (res?.data) {
                     const rows = res.data.content ?? [];
-                    this.bookings.set(rows);
-                    this.resolveMissingCustomerNames(rows);
-                    this.resolveMissingPrices(rows);
-                    this.totalRecords = res.data.totalElements ?? 0;
+                    if (this.isCoordinatorAccount) {
+                        const assignedRows = rows.filter((booking) => this.isBookingAssignedToCurrentCoordinator(booking));
+                        const start = page * size;
+                        const pagedRows = assignedRows.slice(start, start + size);
+                        this.bookings.set(pagedRows);
+                        this.resolveMissingCustomerNames(pagedRows);
+                        this.resolveMissingPrices(pagedRows);
+                        this.totalRecords = assignedRows.length;
+                    } else {
+                        this.bookings.set(rows);
+                        this.resolveMissingCustomerNames(rows);
+                        this.resolveMissingPrices(rows);
+                        this.totalRecords = res.data.totalElements ?? 0;
+                    }
                 }
                 this.loading = false;
             },
@@ -566,5 +593,15 @@ export class BookingsComponent implements OnInit {
             CANCELLED:  '#fee2e2',
         };
         return m[status ?? ''] ?? '#f1f5f9';
+    }
+
+    private isBookingAssignedToCurrentCoordinator(booking: Booking): boolean {
+        if (!this.isCoordinatorAccount) {
+            return true;
+        }
+        if (this.currentUserId <= 0) {
+            return false;
+        }
+        return Number(booking.assignCoordinatorId) === this.currentUserId;
     }
 }
