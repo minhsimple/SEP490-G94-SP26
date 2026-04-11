@@ -123,7 +123,11 @@ interface Column { field: string; header: string; }
                         <tr>
                             <!-- Mã TT -->
                             <td>
-                                <span class="font-semibold text-900" style="font-size:0.875rem;">
+                                <span
+                                    class="font-semibold"
+                                    style="font-size:0.875rem; color:var(--primary-color); cursor:pointer;"
+                                    (click)="goToPaymentDetail(payment)"
+                                >
                                     {{ payment.code ?? ('#' + payment.id) }}
                                 </span>
                             </td>
@@ -174,6 +178,14 @@ interface Column { field: string; header: string; }
                             <!-- Thao tác -->
                             <td style="text-align:center;">
                                 <div class="flex items-center justify-center gap-1">
+                                    <p-button
+                                        icon="pi pi-eye"
+                                        [rounded]="true" [text]="true"
+                                        severity="secondary"
+                                        (click)="goToPaymentDetail(payment)"
+                                        pTooltip="Chi tiết"
+                                        tooltipPosition="top"
+                                    />
                                     <p-button
                                         icon="pi pi-trash"
                                         [rounded]="true" [text]="true"
@@ -406,6 +418,11 @@ export class PaymentsComponent implements OnInit {
         if (payment.invoiceId) {
             this.router.navigate(['/pages/invoice', payment.invoiceId]);
         }
+    }
+
+    goToPaymentDetail(payment: Payment) {
+        if (!payment?.id) return;
+        this.router.navigate(['/pages/payment', payment.id], { state: { payment } });
     }
 
     confirmDelete(payment: Payment) {
