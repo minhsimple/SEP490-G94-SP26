@@ -23,6 +23,7 @@ import { BookingDetailComponent } from './booking/Booking-detail';
 import { SeatLayoutComponent } from './seat-layout/Seat-layout';
 import { ComboServiceDetailComponent } from './services/combo-service-detail.component';
 import { PaymentsComponent } from './payment/Payment';
+import { PaymentDetailComponent } from './payment/Payment-detail';
 import { InvoicesComponent } from './invoice/Invoice';
 import { InvoiceDetailComponent } from './invoice/Invoice-detail';
 import { EventCalendarComponent } from './calender/calender';
@@ -66,6 +67,7 @@ export default [
     // ⚠️ invoice route cụ thể phải đứng trước route chung
     { path: 'invoice/:id', component: InvoiceDetailComponent },
     { path: 'invoice', component: InvoicesComponent },
+    { path: 'payment/:id', component: PaymentDetailComponent },
     { path: 'payment', component: PaymentsComponent },
     { path: '**', redirectTo: '/notfound' }
 ] as Routes;

@@ -15,6 +15,7 @@ export interface Payment {
     paymentDate?: string;
     paidAt?: string;
     createdAt?: string;
+    updatedAt?: string;
     round?: string | number;     // Đợt 1, deposit, ...
     method?: string;             // BANK_TRANSFER | CASH | ...
     methodNote?: string;         // ghi chú phương thức (hy345534)
@@ -42,6 +43,15 @@ export interface SingleResponse<T> {
 }
 
 export interface CreatePaymentPayload {
+    contractId: number;
+    amount: number;
+    method: string;
+    paymentState?: string;
+    referenceNo?: string;
+    note?: string;
+}
+
+export interface UpdatePaymentPayload {
     contractId: number;
     amount: number;
     method: string;
@@ -104,9 +114,21 @@ export class PaymentService {
         );
     }
 
+    getById(id: number): Observable<SingleResponse<Payment>> {
+        return this.http.get<SingleResponse<Payment>>(
+            `${BASE}/payments/${id}`, { headers: this.headers }
+        );
+    }
+
     createPayment(payload: CreatePaymentPayload): Observable<SingleResponse<Payment>> {
         return this.http.post<SingleResponse<Payment>>(
             `${BASE}/payments/create`, payload, { headers: this.headers }
+        );
+    }
+
+    updatePayment(id: number, payload: UpdatePaymentPayload): Observable<SingleResponse<Payment>> {
+        return this.http.put<SingleResponse<Payment>>(
+            `${BASE}/payments/${id}`, payload, { headers: this.headers }
         );
     }
 

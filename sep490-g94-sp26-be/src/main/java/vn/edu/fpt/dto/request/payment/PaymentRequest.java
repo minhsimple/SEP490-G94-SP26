@@ -1,7 +1,6 @@
 package vn.edu.fpt.dto.request.payment;
 
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import vn.edu.fpt.util.enums.PaymentMethod;
@@ -23,7 +22,7 @@ public class PaymentRequest {
     @DecimalMin(value = "0.01", message = "Số tiền phải lớn hơn 0")
     BigDecimal amount;
 
-    @NotBlank(message = "Phương thức thanh toán không được để trống")
+    @NotNull(message = "Phương thức thanh toán không được để trống")
     PaymentMethod method;
 
     PaymentState paymentState;
