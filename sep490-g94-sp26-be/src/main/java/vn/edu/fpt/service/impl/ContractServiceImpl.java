@@ -54,8 +54,6 @@ public class ContractServiceImpl implements ContractService {
     private final PaymentServiceImpl paymentServiceImpl;
     private final SetMenuServiceImpl setMenuServiceImpl;
     private final InvoiceService invoiceService;
-    private final TaskListService taskListService;
-    private final TaskListRepository taskListRepository;
 
     private final TableLayoutService tableLayoutService;
 
