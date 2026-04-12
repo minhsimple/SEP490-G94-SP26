@@ -25,6 +25,7 @@ import vn.edu.fpt.service.PaymentService;
 import vn.edu.fpt.service.TaskListService;
 import vn.edu.fpt.util.enums.*;
 
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -37,8 +38,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final ContractRepository contractRepository;
     private final InvoiceRepository invoiceRepository;
-    private final TaskListRepository taskListRepository;
     private final TaskListService taskListService;
+    private final TaskListRepository taskListRepository;
 
     @Override
     @Transactional
@@ -56,13 +57,14 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
 
+        Contract contract = contractRepository.findByIdAndStatus(payment.getContractId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
         paymentMapper.updateEntity(payment, request);
         Payment updatedPayment = paymentRepository.save(payment);
         if(request.getPaymentState().equals(PaymentState.SUCCESS) && request.getMethod().equals(PaymentMethod.CASH)){
-            Contract contract =  contractRepository.findByIdAndStatus(payment.getContractId(), RecordStatus.active)
-                    .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
                     contract.setContractState(ContractState.ACTIVE);
-                    contractRepository.save(contract);
 
             Invoice invoice = invoiceRepository.findByContractIdAndStatus(payment.getContractId(), RecordStatus.active)
                     .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
