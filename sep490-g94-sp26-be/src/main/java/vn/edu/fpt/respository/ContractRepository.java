@@ -23,6 +23,9 @@ public interface ContractRepository extends BaseRepository<Contract, Integer> {
 
     Boolean existsByStartTimeAndEndTimeAndContractStateAndHallId(LocalDateTime startTime, LocalDateTime endTime, ContractState contractState, Integer hallId);
 
+    Boolean existsByStartTimeAndEndTimeAndContractStateAndHallIdAndIdNot(LocalDateTime startTime, LocalDateTime endTime, ContractState contractState, Integer hallId, Integer id);
+
+    
     List<Contract> findAllByCustomerId(Integer customerId);
 
     List<Contract> findAllByHallIdAndContractState(Integer hallId, ContractState bookingState);
