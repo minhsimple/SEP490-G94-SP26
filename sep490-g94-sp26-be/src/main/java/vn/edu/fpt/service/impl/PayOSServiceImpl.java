@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import vn.edu.fpt.config.PayOSProperties;
 import vn.edu.fpt.dto.request.payos.CreatePayOSPaymentRequest;
+import vn.edu.fpt.dto.request.task.TaskListCreateRequest;
 import vn.edu.fpt.dto.response.payos.PayOSCheckoutResponse;
 import vn.edu.fpt.dto.response.payos.WebhookAcknowledgeResponse;
 import vn.edu.fpt.entity.Contract;
@@ -23,7 +24,9 @@ import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.respository.ContractRepository;
 import vn.edu.fpt.respository.InvoiceRepository;
 import vn.edu.fpt.respository.PaymentRepository;
+import vn.edu.fpt.respository.TaskListRepository;
 import vn.edu.fpt.service.PayOSService;
+import vn.edu.fpt.service.TaskListService;
 import vn.edu.fpt.util.enums.*;
 import vn.payos.PayOS;
 import vn.payos.model.webhooks.WebhookData;
@@ -48,11 +51,13 @@ public class PayOSServiceImpl implements PayOSService {
 
     private final ContractRepository contractRepository;
     private final PaymentRepository paymentRepository;
+    private final TaskListRepository taskListRepository;
     private final InvoiceRepository invoiceRepository;
     private final PayOSProperties payOSProperties;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final PayOS payOS;
+    private final TaskListService taskListService;
 
     private final Set<Long> processedWebhookOrders = ConcurrentHashMap.newKeySet();
 
@@ -196,6 +201,19 @@ public class PayOSServiceImpl implements PayOSService {
 
         if (contract.getContractState() == ContractState.DRAFT) {
             contract.setContractState(ContractState.ACTIVE);
+            if (!taskListRepository.existsByContractId(contract.getId())) {
+                String title = (contract.getBrideName() != null ? contract.getBrideName() : "") +
+                        " & " +
+                        (contract.getGroomName() != null ? contract.getGroomName() : "");
+
+                TaskListCreateRequest taskListRequest = TaskListCreateRequest.builder()
+                        .contractId(contract.getId())
+                        .name(title)
+                        .description("Task list for contract " + contract.getContractNo())
+                        .build();
+
+                taskListService.createNewTaskList(taskListRequest);
+            }
             contractRepository.save(contract);
         }
         Invoice invoice = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
