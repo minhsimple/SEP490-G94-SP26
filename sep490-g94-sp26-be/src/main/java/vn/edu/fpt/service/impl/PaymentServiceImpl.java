@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
+import vn.edu.fpt.dto.request.task.TaskListCreateRequest;
 import vn.edu.fpt.dto.response.payment.PaymentResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.entity.Invoice;
@@ -19,8 +20,11 @@ import vn.edu.fpt.mapper.PaymentMapper;
 import vn.edu.fpt.respository.ContractRepository;
 import vn.edu.fpt.respository.InvoiceRepository;
 import vn.edu.fpt.respository.PaymentRepository;
+import vn.edu.fpt.respository.TaskListRepository;
 import vn.edu.fpt.service.PaymentService;
+import vn.edu.fpt.service.TaskListService;
 import vn.edu.fpt.util.enums.*;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +38,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final ContractRepository contractRepository;
     private final InvoiceRepository invoiceRepository;
+    private final TaskListService taskListService;
+    private final TaskListRepository taskListRepository;
 
     @Override
     @Transactional
@@ -65,9 +71,21 @@ public class PaymentServiceImpl implements PaymentService {
 
             List<Payment> payments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(payment.getContractId(),
                     PaymentState.SUCCESS, RecordStatus.active);
+                if (!taskListRepository.existsByContractId(contract.getId())) {
+                    String title = (contract.getBrideName() != null ? contract.getBrideName() : "") +
+                            " & " +
+                            (contract.getGroomName() != null ? contract.getGroomName() : "");
+
+                    TaskListCreateRequest taskListRequest = TaskListCreateRequest.builder()
+                            .contractId(contract.getId())
+                            .name(title)
+                            .description("Task list for contract " + contract.getContractNo())
+                            .build();
+
+                    taskListService.createNewTaskList(taskListRequest);
+                }
             if(payments.size() > 1){
                 invoice.setInvoiceState(InvoiceState.PAID);
-                contract.setContractState(ContractState.LIQUIDATED);
             } else {
                 invoice.setInvoiceState(InvoiceState.PARTIALLY_PAID);
             }

@@ -49,10 +49,12 @@ public class ContractRequest {
 
     String notes;
 
+    @NotNull(message = "Tên cô dâu không được để trống")
     String brideName;
 
     Integer brideAge;
 
+    @NotNull(message = "Tên chú rể không được để trống")
     String groomName;
 
     Integer groomAge;

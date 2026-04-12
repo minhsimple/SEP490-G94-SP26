@@ -54,8 +54,6 @@ public class ContractServiceImpl implements ContractService {
     private final PaymentServiceImpl paymentServiceImpl;
     private final SetMenuServiceImpl setMenuServiceImpl;
     private final InvoiceService invoiceService;
-    private final TaskListService taskListService;
-    private final TaskListRepository taskListRepository;
 
     private final TableLayoutService tableLayoutService;
 
@@ -128,7 +126,6 @@ public class ContractServiceImpl implements ContractService {
                 !setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
         }
-        // Validate ngày cưới phải đặt trước 3 tháng
         if (request.getBookingDate() != null) {
             validateBookingDateAdvance(request.getBookingDate());
         }
@@ -157,10 +154,6 @@ public class ContractServiceImpl implements ContractService {
                 !setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
         }
-//        // Validate ngày cưới phải đặt trước 3 tháng
-//        if (request.getBookingDate() != null) {
-//            validateBookingDateAdvance(request.getBookingDate());
-//        }
         if (request.getBookingTime() != null && request.getBookingDate() != null) {
             LocalDateTime startTime = calculateStartTime(request.getBookingDate(), request.getBookingTime());
             LocalDateTime endTime = calculateEndTime(request.getBookingDate(), request.getBookingTime());
@@ -318,22 +311,6 @@ public class ContractServiceImpl implements ContractService {
         Contract saved = bookingRepository.save(booking);
 
         // Auto-create TaskList khi contract state = ACTIVE
-        if(request.getContractState().equals(ContractState.ACTIVE)){
-            // Kiểm tra xem TaskList đã tồn tại chưa
-            if (!taskListRepository.existsByContractId(saved.getId())) {
-                String title = (saved.getBrideName() != null ? saved.getBrideName() : "") +
-                        " & " +
-                        (saved.getGroomName() != null ? saved.getGroomName() : "");
-
-                TaskListCreateRequest taskListRequest = TaskListCreateRequest.builder()
-                        .contractId(saved.getId())
-                        .name(title)
-                        .description("Task list for contract " + saved.getContractNo())
-                        .build();
-
-                taskListService.createNewTaskList(taskListRequest);
-            }
-        }
 
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setTableLayoutResponse(tableLayoutResponse);
