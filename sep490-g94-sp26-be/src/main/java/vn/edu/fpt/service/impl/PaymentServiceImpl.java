@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
 import vn.edu.fpt.dto.response.payment.PaymentResponse;
+import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.entity.Invoice;
 import vn.edu.fpt.entity.Payment;
 import vn.edu.fpt.exception.AppException;
@@ -50,12 +51,14 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.PAYMENT_NOT_FOUND));
 
+        Contract contract = contractRepository.findByIdAndStatus(payment.getContractId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
         paymentMapper.updateEntity(payment, request);
         Payment updatedPayment = paymentRepository.save(payment);
         if(request.getPaymentState().equals(PaymentState.SUCCESS) && request.getMethod().equals(PaymentMethod.CASH)){
-            contractRepository.findByIdAndStatus(payment.getContractId(), RecordStatus.active)
-                    .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED))
-                    .setContractState(ContractState.ACTIVE);
+
+                    contract.setContractState(ContractState.ACTIVE);
 
             Invoice invoice = invoiceRepository.findByContractIdAndStatus(payment.getContractId(), RecordStatus.active)
                     .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
@@ -64,6 +67,7 @@ public class PaymentServiceImpl implements PaymentService {
                     PaymentState.SUCCESS, RecordStatus.active);
             if(payments.size() > 1){
                 invoice.setInvoiceState(InvoiceState.PAID);
+                contract.setContractState(ContractState.LIQUIDATED);
             } else {
                 invoice.setInvoiceState(InvoiceState.PARTIALLY_PAID);
             }
