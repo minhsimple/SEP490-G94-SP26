@@ -38,6 +38,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.temporal.ChronoUnit;
 
 
 @Service
@@ -127,6 +128,10 @@ public class ContractServiceImpl implements ContractService {
                 !setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
         }
+        // Validate ngày cưới phải đặt trước 3 tháng
+        if (request.getBookingDate() != null) {
+            validateBookingDateAdvance(request.getBookingDate());
+        }
         if (request.getBookingTime() != null && request.getBookingDate() != null) {
             LocalDateTime startTime = calculateStartTime(request.getBookingDate(), request.getBookingTime());
             LocalDateTime endTime = calculateEndTime(request.getBookingDate(), request.getBookingTime());
@@ -152,6 +157,10 @@ public class ContractServiceImpl implements ContractService {
                 !setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
         }
+//        // Validate ngày cưới phải đặt trước 3 tháng
+//        if (request.getBookingDate() != null) {
+//            validateBookingDateAdvance(request.getBookingDate());
+//        }
         if (request.getBookingTime() != null && request.getBookingDate() != null) {
             LocalDateTime startTime = calculateStartTime(request.getBookingDate(), request.getBookingTime());
             LocalDateTime endTime = calculateEndTime(request.getBookingDate(), request.getBookingTime());
@@ -404,6 +413,18 @@ public class ContractServiceImpl implements ContractService {
 
         if (!valid) {
             throw new AppException(ERROR_CODE.BOOKING_INVALID_STATE_TRANSITION);
+        }
+    }
+
+    /**
+     * Validate ngày cưới phải đặt trước 3 tháng từ ngày hiện tại
+     */
+    private void validateBookingDateAdvance(LocalDate bookingDate) {
+        LocalDate today = LocalDate.now();
+        LocalDate threeMonthsLater = today.plus(3, ChronoUnit.MONTHS);
+
+        if (bookingDate.isBefore(threeMonthsLater)) {
+            throw new AppException(ERROR_CODE.BOOKING_DATE_TOO_FAR);
         }
     }
 
