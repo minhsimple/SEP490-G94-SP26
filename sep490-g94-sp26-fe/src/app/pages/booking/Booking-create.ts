@@ -1512,8 +1512,8 @@ export class BookingCreateComponent implements OnInit {
                     life: 3000,
                 });
 
-                if (!this.isEditMode && booking?.id) {
-                    setTimeout(() => this.router.navigate(['/pages/booking', booking.id, 'edit']), 800);
+                if (!this.isEditMode) {
+                    setTimeout(() => this.router.navigate(['/pages/booking']), 800);
                 } else if (booking) {
                     this.patchFormFromBooking(booking);
                     this.bookingCode = booking.contractNo ?? booking.bookingNo ?? this.bookingCode;

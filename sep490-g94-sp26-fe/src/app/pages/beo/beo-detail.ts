@@ -50,8 +50,8 @@ export interface TaskCategory {
 
             <div class="mb-4">
                 <button
-                    class="flex items-center gap-2 text-sm text-600 cursor-pointer bg-transparent border-none p-0"
-                    style="font-size:0.875rem;color:#64748b;"
+                    class="flex items-center gap-2 text-sm cursor-pointer px-3 py-2"
+                    style="font-size:0.875rem;color:#334155;background:#f8fafc;border:1px solid #94a3b8;border-radius:999px;font-weight:600;"
                     (click)="goBack()"
                 >
                     <i class="pi pi-arrow-left" style="font-size:0.8rem;"></i>
@@ -60,7 +60,7 @@ export interface TaskCategory {
             </div>
 
             <ng-container *ngIf="taskList(); else loadingHeader">
-                <div class="surface-card border-round-xl mb-4 px-5 py-4" style="border:1px solid #e8edf2;">
+                <div class="surface-card border-round-xl mb-4 px-5 py-4" style="border:1px solid #d1d5db;">
                     <div class="flex items-center justify-between gap-3 flex-wrap">
                         <div>
                             <div class="font-bold text-900 mb-1" style="font-size:1.1rem;">
@@ -101,14 +101,14 @@ export interface TaskCategory {
             </ng-container>
 
             <ng-template #loadingHeader>
-                <div class="surface-card border-round-xl mb-4 px-5 py-4 text-center text-500" style="border:1px solid #e8edf2;">
+                <div class="surface-card border-round-xl mb-4 px-5 py-4 text-center text-500" style="border:1px solid #d1d5db;">
                     <i class="pi pi-spin pi-spinner"></i>
                 </div>
             </ng-template>
 
-            <div class="surface-card border-round-xl overflow-hidden" style="border:1px solid #e8edf2;">
+            <div class="surface-card border-round-xl overflow-hidden" style="border:1px solid #d1d5db;">
 
-                <div class="flex items-center border-bottom-1 surface-border px-3" style="gap:0;overflow-x:auto;">
+                <div class="flex items-center border-bottom-1 surface-border px-3" style="gap:0;overflow-x:auto;border-bottom-color:#d1d5db;border-bottom-width:1px;">
                     <button
                         *ngFor="let cat of categories"
                         type="button"
@@ -130,12 +130,13 @@ export interface TaskCategory {
 
                     <button
                         type="button"
-                        class="flex items-center gap-1 cursor-pointer bg-transparent border-none py-3 px-3 ml-1"
-                        style="font-size:0.82rem;color:#94a3b8;white-space:nowrap;border-bottom:2px solid transparent;"
+                        class="flex items-center gap-1 cursor-pointer py-2 px-3 ml-1"
+                        style="font-size:0.82rem;color:#1d4ed8;white-space:nowrap;border:1px solid #bfdbfe;background:#eff6ff;border-radius:999px;font-weight:600;"
+                        [style.opacity]="saving ? '0.6' : '1'"
                         (click)="openAddCategory()"
                         [disabled]="saving"
                     >
-                        <i class="pi pi-plus" style="font-size:0.75rem;"></i>
+                        <i class="pi pi-plus" style="font-size:0.75rem;font-weight:700;"></i>
                         <span>Thêm category</span>
                     </button>
                 </div>
@@ -187,12 +188,12 @@ export interface TaskCategory {
                                     <div
                                         *ngFor="let task of getTasksForCat(cat.key); trackBy: trackById"
                                         class="flex items-center gap-3 py-2"
-                                        style="border-bottom:1px solid #f1f5f9;"
+                                        style="border-bottom:1px solid #e2e8f0;"
                                     >
                                         <p-checkbox
                                             [ngModel]="isTaskDone(task)"
                                             [binary]="true"
-                                            [disabled]="isTaskMutating(task.id) || saving"
+                                            [disabled]="saving"
                                             (onChange)="onTaskToggle(task, $event)"
                                         />
                                         <span
@@ -204,13 +205,14 @@ export interface TaskCategory {
                                         </span>
                                         <button
                                             type="button"
-                                            class="bg-transparent border-none cursor-pointer p-1"
-                                            style="color:#cbd5e1;"
-                                            [disabled]="isTaskMutating(task.id) || saving"
+                                            class="cursor-pointer p-1"
+                                            style="color:#dc2626;background:#fff1f2;border:1px solid #fecdd3;border-radius:7px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;"
+                                            [style.opacity]="saving ? '0.6' : '1'"
+                                            [disabled]="saving"
                                             (click)="removeTask(task)"
                                             pTooltip="Xóa" tooltipPosition="top"
                                         >
-                                            <i class="pi pi-trash" style="font-size:0.8rem;"></i>
+                                            <i class="pi pi-trash" style="font-size:0.85rem;"></i>
                                         </button>
                                     </div>
                                 </ng-container>
@@ -226,6 +228,19 @@ export interface TaskCategory {
                             </div>
                         </ng-container>
                     </ng-template>
+                </div>
+
+                <div class="flex items-center justify-between flex-wrap gap-2 border-top-1 surface-border px-4 py-3" style="border-top-color:#d1d5db;border-top-width:1px;">
+                    <span class="text-xs" [style.color]="hasUnsavedChanges ? '#f59e0b' : '#94a3b8'">
+                        {{ hasUnsavedChanges ? 'Có thay đổi chưa lưu' : 'Tất cả thay đổi đã được lưu' }}
+                    </span>
+                    <p-button
+                        label="Lưu thay đổi"
+                        icon="pi pi-save"
+                        [loading]="saving"
+                        [disabled]="saving || !hasUnsavedChanges"
+                        (onClick)="saveChanges()"
+                    />
                 </div>
 
             </div>
@@ -278,6 +293,7 @@ export class BeoDetailComponent implements OnInit {
     taskList = signal<TaskList | null>(null);
     tasks = signal<TaskItem[]>([]);
     saving = false;
+    hasUnsavedChanges = false;
 
     activeTabKey = '';
     newTaskNameMap: Record<string, string> = {};
@@ -288,9 +304,7 @@ export class BeoDetailComponent implements OnInit {
     newCategoryIcon = 'pi-bookmark';
 
     private taskListId!: number;
-    private pendingTaskIds = new Set<number>();
     private localTaskIdSeed = -1;
-    private unsyncedCategoryKeys = new Set<string>();
 
     constructor(
         private route: ActivatedRoute,
@@ -350,35 +364,13 @@ export class BeoDetailComponent implements OnInit {
             return;
         }
 
-        const prevCategories = [...this.categories];
-        const prevTaskNameMap = { ...this.newTaskNameMap };
-        const prevActiveTabKey = this.activeTabKey;
-
         const key = `cat_local_${Date.now()}`;
         this.categories = [...this.categories, { key, label, icon: this.newCategoryIcon }];
         this.newTaskNameMap[key] = '';
         this.activeTabKey = key;
         this.showAddCategoryDialog = false;
-        this.unsyncedCategoryKeys.add(key);
-
-        this.persistTaskList(
-            (updated) => {
-                const persisted = (updated?.taskCategoryGroups ?? []).some(
-                    (group) => String(group.categoryTitle ?? '').trim().toLowerCase() === label.toLowerCase()
-                );
-                if (persisted) {
-                    this.unsyncedCategoryKeys.delete(key);
-                }
-                this.cdr.markForCheck();
-            },
-            () => {
-                this.unsyncedCategoryKeys.delete(key);
-                this.categories = prevCategories;
-                this.newTaskNameMap = prevTaskNameMap;
-                this.activeTabKey = prevActiveTabKey;
-                this.cdr.markForCheck();
-            },
-        );
+        this.hasUnsavedChanges = true;
+        this.cdr.markForCheck();
     }
 
     addTask(catKey: string) {
@@ -395,7 +387,6 @@ export class BeoDetailComponent implements OnInit {
         const title = (this.newTaskNameMap[catKey] ?? '').trim();
         if (!title || this.saving) return;
 
-        const prevTasks = [...this.tasks()];
         const newTask: TaskItem = {
             id: this.generateLocalTaskId(),
             title,
@@ -407,57 +398,48 @@ export class BeoDetailComponent implements OnInit {
 
         this.tasks.set([...this.tasks(), newTask]);
         this.newTaskNameMap[catKey] = '';
-
-        this.persistTaskList(
-            () => this.cdr.markForCheck(),
-            () => {
-                this.tasks.set(prevTasks);
-                this.newTaskNameMap[catKey] = title;
-                this.cdr.markForCheck();
-            },
-        );
+        this.hasUnsavedChanges = true;
+        this.cdr.markForCheck();
     }
 
     removeTask(task: TaskItem) {
-        if (this.isTaskMutating(task.id) || this.saving) return;
+        if (this.saving) return;
 
-        const prevTasks = [...this.tasks()];
-        this.pendingTaskIds.add(task.id);
         this.tasks.set(this.tasks().filter((t) => t.id !== task.id));
-
-        this.persistTaskList(
-            () => {
-                this.pendingTaskIds.delete(task.id);
-                this.cdr.markForCheck();
-            },
-            () => {
-                this.pendingTaskIds.delete(task.id);
-                this.tasks.set(prevTasks);
-                this.cdr.markForCheck();
-            },
-        );
+        this.hasUnsavedChanges = true;
+        this.cdr.markForCheck();
     }
 
     onTaskToggle(task: TaskItem, event: CheckboxChangeEvent) {
-        if (this.isTaskMutating(task.id) || this.saving) return;
+        if (this.saving) return;
 
         const nextState: TaskState = event.checked ? 'COMPLETED' : 'NOT_COMPLETED';
         if (String(task.state ?? '').toUpperCase() === nextState) {
             return;
         }
 
-        const prevTasks = [...this.tasks()];
-        this.pendingTaskIds.add(task.id);
         this.tasks.set(this.tasks().map((t) => (t.id === task.id ? { ...t, state: nextState } : t)));
+        this.hasUnsavedChanges = true;
+        this.cdr.markForCheck();
+    }
+
+    saveChanges() {
+        if (this.saving || !this.hasUnsavedChanges) {
+            return;
+        }
 
         this.persistTaskList(
             () => {
-                this.pendingTaskIds.delete(task.id);
+                this.hasUnsavedChanges = false;
+                this.messageService.add({
+                    severity: 'success',
+                    summary: 'Đã lưu',
+                    detail: 'Đã lưu tất cả thay đổi task/category.',
+                    life: 2500,
+                });
                 this.cdr.markForCheck();
             },
             () => {
-                this.pendingTaskIds.delete(task.id);
-                this.tasks.set(prevTasks);
                 this.cdr.markForCheck();
             },
         );
@@ -502,18 +484,7 @@ export class BeoDetailComponent implements OnInit {
         return String(task.state ?? '').toUpperCase() === 'COMPLETED';
     }
 
-    isTaskMutating(taskId: number): boolean {
-        return this.pendingTaskIds.has(taskId);
-    }
-
     private syncUiFromTaskList(detail: TaskList) {
-        const existingCategoryLabels = new Set(
-            this.categories.map((cat) => cat.label.trim().toLowerCase()).filter((label) => !!label)
-        );
-        const existingEmptyCategories = this.categories.filter(
-            (cat) => this.unsyncedCategoryKeys.has(cat.key) && this.getTasksForCat(cat.key).length === 0
-        );
-
         const groups = detail.taskCategoryGroups ?? [];
         const categories: TaskCategory[] = [];
         const taskItems: TaskItem[] = [];
@@ -530,32 +501,6 @@ export class BeoDetailComponent implements OnInit {
             });
         });
 
-        const responseCategoryLabels = new Set(
-            categories.map((cat) => cat.label.trim().toLowerCase()).filter((label) => !!label)
-        );
-
-        existingEmptyCategories.forEach((cat) => {
-            const normalizedLabel = cat.label.trim().toLowerCase();
-            if (!normalizedLabel) {
-                return;
-            }
-            if (responseCategoryLabels.has(normalizedLabel)) {
-                return;
-            }
-            if (!existingCategoryLabels.has(normalizedLabel)) {
-                return;
-            }
-
-            const mergedKey = cat.key;
-
-            categories.push({
-                key: mergedKey,
-                label: cat.label,
-                icon: cat.icon || this.pickIcon(categories.length),
-            });
-            taskNameMap[mergedKey] = this.newTaskNameMap[cat.key] ?? '';
-        });
-
         const previousActiveKey = this.activeTabKey;
         const previousActiveLabel = this.categories
             .find((cat) => cat.key === previousActiveKey)
@@ -565,9 +510,7 @@ export class BeoDetailComponent implements OnInit {
         this.categories = categories;
         this.newTaskNameMap = taskNameMap;
         this.tasks.set(taskItems);
-        this.unsyncedCategoryKeys = new Set(
-            [...this.unsyncedCategoryKeys].filter((key) => categories.some((cat) => cat.key === key))
-        );
+        this.hasUnsavedChanges = false;
         if (categories.some((cat) => cat.key === previousActiveKey)) {
             this.activeTabKey = previousActiveKey;
             return;

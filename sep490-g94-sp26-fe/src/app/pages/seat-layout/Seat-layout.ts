@@ -23,6 +23,8 @@ interface SeatZone {
     expectedTables: number;
 }
 
+type ZoneId = 'A' | 'B' | 'C' | 'D';
+
 interface ZoneDetailGroup {
     groupName: string;
     count: number;
@@ -244,6 +246,55 @@ interface ZoneDetailSection {
             top: 1rem;
         }
 
+        .zone-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.7rem;
+            padding: 0.85rem 0.9rem;
+            border-bottom: 1px solid #e2e8f0;
+            background: #ffffff;
+        }
+
+        .zone-controls strong {
+            display: block;
+            font-size: 0.95rem;
+            color: #0f172a;
+        }
+
+        .zone-controls small {
+            display: block;
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 0.1rem;
+        }
+
+        .zone-control-btn {
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            height: 33px;
+            background: #f8fafc;
+            color: #0f172a;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0 0.6rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .zone-control-btn:hover:not(:disabled) {
+            border-color: #94a3b8;
+            background: #f1f5f9;
+        }
+
+        .zone-control-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
         .zone-editor-card {
             margin: 0;
             overflow: hidden;
@@ -278,6 +329,35 @@ interface ZoneDetailSection {
             font-size: 0.9rem;
             color: #64748b;
             font-weight: 600;
+        }
+
+        .zone-head-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .zone-remove-btn {
+            border: none;
+            width: 27px;
+            height: 27px;
+            border-radius: 6px;
+            background: transparent;
+            color: #64748b;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zone-remove-btn:hover:not(:disabled) {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .zone-remove-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
         }
 
         .zone-editor-body {
@@ -563,10 +643,26 @@ interface ZoneDetailSection {
 
             <div>
                 <div class="right-card">
+                    <div class="zone-controls">
+                        <div>
+                            <strong>Khu vực</strong>
+                            <small>{{ zones.length }}/{{ maxZones }} khu (tối thiểu {{ minZones }} khu)</small>
+                        </div>
+                        <button class="zone-control-btn" (click)="addZone()" [disabled]="!canAddZone()">
+                            <i class="pi pi-plus"></i>
+                            Thêm khu
+                        </button>
+                    </div>
+
                     <div class="zone-editor-card" *ngFor="let zone of zones">
                         <div class="zone-editor-head" (click)="toggleZone(zone)">
                             <div class="zone-editor-title">{{ zone.label }} <small>{{ zoneTableCount(zone) }} bàn</small></div>
-                            <i class="pi" [class.pi-chevron-up]="!zone.collapsed" [class.pi-chevron-down]="zone.collapsed"></i>
+                            <div class="zone-head-actions">
+                                <button class="zone-remove-btn" (click)="removeZone(zone, $event)" [disabled]="!canRemoveZone()" title="Xóa khu">
+                                    <i class="pi pi-trash"></i>
+                                </button>
+                                <i class="pi" [class.pi-chevron-up]="!zone.collapsed" [class.pi-chevron-down]="zone.collapsed"></i>
+                            </div>
                         </div>
                         <div class="zone-editor-body" *ngIf="!zone.collapsed">
                             <div style="font-size: 0.82rem; color: #64748b; margin-bottom: 0.5rem;">
@@ -577,18 +673,13 @@ interface ZoneDetailSection {
                                 <input 
                                     class="table-input" 
                                     type="number" 
-                                    min="1" 
+                                    min="0" 
                                     [(ngModel)]="row.numberOfTables" 
                                     (change)="normalizeRow(row, zone)"
                                 />
                                 <button class="trash-btn" (click)="removeGroup(zone, row)"><i class="pi pi-trash"></i></button>
                             </div>
-                            <button 
-                                class="add-row-btn" 
-                                (click)="addGroup(zone)"
-                                [style.opacity]="canAddMoreTables(zone) ? '1' : '0.5'"
-                                [disabled]="!canAddMoreTables(zone)"
-                            >
+                            <button class="add-row-btn" (click)="addGroup(zone)">
                                 <i class="pi pi-plus"></i> Thêm nhóm
                             </button>
                         </div>
@@ -648,6 +739,9 @@ export class SeatLayoutComponent implements OnInit {
 
     private returnUrl = '/pages/booking';
     private draftTableLayoutRequest: TableLayoutRequest | null = null;
+    readonly minZones = 1;
+    readonly maxZones = 4;
+    private readonly zoneIds: ReadonlyArray<ZoneId> = ['A', 'B', 'C', 'D'];
 
     zones: SeatZone[] = [];
     totalExpectedTables = 0;
@@ -726,41 +820,31 @@ export class SeatLayoutComponent implements OnInit {
     }
 
     private buildZones(total: number) {
-        const base = Math.floor(total / 4);
-        const extra = total % 4;
-        const counts = [base, base, base, base].map((v, i) => v + (i < extra ? 1 : 0));
+        const normalizedTotal = this.normalizeTableCount(total);
+        const zoneCount = Math.min(
+            this.maxZones,
+            Math.max(this.minZones, normalizedTotal > 0 ? Math.min(this.maxZones, normalizedTotal) : this.minZones),
+        );
+        const counts = this.distributeTables(normalizedTotal, zoneCount);
 
-        this.totalExpectedTables = total;
-        this.zones = [
-            this.newZone('A', counts[0]),
-            this.newZone('B', counts[1]),
-            this.newZone('C', counts[2]),
-            this.newZone('D', counts[3]),
-        ];
+        this.totalExpectedTables = normalizedTotal;
+        this.zones = counts.map((count, index) => this.newZone(this.zoneIds[index], count));
     }
 
-    private newZone(id: 'A' | 'B' | 'C' | 'D', tables: number): SeatZone {
+    private newZone(id: ZoneId, tables: number): SeatZone {
+        const normalizedTables = this.normalizeTableCount(tables);
         return {
             id,
             enumKey: `SIDE_${id}`,
             label: `Khu ${id}`,
-            groups: tables > 0 ? [{ id: `${id}-1`, groupName: '', numberOfTables: Math.max(1, tables), colorIndex: 0 }] : [],
+            groups: normalizedTables > 0 ? [{ id: `${id}-1`, groupName: '', numberOfTables: normalizedTables, colorIndex: 0 }] : [],
             collapsed: id !== 'A',
-            expectedTables: tables,
+            expectedTables: normalizedTables,
         };
     }
 
     private buildZonesFromRequest(request: TableLayoutRequest, expectedTotal?: number | null) {
-        const zones = [
-            this.newZone('A', 1),
-            this.newZone('B', 1),
-            this.newZone('C', 1),
-            this.newZone('D', 1),
-        ];
-
-        for (const zone of zones) {
-            zone.groups = [];
-        }
+        const zones = this.zoneIds.map((id) => this.newZone(id, 0));
 
         let colorIndex = 0;
         for (const item of request.tableLayoutDetailRequestList ?? []) {
@@ -770,21 +854,22 @@ export class SeatLayoutComponent implements OnInit {
             zone.groups.push({
                 id: `${zone.id}-${zone.groups.length + 1}`,
                 groupName: String(item.groupName ?? ''),
-                numberOfTables: Math.max(1, Number(item.numberOfTables ?? 1)),
+                numberOfTables: this.normalizeTableCount(item.numberOfTables ?? 0),
                 colorIndex,
             });
             colorIndex++;
         }
 
-        for (const zone of zones) {
-            if (zone.groups.length === 0) {
-                zone.groups = [];
-            }
-            zone.expectedTables = this.zoneTableCount(zone);
-            zone.collapsed = zone.id !== 'A';
+        this.zones = zones.filter((zone) => zone.groups.length > 0);
+        if (this.zones.length === 0) {
+            this.zones = [this.newZone('A', 0)];
         }
 
-        this.zones = zones;
+        this.reindexZones();
+        for (const zone of this.zones) {
+            zone.expectedTables = this.zoneTableCount(zone);
+        }
+
         this.totalExpectedTables = Number.isFinite(Number(expectedTotal)) && Number(expectedTotal) > 0
             ? Number(expectedTotal)
             : this.totalTables;
@@ -794,27 +879,57 @@ export class SeatLayoutComponent implements OnInit {
         zone.collapsed = !zone.collapsed;
     }
 
+    canAddZone(): boolean {
+        return this.zones.length < this.maxZones;
+    }
+
+    canRemoveZone(): boolean {
+        return this.zones.length > this.minZones;
+    }
+
+    addZone() {
+        if (!this.canAddZone()) {
+            return;
+        }
+
+        const nextId = this.zoneIds[this.zones.length];
+        if (!nextId) {
+            return;
+        }
+
+        this.zones.push(this.newZone(nextId, 0));
+        this.reindexZones();
+    }
+
+    removeZone(zone: SeatZone, event?: Event) {
+        event?.stopPropagation();
+        if (!this.canRemoveZone()) {
+            return;
+        }
+
+        this.zones = this.zones.filter((z) => z.id !== zone.id);
+        if (this.zones.length === 0) {
+            this.zones = [this.newZone('A', 0)];
+        }
+        this.reindexZones();
+    }
+
     addGroup(zone: SeatZone) {
         const colorIndex = this.nextColorIndex();
         zone.groups.push({
-            id: `${zone.id}-${Date.now()}-${zone.groups.length}`,
+            id: `${zone.id}-${zone.groups.length + 1}`,
             groupName: '',
-            numberOfTables: 1,
+            numberOfTables: 0,
             colorIndex,
         });
     }
 
     removeGroup(zone: SeatZone, row: ZoneGroup) {
-        if (zone.groups.length === 1) {
-            row.numberOfTables = Math.max(1, Number(row.numberOfTables ?? 1));
-            return;
-        }
         zone.groups = zone.groups.filter((g) => g.id !== row.id);
     }
 
     normalizeRow(row: ZoneGroup, zone: SeatZone) {
-        const val = Number(row.numberOfTables ?? 1);
-        row.numberOfTables = Number.isFinite(val) && val > 0 ? Math.floor(val) : 1;
+        row.numberOfTables = this.normalizeTableCount(row.numberOfTables ?? 0);
         
         const total = this.totalTables;
         if (total > this.totalExpectedTables) {
@@ -827,19 +942,15 @@ export class SeatLayoutComponent implements OnInit {
         }
     }
 
-    canAddMoreTables(zone: SeatZone): boolean {
-        return this.totalTables < this.totalExpectedTables;
-    }
-
     zoneTableCount(zone: SeatZone): number {
-        return zone.groups.reduce((sum, g) => sum + Math.max(1, Number(g.numberOfTables ?? 1)), 0);
+        return zone.groups.reduce((sum, g) => sum + this.normalizeTableCount(g.numberOfTables), 0);
     }
 
     zoneSeatDots(zone: SeatZone): Array<{ no: number; colorIndex: number }> {
         const dots: Array<{ no: number; colorIndex: number }> = [];
         let count = 0;
         for (const group of zone.groups) {
-            const tables = Math.max(1, Number(group.numberOfTables ?? 1));
+            const tables = this.normalizeTableCount(group.numberOfTables);
             for (let i = 0; i < tables; i++) {
                 count += 1;
                 dots.push({ no: count, colorIndex: group.colorIndex });
@@ -859,8 +970,12 @@ export class SeatLayoutComponent implements OnInit {
     detailSections(): ZoneDetailSection[] {
         let seatCursor = 1;
         return this.zones.map((zone) => {
-            const groups: ZoneDetailGroup[] = zone.groups.map((g) => {
-                const count = Math.max(1, Number(g.numberOfTables ?? 1));
+            const groups: ZoneDetailGroup[] = zone.groups
+                .map((g) => {
+                const count = this.normalizeTableCount(g.numberOfTables);
+                if (count <= 0) {
+                    return null;
+                }
                 const start = seatCursor;
                 const end = seatCursor + count - 1;
                 const seats = Array.from({ length: count }, (_, i) => seatCursor + i);
@@ -873,7 +988,8 @@ export class SeatLayoutComponent implements OnInit {
                     seats,
                     colorIndex: g.colorIndex,
                 };
-            });
+            })
+                .filter((group): group is ZoneDetailGroup => Boolean(group));
             return { zoneLabel: zone.label, groups };
         });
     }
@@ -967,11 +1083,11 @@ export class SeatLayoutComponent implements OnInit {
         return {
             tableLayoutDetailRequestList: this.zones.flatMap((zone) =>
                 zone.groups
-                    .filter((g) => Number(g.numberOfTables ?? 0) > 0)
+                    .filter((g) => this.normalizeTableCount(g.numberOfTables) > 0)
                     .map((g) => ({
                         tableLayoutEnum: zone.enumKey,
                         groupName: g.groupName || '(Không tên)',
-                        numberOfTables: Math.max(1, Number(g.numberOfTables ?? 1)),
+                        numberOfTables: this.normalizeTableCount(g.numberOfTables),
                     }))
             ),
         };
@@ -1084,7 +1200,7 @@ export class SeatLayoutComponent implements OnInit {
         const details = booking?.tableLayoutResponse?.tableLayoutDetails;
         if (!details) return null;
 
-        const knownOrder = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
+        const knownOrder = this.zoneIds.map((id) => `SIDE_${id}`);
         const knownItems = knownOrder.flatMap((key) => (details[key] ?? []).map((item) => ({ key, item })));
         const fallbackItems = Object.entries(details)
             .filter(([key]) => !knownOrder.includes(key))
@@ -1100,6 +1216,44 @@ export class SeatLayoutComponent implements OnInit {
                 numberOfTables: Number(entry.item?.numberOfTables ?? 1),
             })),
         };
+    }
+
+    private distributeTables(total: number, zoneCount: number): number[] {
+        const safeZoneCount = Math.min(this.maxZones, Math.max(this.minZones, Math.floor(zoneCount)));
+        const safeTotal = this.normalizeTableCount(total);
+        const base = Math.floor(safeTotal / safeZoneCount);
+        const extra = safeTotal % safeZoneCount;
+
+        return Array.from({ length: safeZoneCount }, (_, i) => base + (i < extra ? 1 : 0));
+    }
+
+    private normalizeTableCount(value: unknown): number {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+            return 0;
+        }
+        return Math.floor(parsed);
+    }
+
+    private reindexZones() {
+        this.zones = this.zones
+            .slice(0, this.maxZones)
+            .map((zone, zoneIndex) => {
+                const id = this.zoneIds[zoneIndex];
+                return {
+                    ...zone,
+                    id,
+                    enumKey: `SIDE_${id}`,
+                    label: `Khu ${id}`,
+                    collapsed: zoneIndex === 0 ? false : zone.collapsed,
+                    groups: zone.groups.map((group, groupIndex) => ({
+                        ...group,
+                        id: `${id}-${groupIndex + 1}`,
+                        numberOfTables: this.normalizeTableCount(group.numberOfTables),
+                        colorIndex: this.normalizeColorIndex(group.colorIndex),
+                    })),
+                };
+            });
     }
 
     private buildUpdatePayloadForLayout(tableLayoutRequest: TableLayoutRequest): BookingUpsertPayload | null {

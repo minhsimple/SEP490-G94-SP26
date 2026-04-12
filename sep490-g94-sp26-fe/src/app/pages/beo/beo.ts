@@ -23,7 +23,7 @@ import { TaskListService, TaskList, TaskListTask } from '../service/beo.service'
                 <div
                     *ngFor="let stat of stats"
                     class="flex-1 surface-card border-round-xl p-4 flex items-center gap-3"
-                    style="min-width:180px; border:1px solid #e8edf2;"
+                    style="min-width:180px; border:1px solid #d1d5db;"
                 >
                     <div
                         class="flex items-center justify-center border-round-lg"
@@ -44,7 +44,7 @@ import { TaskListService, TaskList, TaskListTask } from '../service/beo.service'
                 <div
                     *ngFor="let _ of skeletonRows"
                     class="surface-card border-round-xl mb-2 px-5 py-4"
-                    style="border:1px solid #e8edf2;height:72px;animation:pulse 1.5s infinite;"
+                    style="border:1px solid #d1d5db;height:72px;animation:pulse 1.5s infinite;"
                 ></div>
             </ng-container>
 
@@ -53,7 +53,7 @@ import { TaskListService, TaskList, TaskListTask } from '../service/beo.service'
                 <div
                     *ngFor="let item of taskLists(); trackBy: trackById"
                     class="surface-card border-round-xl mb-2 cursor-pointer booking-row"
-                    style="border:1px solid #e8edf2;transition:box-shadow 0.18s,border-color 0.18s;"
+                    style="border:1px solid #d1d5db;transition:box-shadow 0.18s,border-color 0.18s;"
                     (click)="viewTasks(item)"
                 >
                     <div class="flex items-center justify-between px-5 py-4">
@@ -96,7 +96,7 @@ import { TaskListService, TaskList, TaskListTask } from '../service/beo.service'
                             <ng-container *ngIf="getTaskProgress(item) as prog">
                                 <div
                                     class="border-round mt-2 overflow-hidden"
-                                    style="height:3px;background:#e8edf2;max-width:260px;"
+                                    style="height:3px;background:#d1d5db;max-width:260px;"
                                 >
                                     <div
                                         class="border-round"
