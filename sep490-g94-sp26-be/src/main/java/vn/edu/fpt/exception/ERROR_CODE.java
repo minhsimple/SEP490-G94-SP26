@@ -124,6 +124,8 @@ public enum ERROR_CODE {
     BOOKING_INVALID_STATE_TRANSITION(14003, "Không thể chuyển trạng thái đặt tiệc", HttpStatus.BAD_REQUEST),
     WEDDING_TIME_CONFLICT(14004, "Trùng lịch đặt tiệc", HttpStatus.BAD_REQUEST),
     BOOKING_INVALID_NUMBER_OF_GUESTS(14005, "Số lượng khách quá lớn", HttpStatus.BAD_REQUEST),
+    BOOKING_DATE_MUST_BE_IN_FUTURE(14006, "Ngày cưới phải là ngày trong tương lai", HttpStatus.BAD_REQUEST),
+    BOOKING_DATE_TOO_FAR(14007, "Ngày cưới phải đặt trước 3 tháng từ hôm nay", HttpStatus.BAD_REQUEST),
 
     /**
      * Payment Error
