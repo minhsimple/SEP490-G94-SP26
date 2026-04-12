@@ -89,7 +89,7 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse updateContract(Integer id, ContractRequest request) {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
-        validateContract(request);
+        validateUpdateContract(request, id);
         // Nếu hallId hoặc expectedGuests có thay đổi thì validate số lượng khách với sức chứa của hội trường
         if (request.getHallId() != null && request.getExpectedGuests() != null) {
             validateNumberOfGuests(request.getHallId(), request.getExpectedGuests());
@@ -131,6 +131,31 @@ public class ContractServiceImpl implements ContractService {
             LocalDateTime startTime = calculateStartTime(request.getBookingDate(), request.getBookingTime());
             LocalDateTime endTime = calculateEndTime(request.getBookingDate(), request.getBookingTime());
             if (bookingRepository.existsByStartTimeAndEndTimeAndContractStateAndHallId(startTime, endTime, ContractState.ACTIVE, request.getHallId())) {
+                throw new AppException(ERROR_CODE.WEDDING_TIME_CONFLICT);
+            }
+        }
+    }
+
+    public void validateUpdateContract(ContractRequest request, Integer bookingId) {
+        if (request == null) {
+            throw new AppException(ERROR_CODE.INVALID_REQUEST);
+        }
+        if (request.getCustomerId() != null &&
+                !customerRepository.existsByIdAndStatus(request.getCustomerId(), RecordStatus.active)) {
+            throw new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED);
+        }
+        if (request.getHallId() != null &&
+                !hallRepository.existsByIdAndStatus(request.getHallId(), RecordStatus.active)) {
+            throw new AppException(ERROR_CODE.HALL_NOT_EXISTED);
+        }
+        if (request.getSetMenuId() != null &&
+                !setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
+            throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
+        }
+        if (request.getBookingTime() != null && request.getBookingDate() != null) {
+            LocalDateTime startTime = calculateStartTime(request.getBookingDate(), request.getBookingTime());
+            LocalDateTime endTime = calculateEndTime(request.getBookingDate(), request.getBookingTime());
+            if (bookingRepository.existsByStartTimeAndEndTimeAndContractStateAndHallIdAndIdNot(startTime, endTime, ContractState.ACTIVE, request.getHallId(), bookingId)) {
                 throw new AppException(ERROR_CODE.WEDDING_TIME_CONFLICT);
             }
         }
