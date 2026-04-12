@@ -204,6 +204,7 @@ public class PayOSServiceImpl implements PayOSService {
         List<Payment> payments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(contractId, PaymentState.SUCCESS, RecordStatus.active);
         if(payments.size() > 1){
             invoice.setInvoiceState(InvoiceState.PAID);
+            contract.setContractState(ContractState.LIQUIDATED);
         } else if (payments.size() == 1){
             invoice.setInvoiceState(InvoiceState.PARTIALLY_PAID);
         }
