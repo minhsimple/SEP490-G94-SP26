@@ -94,13 +94,9 @@ import { Router } from '@angular/router';
 
       <div class="layout-topbar-menu hidden lg:block">
         <div class="layout-topbar-menu-content">
-          <button type="button" class="layout-topbar-action">
+          <button type="button" class="layout-topbar-action" (click)="goToCalendar()">
             <i class="pi pi-calendar"></i>
             <span>Calendar</span>
-          </button>
-          <button type="button" class="layout-topbar-action">
-            <i class="pi pi-inbox"></i>
-            <span>Messages</span>
           </button>
 
           <!-- Profile dropdown -->
@@ -330,6 +326,11 @@ export class AppTopbar implements OnInit {
   goToChangePassword() {
     this.profileMenuOpen.set(false);
     this.router.navigate(['/change-password']);
+  }
+
+  goToCalendar() {
+    this.profileMenuOpen.set(false);
+    this.router.navigate(['/pages/calender']);
   }
 
   logout() {

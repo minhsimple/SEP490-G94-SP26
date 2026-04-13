@@ -195,6 +195,7 @@ export class PaymentDetailComponent implements OnInit {
     loading = false;
     paying = false;
     payment: Payment | null = null;
+    returnUrl: string | null = null;
     selectedPayMethod: 'CASH' | 'BANK_TRANSFER' = 'CASH';
     payMethodOptions = [
         { label: 'Tiền mặt', value: 'CASH' },
@@ -218,6 +219,19 @@ export class PaymentDetailComponent implements OnInit {
             this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'ID thanh toán không hợp lệ', life: 3000 });
             this.goBack();
             return;
+        }
+
+        const navReturnUrl = String(history.state?.returnUrl ?? '').trim();
+        if (navReturnUrl.startsWith('/pages/')) {
+            this.returnUrl = navReturnUrl;
+        }
+
+        if (!this.returnUrl) {
+            const from = String(this.route.snapshot.queryParamMap.get('from') ?? '').toLowerCase();
+            const returnInvoiceId = Number(this.route.snapshot.queryParamMap.get('returnInvoiceId'));
+            if (from === 'invoice' && Number.isFinite(returnInvoiceId) && returnInvoiceId > 0) {
+                this.returnUrl = `/pages/invoice/${returnInvoiceId}`;
+            }
         }
 
         const navPayment = (history.state?.payment ?? null) as Payment | null;
@@ -372,6 +386,10 @@ export class PaymentDetailComponent implements OnInit {
     }
 
     goBack(): void {
+        if (this.returnUrl) {
+            this.router.navigateByUrl(this.returnUrl);
+            return;
+        }
         this.router.navigate(['/pages/payment']);
     }
 
