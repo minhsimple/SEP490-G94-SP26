@@ -60,6 +60,18 @@ interface HallPalette {
     dotColor: string;
 }
 
+interface EmptySlot {
+    date: string;
+    hallName: string;
+    branchName: string;
+    shift: 'SLOT_1' | 'SLOT_2';
+}
+
+interface EmptySlotGroup {
+    date: string;
+    slots: EmptySlot[];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,6 +143,15 @@ interface HallPalette {
                     </svg>
                 </button>
             </div>
+
+            <button
+                type="button"
+                class="ec-empty-toggle"
+                [class.is-active]="showEmptySchedule"
+                (click)="toggleEmptySchedule()"
+            >
+                {{ showEmptySchedule ? 'Ẩn lịch trống' : 'Xem lịch trống' }}
+            </button>
         </div>
     </div>
 
@@ -299,6 +320,52 @@ interface HallPalette {
             </div>
         }
 
+        @if (showEmptySchedule) {
+            <div class="ec-empty-slot-wrap">
+                <div class="ec-empty-slot-head">
+                    <div class="ec-empty-slot-title">Lịch trống theo sảnh và ca</div>
+                    <div class="ec-empty-slot-filters">
+                        <label class="ec-filterday-label" for="ec-empty-date">Ngày</label>
+                        <input
+                            id="ec-empty-date"
+                            class="ec-filterday-input"
+                            type="date"
+                            [(ngModel)]="emptySlotDate"
+                            (ngModelChange)="onEmptyDateChange($event)"
+                        />
+                        @if (emptySlotDate) {
+                            <button type="button" class="ec-filterday-clear" (click)="clearEmptyDateFilter()">Xóa</button>
+                        }
+                    </div>
+                </div>
+
+                @if (!filterBranch) {
+                    <div class="ec-must-branch">Vui lòng chọn cơ sở để xem lịch trống.</div>
+                }
+
+                @if (filterBranch && emptySlotGroups().length === 0) {
+                    <div class="ec-empty">
+                        <p>Không còn lịch trống trong phạm vi đã lọc.</p>
+                    </div>
+                }
+
+                @for (group of emptySlotGroups(); track group.date) {
+                    <div class="ec-empty-slot-day">
+                        <div class="ec-empty-slot-day-label">{{ formatDateLabel(group.date) }}</div>
+                        <div class="ec-empty-slot-list">
+                            @for (slot of group.slots; track slot.date + '-' + slot.hallName + '-' + slot.shift) {
+                                <div class="ec-empty-slot-chip">
+                                    <span class="ec-empty-slot-hall">{{ slot.hallName }}</span>
+                                    <span class="ec-empty-slot-sep">•</span>
+                                    <span>{{ shiftShort(slot.shift) }} ({{ shiftTime(slot.shift) }})</span>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
         <div class="ec-footnote">
             * Mỗi sảnh tối đa 2 sự kiện/ngày: Trưa (10:00-14:00) và Tối (17:00-21:00)
         </div>
@@ -399,6 +466,24 @@ interface HallPalette {
         .ec-vtoggle-btn:first-child { border-right: 0.5px solid #e2e8f0; }
         .ec-vtoggle-btn:hover { background: #f8fafc; color: #475569; }
         .ec-vtoggle-btn.is-active { background: #2563eb; color: #fff; }
+        .ec-empty-toggle {
+            height: 34px;
+            border: 0.5px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0 12px;
+            background: #fff;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.12s, color 0.12s, border-color 0.12s;
+        }
+        .ec-empty-toggle:hover { background: #f8fafc; }
+        .ec-empty-toggle.is-active {
+            color: #1d4ed8;
+            border-color: #93c5fd;
+            background: #eff6ff;
+        }
 
         /* ── Card ─────────────────────────────────────────────────────────── */
         .ec-card {
@@ -665,6 +750,57 @@ interface HallPalette {
             border-color: #cbd5e1;
         }
 
+        /* ── Empty schedule ─────────────────────────────────────────────── */
+        .ec-empty-slot-wrap {
+            border-top: 0.5px solid #f1f5f9;
+            padding: 14px 20px 6px;
+            background: #fcfdff;
+        }
+        .ec-empty-slot-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .ec-empty-slot-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #334155;
+        }
+        .ec-empty-slot-filters {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ec-empty-slot-day { margin-bottom: 12px; }
+        .ec-empty-slot-day:last-child { margin-bottom: 4px; }
+        .ec-empty-slot-day-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+        .ec-empty-slot-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .ec-empty-slot-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8fafc;
+            border: 0.5px solid #e2e8f0;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 12px;
+            color: #475569;
+        }
+        .ec-empty-slot-hall { font-weight: 600; color: #1e293b; }
+        .ec-empty-slot-sep { color: #94a3b8; }
+
         /* ── Popup ────────────────────────────────────────────────────────── */
         .ec-modal-subtitle {
             margin: 2px 0 10px;
@@ -751,6 +887,8 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     filterBranch: string | null = null;
     filterHall:   string | null = null;
     listFilterDate: string | null = null;
+    emptySlotDate: string | null = null;
+    showEmptySchedule = false;
     readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
     readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
@@ -859,6 +997,69 @@ export class EventCalendarComponent implements OnInit, OnChanges {
         return [...cell.events].sort((a, b) => this.shiftOrder(a.shift) - this.shiftOrder(b.shift));
     });
 
+    emptySlotGroups = computed((): EmptySlotGroup[] => {
+        this.filterChangeTick();
+        if (!this.showEmptySchedule || !this.filterBranch) return [];
+
+        const hallsInScope = this.hallCatalog
+            .filter((h) => h.branchName === this.filterBranch)
+            .filter((h) => !this.filterHall || h.hallName === this.filterHall)
+            .sort((a, b) => a.hallName.localeCompare(b.hallName));
+
+        if (!hallsInScope.length) return [];
+
+        const year = this.currentYear();
+        const month = this.currentMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const dateRange = this.emptySlotDate
+            ? [this.emptySlotDate]
+            : Array.from({ length: daysInMonth }, (_, i) => this.fmt(new Date(year, month, i + 1)));
+
+        const occupied = new Set<string>();
+        this.filteredEvents().forEach((ev) => {
+            if (!dateRange.includes(ev.date)) return;
+            if (ev.shift === 'SLOT_3') {
+                occupied.add(`${ev.date}|${ev.hallName}|SLOT_1`);
+                occupied.add(`${ev.date}|${ev.hallName}|SLOT_2`);
+                return;
+            }
+            occupied.add(`${ev.date}|${ev.hallName}|${ev.shift}`);
+        });
+
+        const slots: EmptySlot[] = [];
+        dateRange.forEach((date) => {
+            hallsInScope.forEach((hall) => {
+                (['SLOT_1', 'SLOT_2'] as const).forEach((shift) => {
+                    const key = `${date}|${hall.hallName}|${shift}`;
+                    if (!occupied.has(key)) {
+                        slots.push({
+                            date,
+                            hallName: hall.hallName,
+                            branchName: hall.branchName,
+                            shift,
+                        });
+                    }
+                });
+            });
+        });
+
+        const grouped = new Map<string, EmptySlot[]>();
+        slots.forEach((slot) => {
+            const curr = grouped.get(slot.date) ?? [];
+            curr.push(slot);
+            grouped.set(slot.date, curr);
+        });
+
+        return Array.from(grouped.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([date, daySlots]) => ({
+                date,
+                slots: daySlots.sort((a, b) =>
+                    a.hallName.localeCompare(b.hallName) || this.shiftOrder(a.shift) - this.shiftOrder(b.shift)
+                ),
+            }));
+    });
+
     autoLegend = computed((): HallLegend[] => {
         if (this.legends.length) return this.legends;
         const seen = new Set<string>();
@@ -944,6 +1145,44 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     clearListDateFilter() {
         this.listFilterDate = null;
         this.closeDayPopup();
+        this.bumpFilterTick();
+        this.cdr.markForCheck();
+    }
+
+    toggleEmptySchedule() {
+        this.showEmptySchedule = !this.showEmptySchedule;
+        this.bumpFilterTick();
+        this.cdr.markForCheck();
+    }
+
+    onEmptyDateChange(value: string | null) {
+        if (!value) {
+            this.bumpFilterTick();
+            this.cdr.markForCheck();
+            return;
+        }
+
+        const parsed = new Date(`${value}T00:00:00`);
+        if (Number.isNaN(parsed.getTime())) return;
+
+        const targetYear = parsed.getFullYear();
+        const targetMonth = parsed.getMonth();
+        const hasMonthChanged = targetYear !== this.currentYear() || targetMonth !== this.currentMonth();
+
+        if (hasMonthChanged) {
+            this.currentYear.set(targetYear);
+            this.currentMonth.set(targetMonth);
+            this.closeDayPopup();
+            this.monthChange.emit({ year: targetYear, month: targetMonth });
+            if (!this.useInputEvents) this.loadApiEventsByCurrentMonth();
+        }
+
+        this.bumpFilterTick();
+        this.cdr.markForCheck();
+    }
+
+    clearEmptyDateFilter() {
+        this.emptySlotDate = null;
         this.bumpFilterTick();
         this.cdr.markForCheck();
     }
