@@ -292,17 +292,8 @@ import { CustomerService } from '../service/customer.service';
 
                     <!-- Danh sách thanh toán -->
                     <div class="section">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="section-title" style="margin:0;">
-                                Danh sách thanh toán ({{ invoice.payments?.length ?? 0 }})
-                            </div>
-                            <p-button
-                                label="Thêm thanh toán"
-                                icon="pi pi-plus"
-                                severity="primary"
-                                size="small"
-                                (onClick)="openPaymentDialog()"
-                            />
+                        <div class="section-title" style="margin:0 0 1rem;">
+                            Danh sách thanh toán ({{ invoice.payments?.length ?? 0 }})
                         </div>
 
                         <table class="cost-table">
@@ -337,19 +328,10 @@ import { CustomerService } from '../service/customer.service';
                                     <td class="text-500">{{ p.note ?? '-' }}</td>
                                     <td style="text-align:center;">
                                         <p-button
-                                            *ngIf="canPayWithPayOS(p)"
-                                            icon="pi pi-wallet"
+                                            icon="pi pi-eye"
                                             [rounded]="true" [text]="true"
-                                            severity="success"
-                                            [loading]="payingPaymentId === p.id"
-                                            (click)="payExistingPayment(p)"
-                                        />
-                                        <p-button
-                                            icon="pi pi-trash"
-                                            [rounded]="true" [text]="true"
-                                            severity="danger"
-                                            [disabled]="payingPaymentId === p.id"
-                                            (click)="confirmDeletePayment(p)"
+                                            severity="info"
+                                            (click)="goToPaymentDetail(p)"
                                         />
                                     </td>
                                 </tr>
@@ -744,6 +726,16 @@ export class InvoiceDetailComponent implements OnInit {
                     }
                 });
             }
+        });
+    }
+
+    goToPaymentDetail(payment: Payment) {
+        if (!payment?.id) return;
+        const invoiceId = this.invoice?.id;
+        const returnUrl = invoiceId ? `/pages/invoice/${invoiceId}` : '/pages/invoice';
+        this.router.navigate(['/pages/payment', payment.id], {
+            queryParams: { from: 'invoice', returnInvoiceId: invoiceId ?? null },
+            state: { payment, returnUrl }
         });
     }
 
