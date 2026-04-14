@@ -62,30 +62,31 @@ public class PaymentServiceImpl implements PaymentService {
 
         paymentMapper.updateEntity(payment, request);
         Payment updatedPayment = paymentRepository.save(payment);
-        if(request.getPaymentState().equals(PaymentState.SUCCESS) && request.getMethod().equals(PaymentMethod.CASH)){
+        if (request.getPaymentState().equals(PaymentState.SUCCESS) && request.getMethod().equals(PaymentMethod.CASH)) {
 
-                    contract.setContractState(ContractState.ACTIVE);
+            contract.setContractState(ContractState.ACTIVE);
 
             Invoice invoice = invoiceRepository.findByContractIdAndStatus(payment.getContractId(), RecordStatus.active)
                     .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
 
             List<Payment> payments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(payment.getContractId(),
                     PaymentState.SUCCESS, RecordStatus.active);
-                if (!taskListRepository.existsByContractId(contract.getId())) {
-                    String title = (contract.getBrideName() != null ? contract.getBrideName() : "") +
-                            " & " +
-                            (contract.getGroomName() != null ? contract.getGroomName() : "");
+            if (!taskListRepository.existsByContractId(contract.getId())) {
+                String title = (contract.getBrideName() != null ? contract.getBrideName() : "") +
+                        " & " +
+                        (contract.getGroomName() != null ? contract.getGroomName() : "");
 
-                    TaskListCreateRequest taskListRequest = TaskListCreateRequest.builder()
-                            .contractId(contract.getId())
-                            .name(title)
-                            .description("Task list for contract " + contract.getContractNo())
-                            .build();
+                TaskListCreateRequest taskListRequest = TaskListCreateRequest.builder()
+                        .contractId(contract.getId())
+                        .name(title)
+                        .description("Task list for contract " + contract.getContractNo())
+                        .build();
 
-                    taskListService.createNewTaskList(taskListRequest);
-                }
-            if(payments.size() > 1){
+                taskListService.createNewTaskList(taskListRequest);
+            }
+            if (payments.size() > 1) {
                 invoice.setInvoiceState(InvoiceState.PAID);
+                contract.setContractState(ContractState.LIQUIDATED);
             } else {
                 invoice.setInvoiceState(InvoiceState.PARTIALLY_PAID);
             }
