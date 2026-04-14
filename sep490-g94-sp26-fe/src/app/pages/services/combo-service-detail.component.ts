@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location as NgLocation } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService, ConfirmationService } from 'primeng/api';
@@ -85,7 +85,11 @@ import { LocationService, Location } from '../service/location.service';
                     </div>
 
                     <div *ngFor="let svc of getServices()"
-                         class="service-row">
+                        class="service-row"
+                        role="button"
+                        tabindex="0"
+                        (click)="goToServiceDetail(svc)"
+                        (keydown.enter)="goToServiceDetail(svc)">
                         
                         <div class="flex-1">
                             <div class="font-semibold text-sm service-name">
@@ -97,6 +101,7 @@ import { LocationService, Location } from '../service/location.service';
                             <div class="font-bold text-sm" style="color: #ef4444;">{{ formatPrice(svc.basePrice) }}</div>
                             <div class="text-xs text-400">/ {{ svc.unit || 'dịch vụ' }}</div>
                         </div>
+                        <i class="pi pi-chevron-right text-400"></i>
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 mt-5">
@@ -178,9 +183,17 @@ import { LocationService, Location } from '../service/location.service';
             padding: 12px; margin-bottom: 8px;
             background: white; border-radius: 10px;
             border: 1px solid #e2e8f0;
-            transition: box-shadow 0.2s;
+            transition: box-shadow 0.2s, transform 0.2s;
+            cursor: pointer;
         }
-        .service-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .service-row:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transform: translateY(-1px);
+        }
+        .service-row:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
         .service-row:last-child { margin-bottom: 0; }
         .service-icon-container {
             width: 48px; height: 48px; border-radius: 8px;
@@ -206,6 +219,7 @@ export class ComboServiceDetailComponent implements OnInit {
 
     private route = inject(ActivatedRoute);
     private router = inject(Router);
+    private location = inject(NgLocation);
     private servicePackageService = inject(ServicePackageService);
     private serviceService = inject(ServiceService);
     private locationService = inject(LocationService);
@@ -344,7 +358,20 @@ export class ComboServiceDetailComponent implements OnInit {
         });
     }
 
+    goToServiceDetail(service: Service) {
+        const serviceId = Number(service?.id);
+        if (!Number.isFinite(serviceId) || serviceId <= 0) {
+            return;
+        }
+
+        this.router.navigate(['/pages/service', serviceId]);
+    }
+
     goBack() {
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
         this.router.navigate(['/pages/combo-services']);
     }
 

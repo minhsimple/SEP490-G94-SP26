@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -205,6 +205,7 @@ export class PaymentDetailComponent implements OnInit {
     constructor(
         private route: ActivatedRoute,
         private router: Router,
+        private location: Location,
         private paymentService: PaymentService,
         private invoiceService: InvoiceService,
         private bookingService: BookingService,
@@ -390,12 +391,20 @@ export class PaymentDetailComponent implements OnInit {
             this.router.navigateByUrl(this.returnUrl);
             return;
         }
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
         this.router.navigate(['/pages/payment']);
     }
 
     goToInvoice(): void {
         if (this.payment?.invoiceId) {
-            this.router.navigate(['/pages/invoice', this.payment.invoiceId]);
+            const backUrl = this.router.url;
+            this.router.navigate(['/pages/invoice', this.payment.invoiceId], {
+                state: { returnUrl: backUrl },
+                queryParams: { returnUrl: backUrl }
+            });
         }
     }
 
