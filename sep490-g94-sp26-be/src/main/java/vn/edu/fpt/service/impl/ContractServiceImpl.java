@@ -217,7 +217,7 @@ public class ContractServiceImpl implements ContractService {
                 }
 
                 if (filter.getContractState() != null) {
-                    predicates.add(cb.equal(root.get("bookingState"), filter.getContractState()));
+                    predicates.add(cb.equal(root.get("contractState"), filter.getContractState()));
                 }
 
                 if (filter.getSalesId() != null) {

@@ -26,6 +26,7 @@ export class AppMenu implements OnInit, OnDestroy {
   private sub!: Subscription;
 
   private readonly allMenuItems: MenuItem[] = [
+  { label: 'Dashboard', icon: 'pi pi-chart-bar', routerLink: ['/pages/dashboard'], id: 'dashboard' },
   { label: 'Lịch sự kiện', icon: 'pi pi-calendar', routerLink: ['/pages/calender'], id: 'calender' },
 { label: 'Hợp đồng', icon: 'pi pi-file', routerLink: ['/pages/booking'], id: 'booking' },
 { label: 'Công việc', icon: 'pi pi-check-square', routerLink: ['/pages/beo'], id: 'beo' },
@@ -65,7 +66,7 @@ export class AppMenu implements OnInit, OnDestroy {
     SALE:         ['leads', 'customers', 'service', 'menu', 'hall', 'booking', 'payment'],
     RECEPTION:    ['leads'],
     RECEPTIONIST: ['leads'],
-    MANAGER:      'all',
+    MANAGER:      ['dashboard', 'calender', 'booking', 'beo', 'payment', 'invoice', 'leads', 'customers', 'hall', 'service', 'menu'],
     ADMIN:        'all',
     COORDINATOR:  ['calender', 'booking', 'beo'],
   };

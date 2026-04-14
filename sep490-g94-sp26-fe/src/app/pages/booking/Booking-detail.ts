@@ -769,6 +769,7 @@ export class BookingDetailComponent implements OnInit {
     contractDialogVisible = false;
     contractZoom = 1;
     zoomPercent = 100;
+    returnUrl = '';
 
     constructor(
         private route: ActivatedRoute,
@@ -788,6 +789,10 @@ export class BookingDetailComponent implements OnInit {
     ) {}
 
     ngOnInit() {
+        const navState = this.router.getCurrentNavigation()?.extras?.state as { returnUrl?: string } | undefined;
+        const queryReturnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '';
+        this.returnUrl = navState?.returnUrl || history.state?.returnUrl || queryReturnUrl || '';
+
         const id = Number(this.route.snapshot.paramMap.get('id'));
         if (!Number.isFinite(id) || id <= 0) {
             this.goBack();
@@ -1515,7 +1520,13 @@ export class BookingDetailComponent implements OnInit {
         printWindow.document.close();
     }
 
-    goBack() { this.router.navigate(['/pages/booking']); }
+    goBack() {
+        if (this.returnUrl) {
+            this.router.navigateByUrl(this.returnUrl);
+            return;
+        }
+        this.router.navigate(['/pages/booking']);
+    }
 
     shiftLabel(value?: string): string {
         const map: Record<string, string> = {
