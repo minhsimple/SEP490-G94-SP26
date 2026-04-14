@@ -16,6 +16,7 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { Customer, CustomerService } from '../service/customer.service';
 import { Location, LocationService } from '../service/location.service';
+import { Router } from '@angular/router';
 
 interface Column {
     field: string;
@@ -164,6 +165,15 @@ interface Column {
                         </td>
                         <td>
                             <div class="flex gap-2">
+                                <p-button
+                                    icon="pi pi-eye"
+                                    [rounded]="true"
+                                    [outlined]="true"
+                                    severity="secondary"
+                                    (click)="viewDetail(customer)"
+                                    pTooltip="Xem chi tiết"
+                                    tooltipPosition="top"
+                                />
                                 <p-button
                                     icon="pi pi-pencil"
                                     [rounded]="true"
@@ -348,6 +358,7 @@ export class Customers implements OnInit {
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private locationService: LocationService,
+        private router: Router,
         private cdr: ChangeDetectorRef
     ) { }
 
@@ -565,5 +576,10 @@ export class Customers implements OnInit {
 
     getStatusSeverity(status: string | undefined): 'success' | 'danger' {
         return status === 'active' ? 'success' : 'danger';
+    }
+
+    viewDetail(customer: Customer) {
+        if (!customer?.id) return;
+        this.router.navigate(['/pages/customers', customer.id]);
     }
 }
