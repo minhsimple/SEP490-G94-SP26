@@ -1,5 +1,5 @@
 import { Component, OnInit, signal, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -309,6 +309,7 @@ export class BeoDetailComponent implements OnInit {
     constructor(
         private route: ActivatedRoute,
         private router: Router,
+        private location: Location,
         private taskListService: TaskListService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef,
@@ -465,6 +466,10 @@ export class BeoDetailComponent implements OnInit {
     }
 
     goBack() {
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
         this.router.navigate(['/pages/beo']);
     }
 

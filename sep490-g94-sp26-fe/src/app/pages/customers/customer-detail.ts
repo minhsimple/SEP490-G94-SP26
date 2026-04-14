@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
@@ -246,6 +246,7 @@ export class CustomerDetailComponent implements OnInit {
     constructor(
         private route: ActivatedRoute,
         private router: Router,
+        private location: Location,
         private customerService: CustomerService,
         private bookingService: BookingService,
         private messageService: MessageService,
@@ -343,6 +344,10 @@ export class CustomerDetailComponent implements OnInit {
     }
 
     goBack(): void {
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
         this.router.navigate(['/pages/customers']);
     }
 

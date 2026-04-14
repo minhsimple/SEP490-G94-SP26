@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService, ConfirmationService } from 'primeng/api';
@@ -401,6 +401,7 @@ export class ServiceDetailComponent implements OnInit {
 
     private route = inject(ActivatedRoute);
     private router = inject(Router);
+    private location = inject(Location);
     private serviceService = inject(ServiceService);
     private locationService = inject(LocationService);
     private messageService = inject(MessageService);
@@ -607,6 +608,10 @@ export class ServiceDetailComponent implements OnInit {
     }
 
     goBack() {
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
         this.router.navigate(['/pages/service']);
     }
 }

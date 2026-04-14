@@ -63,12 +63,17 @@ export class AppMenu implements OnInit, OnDestroy {
 ];
 
   private readonly rolePermissions: Record<string, string[] | 'all'> = {
-    SALE:         ['leads', 'customers', 'service', 'menu', 'hall', 'booking', 'payment'],
-    RECEPTION:    ['leads'],
-    RECEPTIONIST: ['leads'],
+    SALE:         ['dashboard', 'leads', 'customers', 'service', 'menu', 'hall', 'booking', 'payment'],
+    RECEPTION:    ['leads', 'calender'],
+    RECEPTIONIST: ['leads', 'calender'],
+    ACCOUNT:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
+    ACCOUNTANT:   ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
+    ACCOUNTING:   ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
+    KETOAN:       ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
+    KE_TOAN:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
     MANAGER:      ['dashboard', 'calender', 'booking', 'beo', 'payment', 'invoice', 'leads', 'customers', 'hall', 'service', 'menu'],
     ADMIN:        'all',
-    COORDINATOR:  ['calender', 'booking', 'beo'],
+    COORDINATOR:  ['dashboard', 'calender', 'booking', 'beo'],
   };
 
   constructor(private authService: AuthService) {}
@@ -86,7 +91,8 @@ export class AppMenu implements OnInit, OnDestroy {
   }
 
   private buildMenu(codeRole: string): void {
-    const allowed = this.rolePermissions[codeRole];
+    const normalizedRole = (codeRole ?? '').toUpperCase();
+    const allowed = this.rolePermissions[normalizedRole];
 
     const filteredItems =
       allowed === 'all'

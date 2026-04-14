@@ -1,5 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService, ConfirmationService } from 'primeng/api';
@@ -479,6 +479,7 @@ export class MenuItemDetailComponent implements OnInit {
 
     private route = inject(ActivatedRoute);
     private router = inject(Router);
+    private location = inject(Location);
     private menuItemService = inject(MenuItemService);
     private messageService = inject(MessageService);
     private confirmationService = inject(ConfirmationService);
@@ -662,6 +663,10 @@ export class MenuItemDetailComponent implements OnInit {
 
     goBack() {
         const fromSetMenuId = this.route.snapshot.queryParamMap.get('fromSetMenu');
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
         if (fromSetMenuId) {
             this.router.navigate(['/pages/set-menu', fromSetMenuId]);
         } else {

@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
@@ -774,6 +774,7 @@ export class BookingDetailComponent implements OnInit {
     constructor(
         private route: ActivatedRoute,
         private router: Router,
+        private location: Location,
         private bookingService: BookingService,
         private customerService: CustomerService,
         private hallService: HallService,
@@ -1208,7 +1209,11 @@ export class BookingDetailComponent implements OnInit {
 
     goToInvoiceDetail() {
         if (!this.invoicePreview?.id) return;
-        this.router.navigate(['/pages/invoice', this.invoicePreview.id]);
+        const backUrl = this.router.url;
+        this.router.navigate(['/pages/invoice', this.invoicePreview.id], {
+            state: { returnUrl: backUrl },
+            queryParams: { returnUrl: backUrl }
+        });
     }
 
     invoiceStateLabel(value?: string): string {
@@ -1523,6 +1528,10 @@ export class BookingDetailComponent implements OnInit {
     goBack() {
         if (this.returnUrl) {
             this.router.navigateByUrl(this.returnUrl);
+            return;
+        }
+        if (window.history.length > 1) {
+            this.location.back();
             return;
         }
         this.router.navigate(['/pages/booking']);

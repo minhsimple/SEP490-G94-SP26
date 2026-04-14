@@ -55,7 +55,7 @@ interface Column {
                         class="mr-2"
                         (onClick)="openNew()"
                     />
-                    <p-select *ngIf="!isSale"
+                    <p-select *ngIf="!isLocationRestricted"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -269,7 +269,7 @@ interface Column {
                                 [filter]="true"
                                 filterBy="label"
                                 emptyMessage="Không có dữ liệu"
-                                [disabled]="isSale"
+                                [disabled]="isLocationRestricted"
                             />
                         </div>
 
@@ -347,7 +347,11 @@ export class Customers implements OnInit {
     pageSize = 20;
     selectedLocationId: number | null = null;
     locationOptions: { label: string; value: number }[] = [];
-    isSale = localStorage.getItem('codeRole') === 'SALE';
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly isSale = this.roleCode.includes('SALE');
+    readonly isAccountantAccount = this.roleCode.includes('ACCOUNT') || this.roleCode.includes('KETOAN') || this.roleCode.includes('KE_TOAN');
+    readonly isLocationRestricted = this.isSale || this.isAccountantAccount;
+    readonly accountLocationId = this.toValidLocationId(localStorage.getItem('locationId'));
 
     cols!: Column[];
 
@@ -363,9 +367,8 @@ export class Customers implements OnInit {
     ) { }
 
     ngOnInit() {
-        if (this.isSale) {
-            const locId = localStorage.getItem('locationId');
-            if (locId) this.selectedLocationId = Number(locId);
+        if (this.isLocationRestricted) {
+            this.selectedLocationId = this.accountLocationId;
         }
         this.cols = [
             { field: 'fullName', header: 'Họ và tên' },
@@ -382,10 +385,16 @@ export class Customers implements OnInit {
         this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
             next: (res) => {
                 if (res.code === 200) {
-                    this.locationOptions = res.data.content.map((l) => ({
+                    const allOptions = res.data.content.map((l) => ({
                         label: l.name ?? '',
                         value: l.id
                     }));
+
+                    if (this.isLocationRestricted && this.accountLocationId) {
+                        this.locationOptions = allOptions.filter((opt) => opt.value === this.accountLocationId);
+                    } else {
+                        this.locationOptions = allOptions;
+                    }
                 }
             },
             error: () => {
@@ -404,10 +413,33 @@ export class Customers implements OnInit {
         return this.locationOptions.find(l => l.value === locationId)?.label ?? '-';
     }
 
+    private toValidLocationId(raw: string | null): number | null {
+        const parsed = Number(raw ?? 0);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
     loadCustomers(locationId?: number | null) {
         this.loading = true;
         const params: any = { page: this.currentPage, size: this.pageSize };
-        if (locationId) params.locationId = locationId;
+
+        const effectiveLocationId = this.isLocationRestricted ? this.accountLocationId : locationId;
+
+        if (this.isLocationRestricted && !effectiveLocationId) {
+            this.customers.set([]);
+            this.totalRecords = 0;
+            this.loading = false;
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Thiếu thông tin chi nhánh',
+                detail: 'Không xác định được cơ sở của tài khoản hiện tại.',
+                life: 3000
+            });
+            this.cdr.markForCheck();
+            return;
+        }
+
+        if (effectiveLocationId) params.locationId = effectiveLocationId;
+
         this.customerService.searchCustomers(params).subscribe({
             next: (res) => {
                 this.customers.set(res.data.content);
@@ -434,6 +466,9 @@ export class Customers implements OnInit {
     }
 
     onLocationChange(event: any) {
+        if (this.isLocationRestricted) {
+            return;
+        }
         this.selectedLocationId = event.value;
         this.currentPage = 0;
         this.loadCustomers(this.selectedLocationId);
@@ -444,7 +479,7 @@ export class Customers implements OnInit {
 
     openNew() {
         this.customer = {
-            locationId: this.isSale && this.selectedLocationId ? this.selectedLocationId : undefined
+            locationId: this.isLocationRestricted && this.accountLocationId ? this.accountLocationId : undefined
         };
         this.newEmail = '';
         this.newPhone = '';
@@ -517,7 +552,9 @@ export class Customers implements OnInit {
                 email: this.customer.email,
                 address: this.customer.address,
                 notes: this.customer.notes,
-                locationId: this.customer.locationId
+                locationId: this.isLocationRestricted && this.accountLocationId
+                    ? this.accountLocationId
+                    : this.customer.locationId
             }).subscribe({
                 next: (res) => {
                     this.customers.update(list =>
@@ -541,7 +578,9 @@ export class Customers implements OnInit {
                 email: this.newEmail || undefined,
                 address: this.customer.address,
                 notes: this.customer.notes,
-                locationId: this.customer.locationId
+                locationId: this.isLocationRestricted && this.accountLocationId
+                    ? this.accountLocationId
+                    : this.customer.locationId
             }).subscribe({
                 next: (res) => {
                     this.customers.update(list => [res.data, ...list]);

@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
@@ -325,13 +325,10 @@ export class SetMenuEditComponent implements OnInit {
     get totalPrice(): number {
         return this.selectedItems.reduce((sum, i) => sum + (i.unitPrice ?? 0) * (i.quantity ?? 1), 0);
     }
-
-
-    
-
     constructor(
         private route: ActivatedRoute,
         private router: Router,
+        private location: Location,
         private http: HttpClient,
         private setMenuService: SetMenuService,
         private locationService: LocationService,
@@ -594,6 +591,10 @@ export class SetMenuEditComponent implements OnInit {
     }
 
     goBack() {
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
         if (this.isEditing && this.menuId) {
             this.router.navigate(['/pages/set-menu', this.menuId]);
         } else {

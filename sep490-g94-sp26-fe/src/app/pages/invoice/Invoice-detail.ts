@@ -1,5 +1,5 @@
+import { CommonModule, Location } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -459,6 +459,7 @@ export class InvoiceDetailComponent implements OnInit {
 
     invoice: Invoice | null = null;
     loading = false;
+    returnUrl = '';
     paymentDialog = false;
     paymentSubmitted = false;
     savingPayment = false;
@@ -489,6 +490,7 @@ export class InvoiceDetailComponent implements OnInit {
     constructor(
         private route: ActivatedRoute,
         private router: Router,
+        private location: Location,
         private invoiceService: InvoiceService,
         private paymentService: PaymentService,
         private bookingService: BookingService,
@@ -499,6 +501,10 @@ export class InvoiceDetailComponent implements OnInit {
     ) {}
 
     ngOnInit() {
+        const navState = this.router.getCurrentNavigation()?.extras?.state as { returnUrl?: string } | undefined;
+        const queryReturnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '';
+        this.returnUrl = navState?.returnUrl || history.state?.returnUrl || queryReturnUrl || '';
+
         const id = Number(this.route.snapshot.paramMap.get('id'));
         if (!Number.isFinite(id) || id <= 0) { this.goBack(); return; }
         this.loadDetail(id);
@@ -794,9 +800,26 @@ export class InvoiceDetailComponent implements OnInit {
         });
     }
 
-    goBack()       { this.router.navigate(['/pages/invoice']); }
-    goToContract() { if (this.invoice?.contractId) this.router.navigate(['/pages/booking', this.invoice.contractId, 'view']); }
+    goBack() {
+        if (this.returnUrl) {
+            this.router.navigateByUrl(this.returnUrl);
+            return;
+        }
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
+        this.router.navigate(['/pages/invoice']);
+    }
 
+    goToContract() {
+        if (!this.invoice?.contractId) return;
+        const backUrl = this.router.url;
+        this.router.navigate(['/pages/booking', this.invoice.contractId, 'view'], {
+            state: { returnUrl: backUrl },
+            queryParams: { returnUrl: backUrl }
+        });
+    }
     private enrichInvoiceMissingInfo() {
         const current = this.invoice;
         if (!current?.contractId) return;

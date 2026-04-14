@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpParams } from '@angular/common/http';
@@ -859,6 +859,7 @@ export class BookingCreateComponent implements OnInit {
         private http: HttpClient,
         private route: ActivatedRoute,
         private router: Router,
+        private location: Location,
         private bookingService: BookingService,
         private customerService: CustomerService,
         private hallService: HallService,
@@ -1635,6 +1636,10 @@ export class BookingCreateComponent implements OnInit {
     }
 
     goBack() {
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
         this.router.navigate(['/pages/booking']);
     }
 

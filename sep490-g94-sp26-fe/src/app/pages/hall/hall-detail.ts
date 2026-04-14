@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService, ConfirmationService } from 'primeng/api';
@@ -41,7 +41,7 @@ import { LocationService } from '../service/location.service';
                 </button>
 
 
-                
+
 
                 <!-- Hero Image Carousel -->
                 <div class="hero-carousel">
@@ -64,12 +64,12 @@ import { LocationService } from '../service/location.service';
 
                         <!-- Overlay info -->
                         <div class="hero-overlay">
-    <h1 style="color: white;">{{ hall.name }}</h1>
-    <div class="hero-sub">
-        <i class="pi pi-map-marker"></i>
-        <span>{{ hall.locationName || 'Chi nhánh #' + hall.locationId }}</span>
-    </div>
-</div>
+                        <h1 style="color: white;">{{ hall.name }}</h1>
+                        <div class="hero-sub">
+                            <i class="pi pi-map-marker"></i>
+                            <span>{{ hall.locationName || 'Chi nhánh #' + hall.locationId }}</span>
+                        </div>
+                        </div>
 
                         <span class="status-chip" [class.active]="hall.status === 'ACTIVE'">
                             <i class="pi pi-circle-fill" style="font-size:0.5rem"></i>
@@ -167,7 +167,7 @@ import { LocationService } from '../service/location.service';
                 [(visible)]="hallDialog"
                 [style]="{ width: '520px' }"
                 header="Chỉnh sửa sảnh"
-                [modal]="true"
+                [modal]="true"g
                 styleClass="p-fluid"
             >
                 <ng-template #content>
@@ -515,6 +515,7 @@ export class HallDetailComponent implements OnInit {
     constructor(
         private route: ActivatedRoute,
         private router: Router,
+        private location: Location,
         private hallService: HallService,
         private locationService: LocationService,
         private messageService: MessageService,
@@ -656,6 +657,10 @@ export class HallDetailComponent implements OnInit {
     }
 
     goBack() {
+        if (window.history.length > 1) {
+            this.location.back();
+            return;
+        }
         this.router.navigate(['/pages/hall']);
     }
 
