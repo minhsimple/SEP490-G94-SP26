@@ -17,6 +17,8 @@ public class CustomerRequest {
     @NotBlank(message = "Họ tên không đc để trống")
     String fullName;
 
+    String citizenIdNumber;
+
     @NotBlank(message = "Số điện thoại không đc để trống")
     @Pattern(regexp = "^(0|\\+84)[0-9]{9,10}$",
             message = "Số điện thoại không hợp lệ")

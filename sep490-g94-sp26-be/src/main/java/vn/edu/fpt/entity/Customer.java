@@ -25,6 +25,8 @@ public class Customer extends BaseEntity {
     @Column(name = "phone", nullable = false)
     String phone;
 
+    String citizenIdNumber;
+
     String email;
 
     String address;

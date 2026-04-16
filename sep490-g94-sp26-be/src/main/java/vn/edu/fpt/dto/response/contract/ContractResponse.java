@@ -2,6 +2,7 @@ package vn.edu.fpt.dto.response.contract;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import vn.edu.fpt.dto.response.customer.CustomerResponse;
 import vn.edu.fpt.dto.response.tablelayout.TableLayoutResponse;
 import vn.edu.fpt.util.enums.BookingTime;
 import vn.edu.fpt.util.enums.ContractState;
@@ -17,6 +18,8 @@ import java.time.LocalDateTime;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ContractResponse {
+    CustomerResponse customerResponse;
+
     Integer id;
     String contractNo;
     Integer customerId;
