@@ -1007,8 +1007,14 @@ export class BookingDetailComponent implements OnInit {
             return null;
         }
 
+        const customerRequest = this.buildCustomerRequestForPayload(customerId);
+        if (!customerRequest) {
+            return null;
+        }
+
         return {
             customerId,
+            customerRequest,
             hallId,
             bookingDate,
             bookingTime,
@@ -1029,6 +1035,32 @@ export class BookingDetailComponent implements OnInit {
             groomFatherName: b.groomFatherName ?? undefined,
             groomMotherName: b.groomMotherName ?? undefined,
             tableLayoutRequest,
+        };
+    }
+
+    private buildCustomerRequestForPayload(customerId: number): BookingUpsertPayload['customerRequest'] | null {
+        const customer = this.customer;
+        if (!customer || Number(customer.id ?? 0) !== customerId) {
+            return null;
+        }
+
+        const fullName = String(customer.fullName ?? '').trim();
+        const phone = String(customer.phone ?? '').trim();
+        const address = String(customer.address ?? '').trim();
+        const locationId = Number(customer.locationId ?? 0);
+
+        if (!fullName || !phone || !address || !locationId) {
+            return null;
+        }
+
+        return {
+            fullName,
+            citizenIdNumber: customer.citizenIdNumber?.trim() || undefined,
+            phone,
+            email: customer.email?.trim() || undefined,
+            address,
+            notes: customer.notes?.trim() || undefined,
+            locationId,
         };
     }
 
