@@ -15,20 +15,19 @@ import vn.edu.fpt.dto.request.contract.CalenderContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
 import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
+import vn.edu.fpt.dto.request.customer.CustomerUpdateRequest;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
 import vn.edu.fpt.dto.request.task.TaskListCreateRequest;
 import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
+import vn.edu.fpt.dto.response.customer.CustomerResponse;
 import vn.edu.fpt.dto.response.tablelayout.TableLayoutResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.ContractMapper;
 import vn.edu.fpt.respository.*;
-import vn.edu.fpt.service.ContractService;
-import vn.edu.fpt.service.InvoiceService;
-import vn.edu.fpt.service.TableLayoutService;
-import vn.edu.fpt.service.TaskListService;
+import vn.edu.fpt.service.*;
 import vn.edu.fpt.util.StringUtils;
 import vn.edu.fpt.util.enums.*;
 import vn.edu.fpt.dto.response.contract.CalenderContractResponse;
@@ -54,13 +53,32 @@ public class ContractServiceImpl implements ContractService {
     private final PaymentServiceImpl paymentServiceImpl;
     private final SetMenuServiceImpl setMenuServiceImpl;
     private final InvoiceService invoiceService;
+    private final CustomerService customerService;
 
     private final TableLayoutService tableLayoutService;
 
     @Transactional
     @Override
     public ContractResponse createContract(ContractRequest request) throws Exception {
+        CustomerResponse customerResponse = new CustomerResponse();
+
         validateContract(request);
+        if (request.getCustomerId() != null) {
+            CustomerUpdateRequest customerUpdateRequest = CustomerUpdateRequest.builder()
+                    .fullName(request.getCustomerRequest().getFullName())
+                    .phone(request.getCustomerRequest().getPhone())
+                    .email(request.getCustomerRequest().getEmail())
+                    .address(request.getCustomerRequest().getAddress())
+                    .notes(request.getCustomerRequest().getNotes())
+                    .locationId(request.getCustomerRequest().getLocationId())
+                    .citizenIdNumber(request.getCustomerRequest().getCitizenIdNumber())
+                    .build();
+
+            customerResponse = customerService.updateCustomer(request.getCustomerId(), customerUpdateRequest);
+        } else {
+            customerResponse = customerService.createCustomer(request.getCustomerRequest());
+        }
+
         validateNumberOfGuests(request.getHallId(), request.getExpectedGuests());
 
         Contract booking = contractMapper.toEntity(request);
@@ -76,6 +94,7 @@ public class ContractServiceImpl implements ContractService {
         TableLayoutResponse tableLayoutResponse = tableLayoutService.createTableLayout(request.getTableLayoutRequest(), saved.getId());
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setTableLayoutResponse(tableLayoutResponse);
+        contractResponse.setCustomerResponse(customerResponse);
 
         createPaymentForContract(saved);
         invoiceService.createInvoice(saved.getId());
@@ -86,6 +105,8 @@ public class ContractServiceImpl implements ContractService {
     @Transactional
     @Override
     public ContractResponse updateContract(Integer id, ContractRequest request) {
+        CustomerResponse customerResponse = new CustomerResponse();
+
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
         validateUpdateContract(request, id);
@@ -97,6 +118,23 @@ public class ContractServiceImpl implements ContractService {
         } else if (request.getExpectedGuests() != null) {
             validateNumberOfGuests(booking.getHallId(), request.getExpectedGuests());
         }
+
+        if (request.getCustomerId() != null) {
+            CustomerUpdateRequest customerUpdateRequest = CustomerUpdateRequest.builder()
+                    .fullName(request.getCustomerRequest().getFullName())
+                    .phone(request.getCustomerRequest().getPhone())
+                    .email(request.getCustomerRequest().getEmail())
+                    .address(request.getCustomerRequest().getAddress())
+                    .notes(request.getCustomerRequest().getNotes())
+                    .locationId(request.getCustomerRequest().getLocationId())
+                    .citizenIdNumber(request.getCustomerRequest().getCitizenIdNumber())
+                    .build();
+
+            customerResponse = customerService.updateCustomer(request.getCustomerId(), customerUpdateRequest);
+        } else {
+            customerResponse = customerService.createCustomer(request.getCustomerRequest());
+        }
+
         contractMapper.updateEntity(booking, request);
 
         TableLayoutResponse tableLayoutResponse = tableLayoutService.updateTableLayout(request.getTableLayoutRequest(), booking.getId());
@@ -107,6 +145,8 @@ public class ContractServiceImpl implements ContractService {
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setTableLayoutResponse(tableLayoutResponse);
+        contractResponse.setCustomerResponse(customerResponse);
+
         return contractResponse;
     }
 
@@ -248,6 +288,7 @@ public class ContractServiceImpl implements ContractService {
                     TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(contract.getId());
                     ContractResponse contractResponse = contractMapper.toResponse(contract);
                     contractResponse.setTableLayoutResponse(tableLayoutResponse);
+                    contractResponse.setCustomerResponse(customerService.getCustomerById(contract.getCustomerId()));
                     return contractResponse;
                 })
                 .toList();
@@ -261,6 +302,7 @@ public class ContractServiceImpl implements ContractService {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
         TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(id);
+        CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
 
         if (booking.getStatus() == RecordStatus.active) {
             booking.setStatus(RecordStatus.inactive);
@@ -271,6 +313,8 @@ public class ContractServiceImpl implements ContractService {
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setTableLayoutResponse(tableLayoutResponse);
+        contractResponse.setCustomerResponse(customerResponse);
+
         return contractResponse;
     }
 
@@ -303,6 +347,8 @@ public class ContractServiceImpl implements ContractService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
         TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(request.getContractId());
 
+        CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
+
         validateStateTransition(booking.getContractState(), request.getContractState());
         if (request.getContractState().equals(ContractState.CANCELLED)) {
             booking.setStatus(RecordStatus.inactive);
@@ -314,6 +360,7 @@ public class ContractServiceImpl implements ContractService {
 
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setTableLayoutResponse(tableLayoutResponse);
+        contractResponse.setCustomerResponse(customerResponse);
 
         return contractResponse;
     }
@@ -406,7 +453,7 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private String generateContractNo() {
-        String prefix = "BK";
+        String prefix = "CH-";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String random = String.valueOf((int) (Math.random() * 9000) + 1000);
         return prefix + timestamp + random;

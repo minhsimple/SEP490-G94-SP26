@@ -12,6 +12,8 @@ import vn.edu.fpt.util.enums.RecordStatus;
 public class CustomerResponse {
     Integer id;
 
+    String citizenIdNumber;
+
     String fullName;
 
     String phone;

@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import vn.edu.fpt.dto.request.customer.CustomerRequest;
 import vn.edu.fpt.util.enums.BookingTime;
 import vn.edu.fpt.util.enums.TableLayoutEnum;
 
@@ -21,8 +22,11 @@ import java.util.List;
 @AllArgsConstructor
 public class ContractRequest {
 
-    @NotNull(message = "Mã khách hàng không được để trống")
     Integer customerId;
+
+    @Valid
+    @NotNull(message = "Thông tin khách hàng không đợc để trống")
+    CustomerRequest customerRequest;
 
     @NotNull(message = "Mã hội trường không được để trống")
     Integer hallId;
