@@ -31,10 +31,12 @@ import { EventCalendarComponent } from './calender/calender';
 import { BeoComponent } from './beo/beo';
 import { BeoDetailComponent } from './beo/beo-detail';
 import { Dashboard } from './dashboard/dashboard';
+import { BranchReportsComponent } from './admin/branch-reports';
 
 
 export default [
     { path: 'dashboard', component: Dashboard },
+    { path: 'reports/branches', component: BranchReportsComponent },
     { path: 'beo', component: BeoComponent },
     { path: 'beo/:id', component: BeoDetailComponent },
     { path: 'calender', component: EventCalendarComponent },
