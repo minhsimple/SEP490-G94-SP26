@@ -6,6 +6,7 @@ import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { BookingService, Booking, BookingUpsertPayload, TableLayoutRequest } from '../service/booking.service';
+import { Customer, CustomerService } from '../service/customer.service';
 
 interface ZoneGroup {
     id: string;
@@ -733,6 +734,7 @@ export class SeatLayoutComponent implements OnInit {
 
     loading = false;
     booking: Booking | null = null;
+    customer: Customer | null = null;
     customerName = '';
     hallName = '';
     showDetailModal = false;
@@ -756,6 +758,7 @@ export class SeatLayoutComponent implements OnInit {
         private router: Router,
         private location: Location,
         private bookingService: BookingService,
+        private customerService: CustomerService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef,
     ) {}
@@ -801,6 +804,10 @@ export class SeatLayoutComponent implements OnInit {
         this.bookingService.getById(id).subscribe({
             next: (res) => {
                 this.booking = res.data;
+                const customerId = Number(this.booking?.customerId ?? 0);
+                if (Number.isFinite(customerId) && customerId > 0) {
+                    this.loadCustomer(customerId);
+                }
                 const expectedTotal = Number(this.booking?.expectedTables ?? this.booking?.tableCount ?? 0);
                 const fromResponse = this.extractLayoutRequest(this.booking);
                 if (fromResponse?.tableLayoutDetailRequestList?.length) {
@@ -816,6 +823,19 @@ export class SeatLayoutComponent implements OnInit {
             error: () => {
                 this.loading = false;
                 this.goBack();
+            },
+        });
+    }
+
+    private loadCustomer(customerId: number) {
+        this.customerService.getCustomerById(customerId).subscribe({
+            next: (res) => {
+                this.customer = res.data;
+                this.customerName = res.data?.fullName ?? this.customerName;
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cdr.detectChanges();
             },
         });
     }
@@ -1279,8 +1299,14 @@ export class SeatLayoutComponent implements OnInit {
             return null;
         }
 
+        const customerRequest = this.buildCustomerRequestForPayload(customerId);
+        if (!customerRequest) {
+            return null;
+        }
+
         return {
             customerId,
+            customerRequest,
             hallId,
             bookingDate,
             bookingTime,
@@ -1301,6 +1327,32 @@ export class SeatLayoutComponent implements OnInit {
             groomFatherName: b.groomFatherName ?? undefined,
             groomMotherName: b.groomMotherName ?? undefined,
             tableLayoutRequest,
+        };
+    }
+
+    private buildCustomerRequestForPayload(customerId: number): BookingUpsertPayload['customerRequest'] | null {
+        const customer = this.customer;
+        if (!customer || Number(customer.id ?? 0) !== customerId) {
+            return null;
+        }
+
+        const fullName = String(customer.fullName ?? '').trim();
+        const phone = String(customer.phone ?? '').trim();
+        const address = String(customer.address ?? '').trim();
+        const locationId = Number(customer.locationId ?? 0);
+
+        if (!fullName || !phone || !address || !locationId) {
+            return null;
+        }
+
+        return {
+            fullName,
+            citizenIdNumber: customer.citizenIdNumber?.trim() || undefined,
+            phone,
+            email: customer.email?.trim() || undefined,
+            address,
+            notes: customer.notes?.trim() || undefined,
+            locationId,
         };
     }
 

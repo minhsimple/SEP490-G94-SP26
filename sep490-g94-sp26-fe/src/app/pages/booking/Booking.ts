@@ -42,7 +42,7 @@ import { ServicePackageService } from '../service/service-package.service';
                             pInputText type="text"
                             [(ngModel)]="searchKeyword"
                             (input)="onSearch()"
-                            placeholder="Tìm kiếm hợp đồng..."
+                            placeholder="Tìm theo số điện thoại khách hàng..."
                             style="width:280px;"
                         />
                     </p-iconfield>
@@ -128,10 +128,12 @@ import { ServicePackageService } from '../service/service-package.service';
                 >
                     <ng-template #header>
                         <tr>
-                            <th style="min-width:10rem">Mã đơn</th>
-                            <th style="min-width:16rem">Cô dâu & Chú rể</th>
+                            <th style="min-width:5rem">STT</th>
+                            <th style="min-width:10rem">Mã hợp đồng</th>
+                            <th style="min-width:16rem">Tên khách hàng</th>
                             <th style="min-width:12rem">Sảnh</th>
-                            <th style="min-width:13rem">Ngày tổ chức</th>
+                            <th style="min-width:13rem">Ngày tạo hợp đồng</th>
+                            <th style="min-width:13rem">Ngày cưới</th>
                             <th style="min-width:7rem">Số bàn</th>
                             <th style="min-width:11rem">Tổng tiền</th>
                             <th style="min-width:10rem">Trạng thái xử lý</th>
@@ -139,21 +141,23 @@ import { ServicePackageService } from '../service/service-package.service';
                         </tr>
                     </ng-template>
 
-                    <ng-template #body let-booking>
+                    <ng-template #body let-booking let-rowIndex="rowIndex">
                         <tr>
-                            <!-- Mã đơn -->
+                            <!-- STT -->
+                            <td>
+                                <span class="text-sm text-700">{{ currentPage * pageSize + rowIndex + 1 }}</span>
+                            </td>
+
+                            <!-- Mã hợp đồng -->
                             <td>
                                 <span class="font-semibold text-primary" style="font-size:0.85rem;">
                                     {{ booking.contractNo ?? booking.bookingNo ?? booking.code ?? ('#' + booking.id) }}
                                 </span>
                             </td>
 
-                            <!-- Cô dâu & Chú rể -->
+                            <!-- Tên khách hàng -->
                             <td>
-                                <div class="font-semibold text-900">
-                                    {{ booking.groomName }} & {{ booking.brideName }}
-                                </div>
-                                <div class="text-xs text-500 mt-1">{{ getCustomerDisplayName(booking) }}</div>
+                                <div class="font-semibold text-900">{{ getCustomerDisplayName(booking) }}</div>
                             </td>
 
                             <!-- Sảnh -->
@@ -164,7 +168,17 @@ import { ServicePackageService } from '../service/service-package.service';
                                 </div>
                             </td>
 
-                            <!-- Ngày & Ca -->
+                            <!-- Ngày tạo hợp đồng -->
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-calendar text-500 text-xs"></i>
+                                    <div>
+                                        <div class="text-sm text-900">{{ formatDate(booking.bookingDate ?? booking.eventDate) }}</div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Ngày cưới & Ca -->
                             <td>
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-calendar text-500 text-xs"></i>
@@ -221,7 +235,7 @@ import { ServicePackageService } from '../service/service-package.service';
 
                     <ng-template #emptymessage>
                         <tr>
-                            <td colspan="8" class="text-center py-8 text-500">
+                            <td colspan="10" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
                                 Không có đơn đặt tiệc nào
                             </td>
@@ -289,6 +303,7 @@ export class BookingsComponent implements OnInit {
     // Điền hallOptions từ API hoặc cấu hình tĩnh nếu cần
     hallOptions: { label: string; value: number }[] = [];
     customerNameMap: Record<number, string> = {};
+    customerPhoneMap: Record<number, string> = {};
     hallPriceMap: Record<number, number> = {};
     setMenuPriceMap: Record<number, number> = {};
     packagePriceMap: Record<number, number> = {};
@@ -349,6 +364,9 @@ export class BookingsComponent implements OnInit {
     loadBookings(page = 0, size = this.pageSize) {
         this.loading = true;
 
+        const phoneKeyword = this.searchKeyword.trim();
+        const shouldSearchByPhone = !!phoneKeyword;
+
         // Tính bookingDateFrom / To từ filterMonth (năm hiện tại)
         let bookingDateFrom: string | undefined;
         let bookingDateTo: string | undefined;
@@ -357,17 +375,16 @@ export class BookingsComponent implements OnInit {
             const m = String(this.filterMonth).padStart(2, '0');
             const lastDay = new Date(year, this.filterMonth, 0).getDate();
             bookingDateFrom = `${year}-${m}-01`;
-            bookingDateTo   = `${year}-${m}-${lastDay}`;
+            bookingDateTo   = `${year}-${m}-${String(lastDay).padStart(2, '0')}`;
         }
 
-        const queryPage = this.isCoordinatorAccount ? 0 : page;
-        const querySize = this.isCoordinatorAccount ? 500 : size;
+        const queryPage = this.isCoordinatorAccount || shouldSearchByPhone ? 0 : page;
+        const querySize = this.isCoordinatorAccount || shouldSearchByPhone ? 500 : size;
 
         this.bookingService.searchBookings({
             page: queryPage,
             size: querySize,
             sort: 'updatedAt,DESC',
-            contractNo:   this.searchKeyword || undefined,
             hallId:       this.filterHallId  || undefined,
             bookingTime:  this.filterShift   || undefined,
             contractState:this.filterStatus  || undefined,
@@ -377,20 +394,32 @@ export class BookingsComponent implements OnInit {
         }).subscribe({
             next: (res) => {
                 if (res?.data) {
-                    const rows = res.data.content ?? [];
+                    let rows = res.data.content ?? [];
+
                     if (this.isCoordinatorAccount) {
-                        const assignedRows = rows.filter((booking) => this.isBookingAssignedToCurrentCoordinator(booking));
-                        const start = page * size;
-                        const pagedRows = assignedRows.slice(start, start + size);
-                        this.bookings.set(pagedRows);
-                        this.resolveMissingCustomerNames(pagedRows);
-                        this.resolveMissingPrices(pagedRows);
-                        this.totalRecords = assignedRows.length;
+                        rows = rows.filter((booking) => this.isBookingAssignedToCurrentCoordinator(booking));
+                    }
+
+                    if (!shouldSearchByPhone) {
+                        if (this.isCoordinatorAccount) {
+                            this.setPagedRows(rows, page, size);
+                        } else {
+                            this.bookings.set(rows);
+                            this.resolveMissingCustomerNames(rows);
+                            this.resolveMissingPrices(rows);
+                            this.totalRecords = res.data.totalElements ?? 0;
+                        }
+                        this.loading = false;
+                        return;
+                    }
+
+                    this.filterRowsByCustomerPhone(rows, phoneKeyword, page, size);
+                } else {
+                    if (this.isCoordinatorAccount || shouldSearchByPhone) {
+                        this.setPagedRows([], page, size);
                     } else {
-                        this.bookings.set(rows);
-                        this.resolveMissingCustomerNames(rows);
-                        this.resolveMissingPrices(rows);
-                        this.totalRecords = res.data.totalElements ?? 0;
+                        this.bookings.set([]);
+                        this.totalRecords = 0;
                     }
                 }
                 this.loading = false;
@@ -480,6 +509,10 @@ export class BookingsComponent implements OnInit {
                     const fullName = res.data?.fullName?.trim();
                     if (fullName) {
                         this.customerNameMap[id] = fullName;
+                    }
+                    const phone = res.data?.phone?.trim();
+                    if (phone) {
+                        this.customerPhoneMap[id] = phone;
                         this.cdr.markForCheck();
                     }
                 },
@@ -593,6 +626,87 @@ export class BookingsComponent implements OnInit {
             CANCELLED:  '#fee2e2',
         };
         return m[status ?? ''] ?? '#f1f5f9';
+    }
+
+    private setPagedRows(rows: Booking[], page: number, size: number): void {
+        const start = page * size;
+        const pagedRows = rows.slice(start, start + size);
+        this.bookings.set(pagedRows);
+        this.resolveMissingCustomerNames(pagedRows);
+        this.resolveMissingPrices(pagedRows);
+        this.totalRecords = rows.length;
+    }
+
+    private filterRowsByCustomerPhone(rows: Booking[], phoneKeyword: string, page: number, size: number): void {
+        this.customerService.searchCustomers({
+            phone: phoneKeyword,
+            page: 0,
+            size: 500,
+            sort: 'updatedAt,DESC',
+        }).subscribe({
+            next: (customerRes) => {
+                const customers = customerRes.data?.content ?? [];
+                const matchedCustomerIds = new Set(
+                    customers
+                        .map((customer) => Number(customer.id))
+                        .filter((id) => Number.isFinite(id) && id > 0)
+                );
+
+                customers.forEach((customer) => {
+                    const id = Number(customer.id);
+                    if (!Number.isFinite(id) || id <= 0) {
+                        return;
+                    }
+                    if (customer.fullName) {
+                        this.customerNameMap[id] = customer.fullName;
+                    }
+                    if (customer.phone) {
+                        this.customerPhoneMap[id] = customer.phone;
+                    }
+                });
+
+                const filteredRows = rows.filter((booking) => {
+                    const customerId = Number(booking.customerId);
+                    return Number.isFinite(customerId) && matchedCustomerIds.has(customerId);
+                });
+
+                this.setPagedRows(filteredRows, page, size);
+                this.loading = false;
+            },
+            error: () => {
+                const normalizedKeyword = this.normalizePhone(phoneKeyword);
+                const filteredRows = rows.filter((booking) => {
+                    const phone = this.getCustomerPhoneFromBooking(booking);
+                    const normalizedPhone = this.normalizePhone(phone);
+                    if (normalizedKeyword) {
+                        return normalizedPhone.includes(normalizedKeyword);
+                    }
+                    return phone.toLowerCase().includes(phoneKeyword.toLowerCase());
+                });
+
+                this.setPagedRows(filteredRows, page, size);
+                this.loading = false;
+            },
+        });
+    }
+
+    private normalizePhone(value: string): string {
+        return value.replace(/\D/g, '');
+    }
+
+    private getCustomerPhoneFromBooking(booking: Booking): string {
+        const row = booking as any;
+        const directPhone = row.customerPhone;
+        if (typeof directPhone === 'string' && directPhone.trim()) {
+            return directPhone.trim();
+        }
+
+        const customerId = Number(booking.customerId);
+        if (Number.isFinite(customerId) && customerId > 0 && this.customerPhoneMap[customerId]) {
+            return this.customerPhoneMap[customerId];
+        }
+
+        return '';
     }
 
     private isBookingAssignedToCurrentCoordinator(booking: Booking): boolean {

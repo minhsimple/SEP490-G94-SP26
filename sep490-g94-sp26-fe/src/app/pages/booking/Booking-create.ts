@@ -6,21 +6,21 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { AutoCompleteModule, AutoCompleteSelectEvent } from 'primeng/autocomplete';
+import { AutoCompleteModule } from 'primeng/autocomplete';
 import { DatePickerModule } from 'primeng/datepicker';
 import { TextareaModule } from 'primeng/textarea';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { Booking, BookingService, BookingUpsertPayload, TableLayoutRequest } from '../service/booking.service';
-import { CustomerService } from '../service/customer.service';
+import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
 import { LocationService } from '../service/location.service';
 import { ServicePackageService } from '../service/service-package.service';
 import { SetMenuService } from '../service/set-menu';
 import { UserService } from '../service/users.service';
 import { RoleService } from '../service/role.service';
-import { forkJoin, Observable, of } from 'rxjs';
+import { forkJoin, Observable, of, throwError } from 'rxjs';
 import { catchError, map, mapTo, switchMap, tap } from 'rxjs/operators';
 
 interface CustomerOption {
@@ -413,25 +413,23 @@ interface SalesOption {
                     <div class="section-title">Khách hàng và điều phối</div>
                     <div class="two-col">
                         <div class="field-wrap">
-                            <label class="field-label">Khách hàng <span class="req">*</span></label>
-                            <p-autoComplete
-                                [(ngModel)]="selectedCustomer"
-                                [suggestions]="customerSuggestions"
-                                (completeMethod)="searchCustomer($event)"
-                                (onSelect)="onCustomerSelect($event)"
-                                optionLabel="label"
-                                placeholder="Tìm theo số điện thoại"
-                                [style]="{ width: '100%' }"
-                                [inputStyle]="{ width: '100%' }"
-                                [forceSelection]="true"
-                            >
-                                <ng-template let-c pTemplate="item">
-                                    <div>
-                                        <div style="font-weight:600">{{ c.label }}</div>
-                                        <div style="font-size:0.78rem;color:#64748b">{{ c.phone || 'Chưa có SĐT' }}</div>
-                                    </div>
-                                </ng-template>
-                            </p-autoComplete>
+                            <label class="field-label">Số điện thoại khách hàng <span class="req">*</span></label>
+                            <input
+                                pInputText
+                                [(ngModel)]="customerDraft.phone"
+                                (ngModelChange)="onCustomerPhoneInput($event)"
+                                placeholder="Nhập số điện thoại"
+                                style="width:100%"
+                            />
+                            <div style="font-size:0.78rem;color:#64748b;margin-top:0.35rem" *ngIf="isCustomerLookupLoading">
+                                Đang kiểm tra khách hàng theo số điện thoại...
+                            </div>
+                            <div style="font-size:0.78rem;color:#0f766e;margin-top:0.35rem" *ngIf="!isCustomerLookupLoading && matchedExistingCustomer">
+                                Đã tìm thấy khách hàng: {{ matchedExistingCustomer.label }}
+                            </div>
+                            <div style="font-size:0.78rem;color:#64748b;margin-top:0.35rem" *ngIf="!isCustomerLookupLoading && !matchedExistingCustomer && customerDraft.phone">
+                                Chưa có khách hàng trùng số điện thoại, bạn có thể nhập thông tin mới.
+                            </div>
                         </div>
 
                         <div class="field-wrap">
@@ -455,6 +453,52 @@ interface SalesOption {
                                     styleClass="w-full"
                                 />
                             </ng-template>
+                        </div>
+                    </div>
+
+                    <div class="two-col" style="margin-top:1rem">
+                        <div class="field-wrap">
+                            <label class="field-label">Tên khách hàng <span class="req">*</span></label>
+                            <input
+                                pInputText
+                                [(ngModel)]="customerDraft.fullName"
+                                (ngModelChange)="syncSelectedCustomerLabel()"
+                                placeholder="Nhập tên khách hàng"
+                                style="width:100%"
+                            />
+                        </div>
+                        <div class="field-wrap">
+                            <label class="field-label">CMND/CCCD <span class="req">*</span></label>
+                            <input
+                                pInputText
+                                [(ngModel)]="customerDraft.citizenIdNumber"
+                                (ngModelChange)="onCitizenIdNumberInput($event)"
+                                maxlength="12"
+                                inputmode="numeric"
+                                placeholder="Nhập CMND/CCCD"
+                                style="width:100%"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="two-col" style="margin-top:1rem">
+                        <div class="field-wrap">
+                            <label class="field-label">Email</label>
+                            <input
+                                pInputText
+                                [(ngModel)]="customerDraft.email"
+                                placeholder="name@example.com"
+                                style="width:100%"
+                            />
+                        </div>
+                        <div class="field-wrap">
+                            <label class="field-label">Địa chỉ <span class="req">*</span></label>
+                            <input
+                                pInputText
+                                [(ngModel)]="customerDraft.address"
+                                placeholder="Nhập địa chỉ khách hàng"
+                                style="width:100%"
+                            />
                         </div>
                     </div>
 
@@ -700,9 +744,9 @@ interface SalesOption {
                         </strong>
                     </div>
                     <div class="summary-divider"></div>
-                    <div class="summary-row" *ngIf="selectedCustomer">
+                    <div class="summary-row" *ngIf="selectedCustomer || customerDraft.fullName">
                         <span>Khách hàng</span>
-                        <strong>{{ selectedCustomer.label }}</strong>
+                        <strong>{{ selectedCustomer?.label || customerDraft.fullName }}</strong>
                     </div>
                     <div class="summary-row" *ngIf="summary.hallName">
                         <span>Sảnh</span>
@@ -780,8 +824,17 @@ export class BookingCreateComponent implements OnInit {
     setMenuOptions: SetMenuOption[] = [];
     packageOptions: ServicePackageOption[] = [];
     salesOptions: SalesOption[] = [];
-    customerSuggestions: CustomerOption[] = [];
     selectedCustomer: CustomerOption | null = null;
+    matchedExistingCustomer: CustomerOption | null = null;
+    isCustomerLookupLoading = false;
+    customerPhoneLookupTimeout: any;
+    customerDraft = {
+        phone: '',
+        fullName: '',
+        citizenIdNumber: '',
+        email: '',
+        address: '',
+    };
     salesNameMap: Record<number, string> = {};
     saleRoleIds = new Set<number>();
     tableLayoutRequestDraft: TableLayoutRequest | null = null;
@@ -1213,6 +1266,14 @@ export class BookingCreateComponent implements OnInit {
                     label: customer.fullName ?? `Khách hàng #${customer.id}`,
                     phone: customer.phone ?? '',
                 } : null;
+                this.matchedExistingCustomer = this.selectedCustomer;
+                this.customerDraft = {
+                    phone: customer?.phone ?? '',
+                    fullName: customer?.fullName ?? this.selectedCustomer?.label ?? '',
+                    citizenIdNumber: customer?.citizenIdNumber ?? '',
+                    email: customer?.email ?? '',
+                    address: customer?.address ?? '',
+                };
                 this.cdr.detectChanges();
             }),
             mapTo(void 0),
@@ -1221,6 +1282,14 @@ export class BookingCreateComponent implements OnInit {
                     id: customerId,
                     label: `Khách hàng #${customerId}`,
                     phone: '',
+                };
+                this.matchedExistingCustomer = this.selectedCustomer;
+                this.customerDraft = {
+                    phone: '',
+                    fullName: this.selectedCustomer.label,
+                    citizenIdNumber: '',
+                    email: '',
+                    address: '',
                 };
                 this.cdr.detectChanges();
                 return of(void 0);
@@ -1420,33 +1489,108 @@ export class BookingCreateComponent implements OnInit {
         this.recalcEstimatedTotal();
     }
 
-    searchCustomer(event: { query?: string }) {
-        const query = (event.query ?? '').trim();
+    onCustomerPhoneInput(value: string) {
+        this.customerDraft.phone = (value ?? '').trim();
+        this.syncSelectedCustomerLabel();
 
-        if (!query) {
-            this.customerSuggestions = [];
+        const normalizedPhone = this.normalizePhoneNumber(this.customerDraft.phone);
+        if (!normalizedPhone) {
+            this.form.customerId = null;
+            this.matchedExistingCustomer = null;
+            this.selectedCustomer = null;
+            this.isCustomerLookupLoading = false;
             return;
         }
 
-        const params = { phone: query, page: 0, size: 10 };
+        clearTimeout(this.customerPhoneLookupTimeout);
+        this.customerPhoneLookupTimeout = setTimeout(() => {
+            this.lookupExistingCustomerByPhone(this.customerDraft.phone);
+        }, 350);
+    }
 
-        this.customerService.searchCustomers(params).subscribe({
+    private lookupExistingCustomerByPhone(phone: string) {
+        const keyword = phone.trim();
+        if (!keyword) {
+            return;
+        }
+
+        this.isCustomerLookupLoading = true;
+        this.customerService.searchCustomers({ phone: keyword, page: 0, size: 20, sort: 'updatedAt,DESC' }).subscribe({
             next: (res) => {
-                this.customerSuggestions = (res.data?.content ?? []).map((customer) => ({
-                    id: Number(customer.id),
-                    label: customer.fullName ?? `Khách hàng #${customer.id}`,
-                    phone: customer.phone ?? '',
-                }));
+                const customers = res.data?.content ?? [];
+                const matched = this.findExactCustomerByPhone(customers, keyword);
+
+                if (matched && matched.id != null) {
+                    const customerId = Number(matched.id);
+                    const label = matched.fullName?.trim() || `Khách hàng #${customerId}`;
+                    const customerPhone = matched.phone?.trim() || keyword;
+
+                    this.form.customerId = customerId;
+                    this.selectedCustomer = { id: customerId, label, phone: customerPhone };
+                    this.matchedExistingCustomer = this.selectedCustomer;
+                    this.customerDraft = {
+                        phone: customerPhone,
+                        fullName: matched.fullName?.trim() || this.customerDraft.fullName,
+                        citizenIdNumber: matched.citizenIdNumber?.trim() || '',
+                        email: matched.email?.trim() || '',
+                        address: matched.address?.trim() || '',
+                    };
+                } else {
+                    this.form.customerId = null;
+                    this.matchedExistingCustomer = null;
+                    this.selectedCustomer = null;
+                }
+
+                this.isCustomerLookupLoading = false;
+                this.cdr.detectChanges();
             },
             error: () => {
-                this.customerSuggestions = [];
+                this.form.customerId = null;
+                this.matchedExistingCustomer = null;
+                this.selectedCustomer = null;
+                this.isCustomerLookupLoading = false;
+                this.cdr.detectChanges();
             },
         });
     }
 
-    onCustomerSelect(event: AutoCompleteSelectEvent) {
-        const customer = event.value as CustomerOption;
-        this.form.customerId = customer.id;
+    private findExactCustomerByPhone(customers: Customer[], phone: string): Customer | null {
+        const normalizedTarget = this.normalizePhoneNumber(phone);
+        if (!normalizedTarget) {
+            return null;
+        }
+
+        return customers.find((customer) => {
+            const normalizedCustomerPhone = this.normalizePhoneNumber(customer.phone ?? '');
+            return !!normalizedCustomerPhone && normalizedCustomerPhone === normalizedTarget;
+        }) ?? null;
+    }
+
+    private normalizePhoneNumber(phone: string): string {
+        return String(phone ?? '').replace(/\D/g, '');
+    }
+
+    syncSelectedCustomerLabel() {
+        if (this.selectedCustomer) {
+            this.selectedCustomer = {
+                ...this.selectedCustomer,
+                label: this.customerDraft.fullName?.trim() || this.selectedCustomer.label,
+                phone: this.customerDraft.phone?.trim() || this.selectedCustomer.phone,
+            };
+            return;
+        }
+
+        if (this.customerDraft.fullName?.trim()) {
+            this.selectedCustomer = {
+                id: Number(this.form.customerId ?? 0),
+                label: this.customerDraft.fullName.trim(),
+                phone: this.customerDraft.phone?.trim() || '',
+            };
+        }
+    }
+
+    onCitizenIdNumberInput(value: string) {
+        this.customerDraft.citizenIdNumber = this.normalizeCitizenIdNumber(value);
     }
 
     selectSetMenu(menu: SetMenuOption) {
@@ -1494,15 +1638,17 @@ export class BookingCreateComponent implements OnInit {
         if (!this.validateForm()) {
             return;
         }
-
-        const payload = this.buildPayload();
         this.submitting = true;
 
-        const request$ = this.isEditMode && this.bookingId
-            ? this.bookingService.update(this.bookingId, payload)
-            : this.bookingService.create(payload);
-
-        request$.subscribe({
+        this.resolveCustomerIdForSubmit().pipe(
+            switchMap((customerId) => {
+                this.form.customerId = customerId;
+                const payload = this.buildPayload();
+                return this.isEditMode && this.bookingId
+                    ? this.bookingService.update(this.bookingId, payload)
+                    : this.bookingService.create(payload);
+            })
+        ).subscribe({
             next: (res) => {
                 const booking = res.data;
                 this.submitting = false;
@@ -1528,11 +1674,88 @@ export class BookingCreateComponent implements OnInit {
                 this.messageService.add({
                     severity: 'error',
                     summary: 'Lỗi',
-                    detail: err?.error?.message ?? 'Không thể lưu booking',
+                    detail: err?.error?.message ?? err?.message ?? 'Không thể lưu booking',
                     life: 4000,
                 });
             },
         });
+    }
+
+    private resolveCustomerIdForSubmit(): Observable<number> {
+        const currentCustomerId = Number(this.form.customerId);
+        if (Number.isFinite(currentCustomerId) && currentCustomerId > 0) {
+            return of(currentCustomerId);
+        }
+
+        const phone = this.customerDraft.phone?.trim() ?? '';
+        const normalizedPhone = this.normalizePhoneNumber(phone);
+        if (!normalizedPhone) {
+            return throwError(() => new Error('Vui lòng nhập số điện thoại khách hàng'));
+        }
+
+        return this.customerService.searchCustomers({ phone, page: 0, size: 20, sort: 'updatedAt,DESC' }).pipe(
+            map((res) => this.findExactCustomerByPhone(res.data?.content ?? [], phone)),
+            switchMap((matched) => {
+                if (matched?.id != null) {
+                    const customerId = Number(matched.id);
+                    this.form.customerId = customerId;
+                    this.selectedCustomer = {
+                        id: customerId,
+                        label: matched.fullName?.trim() || `Khách hàng #${customerId}`,
+                        phone: matched.phone?.trim() || phone,
+                    };
+                    this.matchedExistingCustomer = this.selectedCustomer;
+                    this.customerDraft = {
+                        phone: matched.phone?.trim() || phone,
+                        fullName: matched.fullName?.trim() || this.customerDraft.fullName,
+                        citizenIdNumber: matched.citizenIdNumber?.trim() || this.customerDraft.citizenIdNumber,
+                        email: matched.email?.trim() || this.customerDraft.email,
+                        address: matched.address?.trim() || this.customerDraft.address,
+                    };
+                    return of(customerId);
+                }
+
+                const fullName = this.customerDraft.fullName?.trim();
+                if (!fullName) {
+                    return throwError(() => new Error('Vui lòng nhập tên khách hàng mới'));
+                }
+
+                const address = this.customerDraft.address?.trim();
+                if (!address) {
+                    return throwError(() => new Error('Vui lòng nhập địa chỉ khách hàng'));
+                }
+
+                const locationId = Number(this.form.locationId);
+                if (!Number.isFinite(locationId) || locationId <= 0) {
+                    return throwError(() => new Error('Vui lòng chọn chi nhánh trước khi tạo khách hàng'));
+                }
+
+                return this.customerService.createCustomer({
+                    fullName,
+                    citizenIdNumber: this.customerDraft.citizenIdNumber?.trim() || undefined,
+                    phone,
+                    email: this.customerDraft.email?.trim() || undefined,
+                    address,
+                    locationId,
+                }).pipe(
+                    map((createRes) => {
+                        const createdId = Number(createRes.data?.id);
+                        if (!Number.isFinite(createdId) || createdId <= 0) {
+                            throw new Error('Không thể tạo khách hàng mới');
+                        }
+
+                        this.form.customerId = createdId;
+                        this.selectedCustomer = {
+                            id: createdId,
+                            label: createRes.data?.fullName?.trim() || fullName,
+                            phone: createRes.data?.phone?.trim() || phone,
+                        };
+                        this.matchedExistingCustomer = this.selectedCustomer;
+                        return createdId;
+                    })
+                );
+            })
+        );
     }
 
     toggleStatus() {
@@ -1565,8 +1788,34 @@ export class BookingCreateComponent implements OnInit {
     }
 
     private validateForm(): boolean {
-        if (!this.form.customerId) {
-            this.warn('Vui lòng chọn khách hàng');
+        if (!this.customerDraft.phone?.trim()) {
+            this.warn('Vui lòng nhập số điện thoại khách hàng');
+            return false;
+        }
+        if (!this.isValidCustomerPhone(this.customerDraft.phone)) {
+            this.warn('Số điện thoại khách hàng không hợp lệ');
+            return false;
+        }
+        if (!this.customerDraft.fullName?.trim()) {
+            this.warn('Vui lòng nhập tên khách hàng');
+            return false;
+        }
+        if (!this.customerDraft.citizenIdNumber?.trim()) {
+            this.warn('Vui lòng nhập CMND/CCCD khách hàng');
+            return false;
+        }
+        const citizenIdNumber = this.normalizeCitizenIdNumber(this.customerDraft.citizenIdNumber);
+        this.customerDraft.citizenIdNumber = citizenIdNumber;
+        if (!this.isValidCitizenIdNumber(citizenIdNumber)) {
+            this.warn('CMND/CCCD phải gồm đúng 12 số, vui lòng nhập lại');
+            return false;
+        }
+        if (!this.customerDraft.address?.trim()) {
+            this.warn('Vui lòng nhập địa chỉ khách hàng');
+            return false;
+        }
+        if (!this.form.locationId) {
+            this.warn('Vui lòng chọn chi nhánh');
             return false;
         }
         if (!this.form.groomName || !this.form.brideName) {
@@ -1600,13 +1849,39 @@ export class BookingCreateComponent implements OnInit {
         return true;
     }
 
+    private isValidCustomerPhone(value: string): boolean {
+        return /^(0|\+84)[0-9]{9,10}$/.test(value.trim());
+    }
+
+    private isValidCitizenIdNumber(value: string): boolean {
+        return /^\d{12}$/.test(value.trim());
+    }
+
+    private normalizeCitizenIdNumber(value: string): string {
+        return String(value ?? '').replace(/\D/g, '').slice(0, 12);
+    }
+
     private buildPayload(): BookingUpsertPayload {
         const enforcedSalesId = this.isSaleCreateMode && this.loggedInUserId > 0
             ? this.loggedInUserId
             : this.form.salesId;
+        const customerId = Number(this.form.customerId);
+        const locationId = Number(this.form.locationId);
+        const customerPhone = this.customerDraft.phone.trim();
+        const customerName = this.customerDraft.fullName.trim();
+        const customerAddress = this.customerDraft.address.trim();
 
-        const payload: BookingUpsertPayload = {
-            customerId: this.form.customerId!,
+        const payload = {
+            customerId: Number.isFinite(customerId) && customerId > 0 ? customerId : null,
+            customerRequest: {
+                fullName: customerName,
+                citizenIdNumber: this.normalizeCitizenIdNumber(this.customerDraft.citizenIdNumber || '') || undefined,
+                phone: customerPhone,
+                email: this.customerDraft.email?.trim() || undefined,
+                address: customerAddress,
+                notes: undefined,
+                locationId,
+            },
             hallId: this.form.hallId!,
             bookingDate: this.toISODate(this.form.bookingDate)!,
             bookingTime: this.form.bookingTime,
@@ -1625,7 +1900,7 @@ export class BookingCreateComponent implements OnInit {
             brideMotherName: this.form.brideMotherName?.trim() || undefined,
             groomFatherName: this.form.groomFatherName?.trim() || undefined,
             groomMotherName: this.form.groomMotherName?.trim() || undefined,
-        };
+        } as BookingUpsertPayload;
 
         payload.assignCoordinatorId = this.form.assignCoordinatorId ?? enforcedSalesId ?? null;
         if (this.tableLayoutRequestDraft?.tableLayoutDetailRequestList?.length) {
@@ -1660,7 +1935,7 @@ export class BookingCreateComponent implements OnInit {
             state: {
                 returnUrl: this.router.url,
                 draftBooking: this.seatLayoutDraftBooking,
-                draftCustomerName: this.selectedCustomer?.label || '',
+                draftCustomerName: this.customerDraft.fullName?.trim() || this.selectedCustomer?.label || '',
                 draftHallName: this.summary.hallName || '',
                 draftTableLayoutRequest: this.tableLayoutRequestDraft,
             }
@@ -1675,6 +1950,8 @@ export class BookingCreateComponent implements OnInit {
             bookingDate: this.form.bookingDate ? this.form.bookingDate.toISOString() : null,
             reservedUntil: this.form.reservedUntil ? this.form.reservedUntil.toISOString() : null,
             selectedCustomer: this.selectedCustomer,
+            matchedExistingCustomer: this.matchedExistingCustomer,
+            customerDraft: this.customerDraft,
             summary: this.summary,
         };
 
@@ -1704,6 +1981,17 @@ export class BookingCreateComponent implements OnInit {
 
             if (draft?.selectedCustomer) {
                 this.selectedCustomer = draft.selectedCustomer;
+            }
+
+            if (draft?.matchedExistingCustomer) {
+                this.matchedExistingCustomer = draft.matchedExistingCustomer;
+            }
+
+            if (draft?.customerDraft) {
+                this.customerDraft = {
+                    ...this.customerDraft,
+                    ...draft.customerDraft,
+                };
             }
 
             if (draft?.summary) {

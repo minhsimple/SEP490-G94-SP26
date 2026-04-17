@@ -42,6 +42,7 @@ export interface Booking {
     groomMotherName?: string;
     totalAmount?: number;
     status?: string;
+    createdAt?: string;
     updatedAt?: string;
     tableLayoutResponse?: TableLayoutResponse;
 }
@@ -70,6 +71,7 @@ export interface TableLayoutResponse {
 export interface BookingSearchParams {
     page?: number;
     size?: number;
+    contractId?: number;
     contractNo?: string;
     bookingNo?: string;
     customerId?: number;
@@ -88,7 +90,16 @@ export interface BookingSearchParams {
 }
 
 export interface BookingUpsertPayload {
-    customerId: number;
+    customerId?: number | null;
+    customerRequest: {
+        fullName: string;
+        citizenIdNumber?: string;
+        phone: string;
+        email?: string;
+        address: string;
+        notes?: string;
+        locationId: number;
+    };
     hallId: number;
     bookingDate: string;
     bookingTime: string;
@@ -152,6 +163,7 @@ export class BookingService {
             .set('size', params.size ?? 20)
             .set('sort', params.sort ?? 'updatedAt,DESC');
 
+        if (params.contractId)      p = p.set('contractId',      params.contractId);
         if (contractNo)             p = p.set('contractNo',      contractNo);
         if (params.customerId)      p = p.set('customerId',      params.customerId);
         if (params.hallId)          p = p.set('hallId',          params.hallId);
