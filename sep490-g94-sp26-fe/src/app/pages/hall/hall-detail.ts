@@ -71,9 +71,9 @@ import { LocationService } from '../service/location.service';
                         </div>
                         </div>
 
-                        <span class="status-chip" [class.active]="hall.status === 'ACTIVE'">
+                        <span class="status-chip" [class.active]="isHallActive(hall.status)">
                             <i class="pi pi-circle-fill" style="font-size:0.5rem"></i>
-                            {{ hall.status === 'ACTIVE' ? 'Đang hoạt động' : 'Hoạt động' }}
+                            {{ isHallActive(hall.status) ? 'Đang hoạt động' : 'Ngừng hoạt động' }}
                         </span>
                     </div>
 
@@ -137,8 +137,8 @@ import { LocationService } from '../service/location.service';
                         </div>
                         <div class="detail-row">
                             <span class="dl">Trạng thái</span>
-                            <span class="dv status-text" [class.active]="hall.status === 'ACTIVE'">
-                                {{ hall.status != 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng hoạt động' }}
+                            <span class="dv status-text" [class.active]="isHallActive(hall.status)">
+                                {{ isHallActive(hall.status) ? 'Đang hoạt động' : 'Ngừng hoạt động' }}
                             </span>
                             <span class="dl">Mã sảnh</span>
                             <span class="dv">{{ hall.code || '-' }}</span>
@@ -585,7 +585,7 @@ export class HallDetailComponent implements OnInit {
 
     openEdit() {
         this.editingHall = { ...this.hall };
-        this.isActive = this.hall?.status === 'ACTIVE';
+        this.isActive = this.isHallActive(this.hall?.status);
         this.submitted = false;
         this.hallDialog = true;
     }
@@ -609,7 +609,7 @@ export class HallDetailComponent implements OnInit {
         this.hallService.updateHall(this.editingHall.id, payload).subscribe({
             next: (res) => {
                 if (res.code === 200) {
-                    const currentActive = this.hall?.status === 'ACTIVE';
+                    const currentActive = this.isHallActive(this.hall?.status);
                     if (this.isActive !== currentActive) {
                         this.hallService.changeStatus(this.editingHall.id).subscribe(() => {
                             this.loadHall(this.editingHall.id);
@@ -632,6 +632,10 @@ export class HallDetailComponent implements OnInit {
     hideDialog() {
         this.hallDialog = false;
         this.submitted = false;
+    }
+
+    isHallActive(status?: string | null): boolean {
+        return String(status ?? '').toUpperCase() === 'ACTIVE';
     }
 
     goBack() {

@@ -94,8 +94,8 @@ import { LocationService } from '../service/location.service';
                                     <div *ngIf="!(hall.imageUrls?.[0]?.mediumUrl || hall.imageUrl)" class="flex items-center justify-center w-full h-full bg-gray-200">
                                         <i class="pi pi-image text-500" style="font-size: 2rem;"></i>
                                     </div>
-                                    <span class="status-badge" [class.active]="hall.status === 'ACTIVE'">
-                                        {{ hall.status != 'ACTIVE' ? 'Hoạt động' : 'Ngừng hoạt động' }}
+                                    <span class="status-badge" [class.active]="isHallActive(hall.status)">
+                                        {{ isHallActive(hall.status) ? 'Hoạt động' : 'Ngừng hoạt động' }}
                                     </span>
                                 </div>
                                 <div class="card-body">
@@ -136,8 +136,8 @@ import { LocationService } from '../service/location.service';
                                     <span><i class="pi pi-users"></i> {{ hall.capacity }} khách</span>
                                     <span *ngIf="hall.basePrice != null"><i class="pi pi-money-bill"></i> {{ formatPrice(hall.basePrice) }}</span>
                                 </div>
-                                <span class="status-pill" [class.active]="hall.status === 'ACTIVE'">
-                                    {{ hall.status === 'ACTIVE' ? 'Hoạt động' : 'Ngừng' }}
+                                <span class="status-pill" [class.active]="isHallActive(hall.status)">
+                                    {{ isHallActive(hall.status) ? 'Hoạt động' : 'Ngừng' }}
                                 </span>
                                 <div class="row-actions">
                                     <p-button icon="pi pi-eye" [rounded]="true" [outlined]="true" severity="info"
@@ -145,8 +145,8 @@ import { LocationService } from '../service/location.service';
                                     <p-button *ngIf="!isSale" icon="pi pi-pencil" [rounded]="true" [outlined]="true" severity="secondary"
                                         (click)="editHall(hall)" pTooltip="Chỉnh sửa" tooltipPosition="top" />
                                     <p-button *ngIf="!isSale"
-                                        [icon]="hall.status === 'ACTIVE' ? 'pi pi-ban' : 'pi pi-check-circle'"
-                                        [severity]="hall.status === 'ACTIVE' ? 'warn' : 'success'"
+                                        [icon]="isHallActive(hall.status) ? 'pi pi-ban' : 'pi pi-check-circle'"
+                                        [severity]="isHallActive(hall.status) ? 'warn' : 'success'"
                                         [rounded]="true" [outlined]="true"
                                         (click)="toggleStatus(hall)" tooltipPosition="top" />
                                 </div>
@@ -646,7 +646,7 @@ export class HallComponent implements OnInit {
 
     editHall(hall: Hall) {
         this.editingHall = { ...hall };
-        this.isActive = hall.status === 'ACTIVE';
+        this.isActive = this.isHallActive(hall.status);
         this.submitted = false;
         this.selectedImages = [];
         this.selectedImageUrls = [];
@@ -694,7 +694,7 @@ export class HallComponent implements OnInit {
                 next: (res) => {
                     if (res.code === 200) {
                         // toggle status nếu cần
-                        const currentActive = this.editingHall.status === 'ACTIVE';
+                        const currentActive = this.isHallActive(this.editingHall.status);
                         if (this.isActive !== currentActive) {
                             this.hallService.changeStatus(this.editingHall.id).subscribe(() => this.loadHalls());
                         } else {
@@ -729,7 +729,7 @@ export class HallComponent implements OnInit {
     }
 
     toggleStatus(hall: Hall) {
-        const action = hall.status === 'ACTIVE' ? 'kích hoạt' : 'kích hoạt';
+        const action = this.isHallActive(hall.status) ? 'vô hiệu hóa' : 'kích hoạt';
         this.confirmationService.confirm({
             message: `Bạn có chắc muốn ${action} sảnh ${hall.name}?`,
             header: 'Xác nhận',
@@ -754,6 +754,10 @@ export class HallComponent implements OnInit {
     hideDialog() {
         this.hallDialog = false;
         this.submitted = false;
+    }
+
+    isHallActive(status?: string | null): boolean {
+        return String(status ?? '').toUpperCase() === 'ACTIVE';
     }
 
     formatPrice(value?: number | null): string {
