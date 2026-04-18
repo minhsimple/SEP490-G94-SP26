@@ -103,6 +103,7 @@ import { LocationService } from '../service/location.service';
                                     <p class="card-desc">{{ hall.notes || hall.description || 'Chưa có mô tả' }}</p>
                                     <div class="card-meta">
                                         <span><i class="pi pi-users"></i> {{ hall.capacity }} khách</span>
+                                        <span *ngIf="hall.basePrice != null"><i class="pi pi-money-bill"></i> {{ formatPrice(hall.basePrice) }}</span>
                                         <span *ngIf="hall.minTable && hall.maxTable">
                                             {{ hall.minTable }}–{{ hall.maxTable }} bàn
                                         </span>
@@ -133,6 +134,7 @@ import { LocationService } from '../service/location.service';
                                 </div>
                                 <div class="row-meta">
                                     <span><i class="pi pi-users"></i> {{ hall.capacity }} khách</span>
+                                    <span *ngIf="hall.basePrice != null"><i class="pi pi-money-bill"></i> {{ formatPrice(hall.basePrice) }}</span>
                                 </div>
                                 <span class="status-pill" [class.active]="hall.status === 'ACTIVE'">
                                     {{ hall.status === 'ACTIVE' ? 'Hoạt động' : 'Ngừng' }}
@@ -203,14 +205,9 @@ import { LocationService } from '../service/location.service';
                             <small class="err" *ngIf="submitted && !editingHall.capacity">Sức chứa là bắt buộc.</small>
                         </div>
 
-                        <div class="form-field">
-                            <label>Số bàn tối thiểu</label>
-                            <input type="number" pInputText [(ngModel)]="editingHall.minTable" placeholder="10" />
-                        </div>
-
-                        <div class="form-field">
-                            <label>Số bàn tối đa</label>
-                            <input type="number" pInputText [(ngModel)]="editingHall.maxTable" placeholder="50" />
+                        <div class="form-field full">
+                            <label>Giá sảnh</label>
+                            <input type="number" pInputText [(ngModel)]="editingHall.basePrice" placeholder="5000000" min="0" />
                         </div>
 
                         <div class="form-field full" *ngIf="editingHall?.id">
@@ -686,8 +683,7 @@ export class HallComponent implements OnInit {
             name: this.editingHall.name,
             locationId: this.editingHall.locationId,
             capacity: Number(this.editingHall.capacity),
-            minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
-            maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
+            basePrice: this.editingHall.basePrice != null && this.editingHall.basePrice !== '' ? Number(this.editingHall.basePrice) : null,
             imageUrl: this.editingHall.imageUrl || null,
             notes: this.editingHall.notes || null,
             status: this.isActive ? 'ACTIVE' : 'INACTIVE'
@@ -758,5 +754,11 @@ export class HallComponent implements OnInit {
     hideDialog() {
         this.hallDialog = false;
         this.submitted = false;
+    }
+
+    formatPrice(value?: number | null): string {
+        const amount = Number(value ?? 0);
+        if (!Number.isFinite(amount)) return '0 đ';
+        return new Intl.NumberFormat('vi-VN').format(amount) + ' đ';
     }
 }
