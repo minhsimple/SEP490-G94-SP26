@@ -32,6 +32,7 @@ import { BeoComponent } from './beo/beo';
 import { BeoDetailComponent } from './beo/beo-detail';
 import { Dashboard } from './dashboard/dashboard';
 import { BranchReportsComponent } from './admin/branch-reports';
+import { UserDetailComponent } from './users/user-detail';
 
 
 export default [
@@ -41,6 +42,7 @@ export default [
     { path: 'beo/:id', component: BeoDetailComponent },
     { path: 'calender', component: EventCalendarComponent },
     { path: 'crud', component: Crud },
+    { path: 'users/:id', component: UserDetailComponent },
     { path: 'users', component: Users },
     { path: 'leads', component: Leads },
     { path: 'customers/:id', component: CustomerDetailComponent },

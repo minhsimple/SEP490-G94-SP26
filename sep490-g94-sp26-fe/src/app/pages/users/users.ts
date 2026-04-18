@@ -18,6 +18,7 @@ import { PasswordModule } from 'primeng/password';
 import { User, UserService } from '../service/users.service';
 import { RoleService } from '../service/role.service';
 import { LocationService } from '../service/location.service';
+import { Router } from '@angular/router';
 
 interface Column {
   field: string;
@@ -66,6 +67,7 @@ interface Column {
             (onChange)="onLocationChange($event)"
             class="ml-2"
             [showClear]="true"
+            [disabled]="isManager"
             style="width: 200px"
           />
           <!-- <p-button
@@ -195,8 +197,8 @@ interface Column {
                   severity="info"
                   [rounded]="true"
                   [outlined]="true"
-                  (click)="viewUser(user)"
-                  pTooltip="Xem chi tiết"
+                  (click)="goToUserDetail(user)"
+                  pTooltip="Xem chi tiết và thống kê"
                   tooltipPosition="top"
                 />
               </div>
@@ -292,6 +294,7 @@ interface Column {
                 placeholder="-- Chọn chi nhánh --"
                 [loading]="loadingLocations"
                 [showClear]="true"
+                [disabled]="isManager"
                 fluid
               />
             </div>
@@ -321,95 +324,6 @@ interface Column {
 
       <p-confirmdialog />
     </div>
-
-    <!-- Dialog xem chi tiết người dùng -->
-    <p-dialog
-      [(visible)]="viewDialog"
-      [style]="{ width: '500px', maxHeight: '90vh' }"
-      [contentStyle]="{ overflow: 'auto', maxHeight: 'calc(90vh - 9rem)' }"
-      header="Chi tiết người dùng"
-      [modal]="true"
-      appendTo="body"
-      [draggable]="false"
-      [resizable]="false"
-      [breakpoints]="{ '960px': '92vw', '640px': '96vw' }"
-      styleClass="p-fluid"
-    >
-      <ng-template #content>
-        <div class="flex flex-col gap-6">
-          <div>
-            <label class="block font-bold mb-3">Họ và tên</label>
-            <input
-              type="text"
-              pInputText
-              [(ngModel)]="user.fullName"
-              readonly
-              fluid
-            />
-          </div>
-
-          <div>
-            <label class="block font-bold mb-3">Email</label>
-            <input
-              type="email"
-              pInputText
-              [(ngModel)]="user.email"
-              readonly
-              fluid
-            />
-          </div>
-
-          <div>
-            <label class="block font-bold mb-3">Số điện thoại</label>
-            <input
-              type="text"
-              pInputText
-              [(ngModel)]="user.phone"
-              readonly
-              fluid
-            />
-          </div>
-
-          <div>
-            <label class="block font-bold mb-3">Vai trò</label>
-            <p-select
-              [options]="roleOptions"
-              [(ngModel)]="user.roleId"
-              optionLabel="label"
-              optionValue="value"
-              readonly
-              fluid
-            />
-          </div>
-
-          <div>
-            <label class="block font-bold mb-3">Chi nhánh</label>
-            <p-select
-              [options]="locationOptions"
-              [(ngModel)]="user.locationId"
-              optionLabel="label"
-              optionValue="value"
-              readonly
-              [showClear]="false"
-              fluid
-            />
-          </div>
-
-          <div>
-            <label class="block font-bold mb-3">Trạng thái</label>
-            <p-tag
-              [value]="getStatusLabel(user.status)"
-              [severity]="getStatusSeverity(user.status)"
-            />
-          </div>
-
-        </div>
-      </ng-template>
-
-      <ng-template #footer>
-        <p-button label="Đóng" icon="pi pi-times" text (click)="viewDialog = false" />
-      </ng-template>
-    </p-dialog>
   `,
   styles: [
     `
@@ -451,7 +365,6 @@ interface Column {
 })
 export class Users implements OnInit {
   userDialog = false;
-  viewDialog = false;
   users = signal<User[]>([]);
   user!: User;
   selectedUsers!: User[] | null;
@@ -469,6 +382,10 @@ export class Users implements OnInit {
   roleOptions: { label: string; value: number }[] = [];
   locationOptions: { label: string; value: number }[] = [];
   roleMap = new Map<number, string>();
+  readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+  readonly isAdmin = this.roleCode.includes('ADMIN');
+  readonly isManager = this.roleCode.includes('MANAGER');
+  readonly managerLocationId = Number(localStorage.getItem('locationId') ?? 0) || null;
 
   @ViewChild('dt') dt!: Table;
 
@@ -478,6 +395,7 @@ export class Users implements OnInit {
     private locationService: LocationService,
     private messageService: MessageService,
     private confirmationService: ConfirmationService,
+    private router: Router,
   ) {}
 
   selectedLocationId: number | null = null;
@@ -490,6 +408,9 @@ export class Users implements OnInit {
       { field: 'role', header: 'Vai trò' },
       { field: 'status', header: 'Trạng thái' },
     ];
+    if (this.isManager && this.managerLocationId) {
+      this.selectedLocationId = this.managerLocationId;
+    }
     this.loadRoleOptions();
     this.loadLocationOptions();
   }
@@ -525,10 +446,17 @@ export class Users implements OnInit {
     this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
       next: (res) => {
         if (res.code === 200) {
-          this.locationOptions = res.data.content.map((l) => ({
+          const allLocations = res.data.content.map((l) => ({
             label: l.name ?? '',
             value: l.id,
           }));
+          this.locationOptions = this.isManager
+            ? allLocations.filter((item) => Number(item.value) === this.managerLocationId)
+            : allLocations;
+
+          if (this.isManager && this.locationOptions.length) {
+            this.selectedLocationId = Number(this.locationOptions[0].value);
+          }
         }
         this.loadingLocations = false;
       },
@@ -547,7 +475,8 @@ export class Users implements OnInit {
   loadUsers(page = 0, size = this.pageSize, locationId?: number | null) {
     this.loading = true;
     const params: any = { page, size };
-    if (locationId) params.locationId = locationId;
+    const effectiveLocationId = this.isManager ? this.managerLocationId : locationId;
+    if (effectiveLocationId) params.locationId = effectiveLocationId;
     this.userService.searchUsers(params).subscribe({
       next: (res) => {
         if (res.code === 200) {
@@ -580,6 +509,9 @@ export class Users implements OnInit {
   }
 
   onLocationChange(event: any) {
+    if (this.isManager) {
+      return;
+    }
     this.selectedLocationId = event.value;
     // reload to first page with filter
     this.loadUsers(0, this.pageSize, this.selectedLocationId);
@@ -589,37 +521,24 @@ export class Users implements OnInit {
   }
 
   openNew() {
-    this.user = { status: 'ACTIVE' };
+    this.user = {
+      status: 'ACTIVE',
+      locationId: this.isManager ? (this.managerLocationId ?? undefined) : undefined,
+    };
     this.submitted = false;
     this.userDialog = true;
   }
 
   editUser(user: User) {
-    this.user = { ...user };
+    this.user = {
+      ...user,
+      locationId: this.isManager ? (this.managerLocationId ?? user.locationId) : user.locationId,
+    };
     this.userDialog = true;
   }
 
-  viewUser(user: User) {
-    // show dialog immediately with existing data for snappier UI
-    this.user = { ...user };
-    this.viewDialog = true;
-
-    // fetch full details in background (optional fields like createdDate)
-    this.userService.getUser(user.id).subscribe({
-      next: (res) => {
-        if (res.code === 200) {
-          this.user = { ...res.data };
-        }
-      },
-      error: (err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Lỗi',
-          detail: err.error?.message || 'Không thể tải chi tiết người dùng',
-          life: 3000,
-        });
-      },
-    });
+  goToUserDetail(user: User) {
+    this.router.navigate(['/pages/users', user.id]);
   }
 
   saveUser() {
@@ -637,6 +556,7 @@ export class Users implements OnInit {
     }
 
     this.saving = true;
+    const payloadLocationId = this.isManager ? this.managerLocationId : this.user.locationId;
 
     if (this.user.id) {
       this.userService
@@ -645,7 +565,7 @@ export class Users implements OnInit {
           fullName: this.user.fullName,
           phone: this.user.phone,
           roleId: this.user.roleId,
-          locationId: this.user.locationId,
+          locationId: payloadLocationId ?? undefined,
           password: this.user.password,
         })
         .subscribe({
@@ -679,7 +599,7 @@ export class Users implements OnInit {
           fullName: this.user.fullName!,
           phone: this.user.phone,
           roleId: this.user.roleId!,
-          locationId: this.user.locationId,
+          locationId: payloadLocationId ?? undefined,
           password: this.user.password!,
         })
         .subscribe({

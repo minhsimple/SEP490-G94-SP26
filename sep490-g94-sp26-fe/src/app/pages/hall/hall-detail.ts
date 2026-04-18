@@ -71,9 +71,9 @@ import { LocationService } from '../service/location.service';
                         </div>
                         </div>
 
-                        <span class="status-chip" [class.active]="hall.status === 'ACTIVE'">
+                        <span class="status-chip" [class.active]="isHallActive(hall.status)">
                             <i class="pi pi-circle-fill" style="font-size:0.5rem"></i>
-                            {{ hall.status === 'ACTIVE' ? 'Đang hoạt động' : 'Hoạt động' }}
+                            {{ isHallActive(hall.status) ? 'Đang hoạt động' : 'Ngừng hoạt động' }}
                         </span>
                     </div>
 
@@ -98,16 +98,6 @@ import { LocationService } from '../service/location.service';
                         <i class="pi pi-money-bill"></i>
                         <div class="stat-val" style="font-size:1.15rem">{{ formatPrice(hall.basePrice) }}</div>
                         <div class="stat-label">Giá sảnh / bàn</div>
-                    </div>
-                    <div class="stat-card" *ngIf="hall.minTable">
-                        <i class="pi pi-table"></i>
-                        <div class="stat-val">{{ hall.minTable }}</div>
-                        <div class="stat-label">Bàn tối thiểu</div>
-                    </div>
-                    <div class="stat-card" *ngIf="hall.maxTable">
-                        <i class="pi pi-table"></i>
-                        <div class="stat-val">{{ hall.maxTable }}</div>
-                        <div class="stat-label">Bàn tối đa</div>
                     </div>
                 </div>
 
@@ -136,8 +126,8 @@ import { LocationService } from '../service/location.service';
                         <div class="detail-row">
                             <span class="dl">Sức chứa</span>
                             <span class="dv">{{ hall.capacity }} khách</span>
-                            <span class="dl">Số bàn</span>
-                            <span class="dv">{{ hall.minTable && hall.maxTable ? hall.minTable + ' – ' + hall.maxTable + ' bàn' : '-' }}</span>
+                            <span class="dl"></span>
+                            <span class="dv"></span>
                         </div>
                         <div class="detail-row">
                             <span class="dl">Giá sảnh / bàn</span>
@@ -147,8 +137,8 @@ import { LocationService } from '../service/location.service';
                         </div>
                         <div class="detail-row">
                             <span class="dl">Trạng thái</span>
-                            <span class="dv status-text" [class.active]="hall.status === 'ACTIVE'">
-                                {{ hall.status != 'ACTIVE' ? 'Đang hoạt động' : 'Ngừng hoạt động' }}
+                            <span class="dv status-text" [class.active]="isHallActive(hall.status)">
+                                {{ isHallActive(hall.status) ? 'Đang hoạt động' : 'Ngừng hoạt động' }}
                             </span>
                             <span class="dl">Mã sảnh</span>
                             <span class="dv">{{ hall.code || '-' }}</span>
@@ -204,16 +194,6 @@ import { LocationService } from '../service/location.service';
                         <div class="form-field full">
                             <label>Giá sảnh / bàn</label>
                             <input type="number" pInputText [(ngModel)]="editingHall.basePrice" placeholder="5000000" min="0" />
-                        </div>
-
-                        <div class="form-field">
-                            <label>Số bàn tối thiểu</label>
-                            <input type="number" pInputText [(ngModel)]="editingHall.minTable" placeholder="10" />
-                        </div>
-
-                        <div class="form-field">
-                            <label>Số bàn tối đa</label>
-                            <input type="number" pInputText [(ngModel)]="editingHall.maxTable" placeholder="50" />
                         </div>
 
                         <div class="form-field full">
@@ -605,7 +585,7 @@ export class HallDetailComponent implements OnInit {
 
     openEdit() {
         this.editingHall = { ...this.hall };
-        this.isActive = this.hall?.status === 'ACTIVE';
+        this.isActive = this.isHallActive(this.hall?.status);
         this.submitted = false;
         this.hallDialog = true;
     }
@@ -621,8 +601,6 @@ export class HallDetailComponent implements OnInit {
             locationId: this.editingHall.locationId,
             capacity: Number(this.editingHall.capacity),
             basePrice: this.editingHall.basePrice != null && this.editingHall.basePrice !== '' ? Number(this.editingHall.basePrice) : null,
-            minTable: this.editingHall.minTable ? Number(this.editingHall.minTable) : null,
-            maxTable: this.editingHall.maxTable ? Number(this.editingHall.maxTable) : null,
             imageUrl: this.editingHall.imageUrl || null,
             notes: this.editingHall.notes || null,
             status: this.isActive ? 'ACTIVE' : 'INACTIVE'
@@ -631,7 +609,7 @@ export class HallDetailComponent implements OnInit {
         this.hallService.updateHall(this.editingHall.id, payload).subscribe({
             next: (res) => {
                 if (res.code === 200) {
-                    const currentActive = this.hall?.status === 'ACTIVE';
+                    const currentActive = this.isHallActive(this.hall?.status);
                     if (this.isActive !== currentActive) {
                         this.hallService.changeStatus(this.editingHall.id).subscribe(() => {
                             this.loadHall(this.editingHall.id);
@@ -654,6 +632,10 @@ export class HallDetailComponent implements OnInit {
     hideDialog() {
         this.hallDialog = false;
         this.submitted = false;
+    }
+
+    isHallActive(status?: string | null): boolean {
+        return String(status ?? '').toUpperCase() === 'ACTIVE';
     }
 
     goBack() {
