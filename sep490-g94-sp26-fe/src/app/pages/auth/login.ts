@@ -127,6 +127,14 @@ export class Login {
         private authService: AuthService
     ) {}
 
+    private resolvePostLoginRoute(codeRole: string): string[] {
+        const normalizedRole = String(codeRole ?? '').toUpperCase();
+        if (normalizedRole === 'RECEPTION' || normalizedRole === 'RECEPTIONIST') {
+            return ['/pages/calender'];
+        }
+        return ['/'];
+    }
+
     onLogin(): void {
         if (!this.email || !this.password) {
             this.errorMessage = 'Please enter email and password.';
@@ -144,6 +152,7 @@ export class Login {
             .subscribe({
                 next: (response) => {
                     if (response.code === 200 && response.data) {
+    const postLoginRoute = this.resolvePostLoginRoute(response.data.codeRole);
     localStorage.setItem('accessToken',  response.data.accessToken);
     localStorage.setItem('refreshToken', response.data.refreshToken);
     localStorage.setItem('userId',       response.data.userId.toString());
@@ -157,11 +166,11 @@ export class Login {
     this.authService.getMe().subscribe({
         next: () => {
             this.isLoading = false;
-            this.router.navigate(['/']);
+            this.router.navigate(postLoginRoute);
         },
         error: () => {
             this.isLoading = false;
-            this.router.navigate(['/']);
+            this.router.navigate(postLoginRoute);
         }
     });
                     } else {

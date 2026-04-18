@@ -197,7 +197,7 @@ interface Column {
     />
     <!-- Nút Đổi trạng thái cho Admin/Manager hoặc khi SALE đã nhận lead -->
     <p-button
-      *ngIf="!isSale || (lead.state !== 'NEW' && lead.leadState !== 'NEW')"
+      *ngIf="!isReception && (!isSale || (lead.state !== 'NEW' && lead.leadState !== 'NEW'))"
       icon="pi pi-sync"
       [rounded]="true"
       [outlined]="true"
@@ -590,6 +590,10 @@ export class Leads implements OnInit {
   }
 
   changeStatus(lead: any) {
+    if (this.isReception) {
+      return;
+    }
+
     this.confirmationService.confirm({
       message: `Bạn có chắc muốn đổi trạng thái của "${lead.fullName}"?`,
       header: 'Xác nhận',
