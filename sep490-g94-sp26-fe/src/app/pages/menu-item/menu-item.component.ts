@@ -56,7 +56,7 @@ import { MenuItemService } from '../service/menu-item.service';
                         style="width: 200px"
                     />
                 </div>
-                <p-button *ngIf="!isSale" label="Thêm món ăn" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
+                <p-button *ngIf="canManageMenuItem" label="Thêm món ăn" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
             </div>
 
             <!-- Table -->
@@ -131,9 +131,9 @@ import { MenuItemService } from '../service/menu-item.service';
                                 <div class="flex gap-2">
                                     <p-button icon="pi pi-eye" [rounded]="true" [outlined]="true" severity="info"
                                         (click)="viewItem(item)" pTooltip="Chi tiết" tooltipPosition="top" />
-                                    <p-button *ngIf="!isSale" icon="pi pi-pencil" [rounded]="true" [outlined]="true" severity="secondary"
+                                    <p-button *ngIf="canManageMenuItem" icon="pi pi-pencil" [rounded]="true" [outlined]="true" severity="secondary"
                                         (click)="editItem(item)" pTooltip="Chỉnh sửa" tooltipPosition="top" />
-                                    <p-button *ngIf="!isSale"
+                                    <p-button *ngIf="canManageMenuItem"
                                         [icon]="item.status === 'ACTIVE' ? 'pi pi-ban' : 'pi pi-check-circle'"
                                         [severity]="item.status === 'ACTIVE' ? 'warn' : 'success'" [rounded]="true"
                                         [outlined]="true" (click)="toggleStatus(item)" tooltipPosition="top" />
@@ -316,6 +316,9 @@ import { MenuItemService } from '../service/menu-item.service';
     providers: [MessageService, MenuItemService, ConfirmationService]
 })
 export class MenuItemComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canManageMenuItem = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+
     menuItems = signal<any[]>([]);
     categories: any[] = [];
     locations: any[] = [];
@@ -413,6 +416,7 @@ export class MenuItemComponent implements OnInit {
     }
 
     openNew() {
+        if (!this.canManageMenuItem) return;
         this.editingItem = {};
         this.selectedImage = null;
         this.selectedImageUrl = null;
@@ -439,6 +443,7 @@ export class MenuItemComponent implements OnInit {
     }
 
     editItem(item: any) {
+        if (!this.canManageMenuItem) return;
         this.menuItemService.getById(item.id).subscribe({
             next: (res: any) => {
                 const data = res?.data ?? item;
@@ -477,6 +482,7 @@ export class MenuItemComponent implements OnInit {
     }
 
     saveItem() {
+        if (!this.canManageMenuItem) return;
         this.submitted = true;
         if (!this.editingItem.name?.trim()) return;
         if (!this.editingItem.categoryMenuItemsId) return;
@@ -523,6 +529,7 @@ export class MenuItemComponent implements OnInit {
     }
 
     toggleStatus(item: any) {
+        if (!this.canManageMenuItem) return;
         const action = item.status === 'inactive' ? 'kích hoạt' : 'vô hiệu hóa';
         this.confirmationService.confirm({
             message: `Bạn có chắc muốn ${action} món ăn "${item.name}"?`,

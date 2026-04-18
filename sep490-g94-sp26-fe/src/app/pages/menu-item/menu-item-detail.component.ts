@@ -132,14 +132,14 @@ import { MenuItemService } from '../service/menu-item.service';
                 <!-- Footer buttons -->
                 <div class="flex justify-end gap-2 mt-5">
                     <p-button label="Quay lại" icon="pi pi-arrow-left" [outlined]="true" severity="secondary" (onClick)="goBack()" />
-                    <p-button *ngIf="!isSale"
+                    <p-button *ngIf="canManageMenuItem"
                         [label]="item.status === 'inactive' ? 'Kích hoạt' : 'Vô hiệu hóa'"
                         [icon]="item.status === 'inactive' ? 'pi pi-check-circle' : 'pi pi-ban'"
                         [severity]="item.status === 'inactive' ? 'success' : 'warn'"
                         [outlined]="true"
                         (onClick)="toggleStatus()"
                         [loading]="togglingStatus" />
-                    <p-button *ngIf="!isSale" label="Chỉnh sửa món ăn" icon="pi pi-pencil" severity="primary" (onClick)="openEdit()" />
+                    <p-button *ngIf="canManageMenuItem" label="Chỉnh sửa món ăn" icon="pi pi-pencil" severity="primary" (onClick)="openEdit()" />
                 </div>
             </div>
 
@@ -457,11 +457,13 @@ import { MenuItemService } from '../service/menu-item.service';
     providers: [MessageService, MenuItemService, ConfirmationService]
 })
 export class MenuItemDetailComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canManageMenuItem = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+
     item: any = null;
     loading = true;
     saving = false;
     togglingStatus = false;
-    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     editDialog = false;
     submitted = false;
@@ -571,6 +573,7 @@ export class MenuItemDetailComponent implements OnInit {
     }
 
     toggleStatus() {
+        if (!this.canManageMenuItem) return;
         if (!this.item) return;
         const action = this.item.status === 'inactive' ? 'kích hoạt' : 'vô hiệu hóa';
         this.confirmationService.confirm({
@@ -597,6 +600,7 @@ export class MenuItemDetailComponent implements OnInit {
     }
 
     openEdit() {
+        if (!this.canManageMenuItem) return;
         if (!this.item) return;
         this.editingItem = {
             ...this.item,
@@ -629,6 +633,7 @@ export class MenuItemDetailComponent implements OnInit {
     }
 
     saveEdit() {
+        if (!this.canManageMenuItem) return;
         this.submitted = true;
         if (!this.editingItem.name?.trim()) return;
         if (!this.editingItem.categoryMenuItemsId) return;

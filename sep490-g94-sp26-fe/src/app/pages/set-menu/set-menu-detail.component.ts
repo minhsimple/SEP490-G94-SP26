@@ -134,14 +134,14 @@ import { SetMenuService } from '../service/set-menu';
 
                 <div class="flex justify-end gap-2 mt-5">
                     <p-button label="Quay lại" icon="pi pi-arrow-left" [outlined]="true" severity="secondary" (onClick)="goBack()" />
-                    <p-button *ngIf="!isSale"
+                    <p-button *ngIf="canManageSetMenu"
                         [label]="item.status === 'inactive' ? 'Kích hoạt' : 'Vô hiệu hóa'"
                         [icon]="item.status === 'inactive' ? 'pi pi-check-circle' : 'pi pi-ban'"
                         [severity]="item.status === 'inactive' ? 'success' : 'warn'"
                         [outlined]="true"
                         (onClick)="toggleStatus()"
                         [loading]="togglingStatus" />
-                    <p-button *ngIf="!isSale" label="Chỉnh sửa" icon="pi pi-pencil" severity="primary"
+                    <p-button *ngIf="canManageSetMenu" label="Chỉnh sửa" icon="pi pi-pencil" severity="primary"
                         (onClick)="goEdit()" />
                 </div>
             </div>
@@ -265,9 +265,11 @@ import { SetMenuService } from '../service/set-menu';
     providers: [MessageService, SetMenuService, ConfirmationService]
 })
 export class SetMenuDetailComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canManageSetMenu = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+
     item: any = null;
     loading = true;
-    isSale = localStorage.getItem('codeRole') === 'SALE';
     togglingStatus = false;
 
     heroImage: string | null = null;
@@ -357,6 +359,7 @@ export class SetMenuDetailComponent implements OnInit {
     }
 
     toggleStatus() {
+        if (!this.canManageSetMenu) return;
         if (!this.item) return;
         const action = this.item.status === 'inactive' ? 'kích hoạt' : 'vô hiệu hóa';
         this.confirmationService.confirm({
@@ -383,6 +386,7 @@ export class SetMenuDetailComponent implements OnInit {
     }
 
     goEdit() {
+        if (!this.canManageSetMenu) return;
         this.router.navigate(['/pages/set-menu/edit', this.item.id]);
     }
 

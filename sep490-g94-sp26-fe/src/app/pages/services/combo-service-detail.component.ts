@@ -107,6 +107,7 @@ import { LocationService, Location } from '../service/location.service';
                 <div class="flex justify-end gap-2 mt-5">
                     <p-button label="Quay lại" icon="pi pi-arrow-left" [outlined]="true" severity="secondary" (onClick)="goBack()" />
                     <p-button
+                        *ngIf="canEditCombo"
                         [label]="item.status === 'inactive' ? 'Kích hoạt' : 'Vô hiệu hóa'"
                         [icon]="item.status === 'inactive' ? 'pi pi-check-circle' : 'pi pi-ban'"
                         [severity]="item.status === 'inactive' ? 'success' : 'warn'"
@@ -319,6 +320,7 @@ export class ComboServiceDetailComponent implements OnInit {
     }
 
     toggleStatus() {
+        if (!this.canEditCombo) return;
         if (!this.item) return;
         const action = this.item.status === 'inactive' ? 'kích hoạt' : 'vô hiệu hóa';
         this.confirmationService.confirm({

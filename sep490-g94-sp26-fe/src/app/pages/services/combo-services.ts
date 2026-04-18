@@ -84,6 +84,7 @@ interface Column {
                     />
                 </div>
                 <p-button
+                    *ngIf="canEditCombo"
                     label="Thêm combo"
                     icon="pi pi-plus"
                     severity="primary"
@@ -192,6 +193,7 @@ interface Column {
                                         tooltipPosition="top"
                                     />
                                     <p-button
+                                        *ngIf="canEditCombo"
                                         [icon]="combo.status === 'active' ? 'pi pi-ban' : 'pi pi-check-circle'"
                                         [rounded]="true"
                                         [text]="true"
@@ -819,6 +821,7 @@ export class CombosComponent implements OnInit {
 
     // ── Create ─────────────────────────────────────────────────────────────────
     openNew() {
+        if (!this.canEditCombo) return;
         this.newCombo = { code: this.generateUUID() };
         this.newComboActive = true;
         this.newSelectedServiceIds = new Set();
@@ -833,6 +836,7 @@ export class CombosComponent implements OnInit {
     }
 
     saveNewCombo() {
+        if (!this.canEditCombo) return;
         this.submitted = true;
         if (!this.newCombo.name?.trim()) return;
 
@@ -917,6 +921,7 @@ export class CombosComponent implements OnInit {
     }
 
     saveEditCombo() {
+        if (!this.canEditCombo) return;
         this.editSubmitted = true;
         if (!this.editedCombo.name?.trim()) return;
 
@@ -984,6 +989,7 @@ export class CombosComponent implements OnInit {
 
     // ── Change Status ──────────────────────────────────────────────────────────
     confirmChangeStatus(combo: ServicePackage) {
+        if (!this.canEditCombo) return;
         if (!combo || !combo.id) {
             this.messageService.add({ 
                 severity: 'error', 
