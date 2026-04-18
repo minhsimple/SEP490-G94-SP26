@@ -92,15 +92,21 @@ export class AppMenu implements OnInit, OnDestroy {
   }
 
   private buildMenu(codeRole: string): void {
-    const normalizedRole = (codeRole ?? '').toUpperCase();
-    const allowed = this.rolePermissions[normalizedRole];
+    const normalizedRole = (codeRole ?? '').toUpperCase().trim();
+    const allowed = this.rolePermissions[normalizedRole] ?? (normalizedRole.includes('ADMIN') ? 'all' : undefined);
+    const isAdmin = normalizedRole.includes('ADMIN');
+    const adminHiddenIds = ['leads', 'beo'];
 
-    const filteredItems =
+    let filteredItems =
       allowed === 'all'
         ? this.allMenuItems
         : this.allMenuItems.filter(item =>
             (allowed ?? []).includes((item as any).id ?? '')
           );
+
+    if (isAdmin) {
+      filteredItems = filteredItems.filter(item => !adminHiddenIds.includes((item as any).id ?? ''));
+    }
 
     this.model = [
       {

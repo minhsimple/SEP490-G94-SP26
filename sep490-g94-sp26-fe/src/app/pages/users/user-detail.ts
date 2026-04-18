@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { ChartModule } from 'primeng/chart';
@@ -42,6 +42,7 @@ interface ContractParticipationRow {
   id: number;
   contractNo: string;
   customerName: string;
+  customerPhone: string;
   bookingDate: string;
   contractState: string;
   totalAmount: number;
@@ -140,11 +141,24 @@ interface ContractParticipationRow {
 
         <div class="panel-card" *ngIf="contractRows().length > 0">
           <div class="panel-title">Danh sách hợp đồng tham gia</div>
-          <p-table [value]="contractRows()" dataKey="id" [tableStyle]="{ 'min-width': '72rem' }" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10, 20, 50]">
+          <div class="contract-filter-row">
+            <input
+              type="text"
+              class="contract-search-input"
+              placeholder="Tìm theo tên khách hàng hoặc SĐT"
+              [value]="contractSearchKeyword()"
+              (input)="onContractSearch($event)"
+            />
+            <span class="contract-search-count">
+              {{ filteredContractRows().length }}/{{ contractRows().length }} hợp đồng
+            </span>
+          </div>
+          <p-table [value]="filteredContractRows()" dataKey="id" [tableStyle]="{ 'min-width': '72rem' }" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10, 20, 50]">
             <ng-template #header>
               <tr>
                 <th>Mã hợp đồng</th>
                 <th>Khách hàng</th>
+                <th>SĐT khách hàng</th>
                 <th>Ngày tiệc</th>
                 <th>Trạng thái</th>
                 <th>Tổng giá trị</th>
@@ -158,6 +172,7 @@ interface ContractParticipationRow {
                   <button type="button" class="contract-link" (click)="goToContractDetail(row.id)">{{ row.contractNo }}</button>
                 </td>
                 <td>{{ row.customerName }}</td>
+                <td>{{ row.customerPhone }}</td>
                 <td>{{ row.bookingDate }}</td>
                 <td>
                   <p-tag [value]="contractStateLabel(row.contractState)" [severity]="contractStateSeverity(row.contractState)"></p-tag>
@@ -165,6 +180,13 @@ interface ContractParticipationRow {
                 <td>{{ formatCurrency(row.totalAmount) }}</td>
                 <td>{{ formatCurrency(row.collectedAmount) }}</td>
                 <td>{{ formatCurrency(row.remainingAmount) }}</td>
+              </tr>
+            </ng-template>
+            <ng-template #emptymessage>
+              <tr>
+                <td colspan="8" class="text-center py-4 text-500">
+                  Không tìm thấy hợp đồng phù hợp.
+                </td>
               </tr>
             </ng-template>
           </p-table>
@@ -273,6 +295,25 @@ interface ContractParticipationRow {
       .chart-wrap {
         height: 300px;
       }
+      .contract-filter-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        justify-content: space-between;
+        margin-bottom: 0.85rem;
+        flex-wrap: wrap;
+      }
+      .contract-search-input {
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 0.5rem 0.7rem;
+        min-width: 280px;
+        flex: 1;
+      }
+      .contract-search-count {
+        color: #64748b;
+        font-size: 0.85rem;
+      }
       .contract-link {
         border: none;
         background: transparent;
@@ -300,6 +341,19 @@ export class UserDetailComponent implements OnInit {
   salesMetrics = signal<SalesMetrics | null>(null);
   coordinatorMetrics = signal<CoordinatorMetrics | null>(null);
   contractRows = signal<ContractParticipationRow[]>([]);
+  contractSearchKeyword = signal('');
+  filteredContractRows = computed(() => {
+    const keyword = this.normalizeSearchText(this.contractSearchKeyword());
+    if (!keyword) {
+      return this.contractRows();
+    }
+
+    return this.contractRows().filter((row) => {
+      const customerName = this.normalizeSearchText(row.customerName);
+      const customerPhone = this.normalizeSearchText(row.customerPhone);
+      return customerName.includes(keyword) || customerPhone.includes(keyword);
+    });
+  });
   totalContractValue = signal(0);
   totalCollectedAmount = signal(0);
   totalRemainingAmount = signal(0);
@@ -349,6 +403,11 @@ export class UserDetailComponent implements OnInit {
     this.reloadMetrics();
   }
 
+  onContractSearch(event: Event): void {
+    const value = (event.target as HTMLInputElement).value ?? '';
+    this.contractSearchKeyword.set(value);
+  }
+
   goToContractDetail(contractId: number): void {
     const id = this.toNumber(contractId);
     if (id <= 0) return;
@@ -365,6 +424,7 @@ export class UserDetailComponent implements OnInit {
     this.salesMetrics.set(null);
     this.coordinatorMetrics.set(null);
     this.contractRows.set([]);
+    this.contractSearchKeyword.set('');
     this.totalContractValue.set(0);
     this.totalCollectedAmount.set(0);
     this.totalRemainingAmount.set(0);
@@ -623,7 +683,7 @@ export class UserDetailComponent implements OnInit {
     successfulPayments: Payment[],
     fromDate?: string,
     toDate?: string,
-    customerNames?: Map<number, string>,
+    customerNames?: Map<number, { name: string; phone: string }>,
     invoiceTotals?: Map<number, number>,
   ): void {
     const paymentByContract = new Map<number, number>();
@@ -652,6 +712,7 @@ export class UserDetailComponent implements OnInit {
         id,
         contractNo: String(contract.contractNo ?? `HD-${id || '-'}`),
         customerName: this.resolveCustomerName(contract, customerNames),
+        customerPhone: this.resolveCustomerPhone(contract, customerNames),
         bookingDate: this.formatDateOnly(contract.bookingDate),
         contractState: String(contract.contractState ?? 'UNKNOWN'),
         totalAmount,
@@ -799,7 +860,7 @@ export class UserDetailComponent implements OnInit {
     );
 
     if (!ids.length) {
-      return of(new Map<number, string>());
+      return of(new Map<number, { name: string; phone: string }>());
     }
 
     const requests = ids.map((id) =>
@@ -807,17 +868,18 @@ export class UserDetailComponent implements OnInit {
         map((res) => ({
           id,
           name: String(res.data?.fullName ?? '').trim(),
+          phone: String(res.data?.phone ?? '').trim(),
         })),
-        catchError(() => of({ id, name: '' })),
+        catchError(() => of({ id, name: '', phone: '' })),
       ),
     );
 
     return forkJoin(requests).pipe(
       map((rows) => {
-        const mapData = new Map<number, string>();
+        const mapData = new Map<number, { name: string; phone: string }>();
         rows.forEach((row) => {
-          if (row.name) {
-            mapData.set(row.id, row.name);
+          if (row.name || row.phone) {
+            mapData.set(row.id, { name: row.name, phone: row.phone });
           }
         });
         return mapData;
@@ -825,7 +887,7 @@ export class UserDetailComponent implements OnInit {
     );
   }
 
-  private resolveCustomerName(contract: Booking, customerNames?: Map<number, string>): string {
+  private resolveCustomerName(contract: Booking, customerNames?: Map<number, { name: string; phone: string }>): string {
     const raw = contract as any;
     const directName = String(raw?.customerName ?? raw?.customer?.fullName ?? raw?.customer?.name ?? '').trim();
     if (directName) {
@@ -834,10 +896,39 @@ export class UserDetailComponent implements OnInit {
 
     const customerId = this.toNumber(raw?.customerId ?? contract.customerId);
     if (customerId > 0 && customerNames?.has(customerId)) {
-      return customerNames.get(customerId) as string;
+      const mapped = customerNames.get(customerId);
+      if (mapped?.name) {
+        return mapped.name;
+      }
     }
 
     return '-';
+  }
+
+  private resolveCustomerPhone(contract: Booking, customerNames?: Map<number, { name: string; phone: string }>): string {
+    const raw = contract as any;
+    const directPhone = String(raw?.customerPhone ?? raw?.customer?.phone ?? '').trim();
+    if (directPhone) {
+      return directPhone;
+    }
+
+    const customerId = this.toNumber(raw?.customerId ?? contract.customerId);
+    if (customerId > 0 && customerNames?.has(customerId)) {
+      const mapped = customerNames.get(customerId);
+      if (mapped?.phone) {
+        return mapped.phone;
+      }
+    }
+
+    return '-';
+  }
+
+  private normalizeSearchText(value: string | undefined): string {
+    return String(value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
   }
 
   private loadInvoiceTotalsByContractIds(contractIds: number[]) {
