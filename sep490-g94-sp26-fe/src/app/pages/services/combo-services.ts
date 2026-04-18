@@ -73,6 +73,7 @@ interface Column {
                         />
                     </p-iconfield>
                     <p-select
+                        *ngIf="!isSale"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -559,6 +560,8 @@ interface Column {
 })
 export class CombosComponent implements OnInit {
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly isSale = this.roleCode.includes('SALE');
+    readonly saleLocationId = Number(localStorage.getItem('locationId') ?? 0) || null;
     readonly canEditCombo = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
 
     combos = signal<ServicePackage[]>([]);
@@ -609,6 +612,10 @@ export class CombosComponent implements OnInit {
     ) {}
 
     ngOnInit() {
+        if (this.isSale && this.saleLocationId) {
+            this.selectedLocationId = this.saleLocationId;
+        }
+
         this.cols = [
             { field: 'name',         header: 'Tên combo' },
             { field: 'locationName', header: 'Chi nhánh' },
@@ -659,11 +666,12 @@ export class CombosComponent implements OnInit {
     // ── Combos ─────────────────────────────────────────────────────────────────
     loadCombos(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
         this.loading = true;
+        const effectiveLocationId = this.isSale ? this.saleLocationId : (locationId ?? undefined);
         this.servicePackageService.searchServicePackages({ 
             page, 
             size, 
             name, 
-            locationId: locationId ?? undefined,
+            locationId: effectiveLocationId ?? undefined,
             status: undefined // can filter by status if needed
         }).subscribe({
             next: (res) => {
@@ -695,6 +703,9 @@ export class CombosComponent implements OnInit {
     }
 
     onLocationChange(event: any) {
+        if (this.isSale) {
+            return;
+        }
         this.selectedLocationId = event.value;
         this.loadCombos(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
         if (this.dt) this.dt.reset();
