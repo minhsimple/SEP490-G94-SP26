@@ -1,0 +1,202 @@
+@startuml Login_Class_Diagram
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam classBackgroundColor #B4D7F1
+skinparam classBorderColor #0066CC
+skinparam classArrowColor #0066CC
+skinparam fontSize 11
+
+package "Controller Layer" {
+    class AuthController {
+        - authService: AuthService
+        + register(request: RegisterRequest): ApiResponse<AuthResponse>
+        + login(request: LoginRequest): ApiResponse<AuthResponse>
+        + refreshToken(request: HttpServletRequest): ApiResponse<AuthResponse>
+        + getCurrentUser(): ApiResponse<UserResponse>
+        + logout(request: HttpServletRequest): ApiResponse<Void>
+        + logoutAllDevices(request: HttpServletRequest): ApiResponse<Void>
+        - extractTokenFromRequest(request: HttpServletRequest): String
+    }
+}
+
+package "Service Layer" {
+    interface AuthService {
+        + register(request: RegisterRequest): AuthResponse
+        + login(request: LoginRequest): AuthResponse
+        + refreshToken(refreshToken: String): AuthResponse
+        + getCurrentUser(email: String): UserResponse
+        + logout(refreshToken: String): void
+        + logoutAllDevices(token: String): void
+    }
+
+    class AuthServiceImpl implements AuthService {
+        - userRepository: UserRepository
+        - roleRepository: RoleRepository
+        - refreshTokenRepository: RefreshTokenRepository
+        - passwordEncoder: PasswordEncoder
+        - jwtTokenUtil: JwtTokenUtil
+        - authenticationManager: AuthenticationManager
+        - userMapper: UserMapper
+        - refreshExpiration: Long
+        + register(request: RegisterRequest): AuthResponse
+        + login(request: LoginRequest): AuthResponse
+        + refreshToken(refreshTokenStr: String): AuthResponse
+        + getCurrentUser(email: String): UserResponse
+        + logout(refreshToken: String): void
+        + logoutAllDevices(token: String): void
+        - validateEmailNotExists(email: String): void
+        - validateRefreshToken(refreshToken: String): void
+        - authenticateUser(email: String, password: String): void
+        - findUserByEmail(email: String): User
+        - createUser(request: RegisterRequest): User
+        - buildAuthResponse(user: User): AuthResponse
+    }
+}
+
+package "Repository Layer" {
+    interface UserRepository {
+        + findByEmailAndStatus(email: String, status: RecordStatus): Optional<User>
+        + findById(id: Integer): Optional<User>
+    }
+
+    interface RoleRepository {
+        + findById(id: Integer): Optional<Role>
+    }
+
+    interface RefreshTokenRepository {
+        + findByTokenAndRevokedFalse(token: String): Optional<RefreshToken>
+        + findByToken(token: String): Optional<RefreshToken>
+        + save(refreshToken: RefreshToken): RefreshToken
+        + revokeAllTokensByUserId(userId: Integer): void
+    }
+}
+
+package "Security & Utils" {
+    class AuthenticationManager {
+        + authenticate(authentication: Authentication): Authentication
+    }
+
+    class PasswordEncoder {
+        + encode(rawPassword: String): String
+        + matches(rawPassword: String, encodedPassword: String): boolean
+    }
+
+    class JwtTokenUtil {
+        + generateTokenWithUserId(email: String, userId: Integer): String
+        + generateRefreshToken(email: String): String
+        + validateToken(token: String): boolean
+        + extractUsername(token: String): String
+    }
+
+    class UserMapper {
+        + toResponse(user: User): UserResponse
+    }
+}
+
+package "Entity Layer" {
+    class User {
+        - id: Integer
+        - email: String
+        - passwordHash: String
+        - fullName: String
+        - phone: String
+        - isActive: boolean
+        - status: RecordStatus
+        - role_id: Integer [FK]
+        - locationId: Integer
+        - createdAt: LocalDateTime
+        - updatedAt: LocalDateTime
+    }
+
+    class Role {
+        - id: Integer
+        - code: String
+        - name: String
+        - description: String
+    }
+
+    class RefreshToken {
+        - id: Integer
+        - userId: Integer [FK]
+        - token: String
+        - expiresAt: LocalDateTime
+        - revoked: boolean
+        - createdAt: LocalDateTime
+    }
+}
+
+package "DTO Layer" {
+    class LoginRequest {
+        - email: String
+        - password: String
+    }
+
+    class AuthResponse {
+        - accessToken: String
+        - refreshToken: String
+        - tokenType: String
+        - userId: Integer
+        - email: String
+        - fullName: String
+        - locationId: Integer
+        - codeRole: String
+    }
+
+    class LoginResponseDto {
+        - token: String
+    }
+
+    class LoginDto {
+        - email: String
+        - password: String
+    }
+
+    class ApiResponse<T> {
+        - code: Integer
+        - message: String
+        - data: T
+    }
+
+    class UserResponse {
+        - id: Integer
+        - email: String
+        - fullName: String
+        - phone: String
+        - locationId: Integer
+        - roleCode: String
+    }
+}
+
+'' Relationships
+AuthController --> AuthService : uses
+AuthController --> LoginRequest : receives
+AuthController --> ApiResponse : returns
+
+AuthService <|.. AuthServiceImpl : implements
+
+AuthServiceImpl --> UserRepository : uses
+AuthServiceImpl --> RoleRepository : uses
+AuthServiceImpl --> RefreshTokenRepository : uses
+AuthServiceImpl --> AuthenticationManager : uses
+AuthServiceImpl --> PasswordEncoder : uses
+AuthServiceImpl --> JwtTokenUtil : uses
+AuthServiceImpl --> UserMapper : uses
+
+AuthServiceImpl --> User : works with
+AuthServiceImpl --> Role : works with
+AuthServiceImpl --> RefreshToken : works with
+
+UserRepository --> User : queries
+RoleRepository --> Role : queries
+RefreshTokenRepository --> RefreshToken : queries
+
+AuthServiceImpl --> LoginRequest : receives
+AuthServiceImpl --> AuthResponse : returns
+AuthServiceImpl --> UserResponse : returns
+
+User "1" --> "N" RefreshToken : has
+User "N" --> "1" Role : belongs to
+Role "1" --> "N" User : has
+
+@enduml
+
