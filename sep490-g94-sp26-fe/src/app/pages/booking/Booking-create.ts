@@ -2,7 +2,6 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
@@ -17,6 +16,7 @@ import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
 import { LocationService } from '../service/location.service';
 import { ServicePackageService } from '../service/service-package.service';
+import { ServiceService } from '../service/service.service';
 import { SetMenuService } from '../service/set-menu';
 import { UserService } from '../service/users.service';
 import { RoleService } from '../service/role.service';
@@ -55,6 +55,14 @@ interface ServicePackageOption {
 interface SalesOption {
     id: number;
     label: string;
+}
+
+interface SummaryDetailItem {
+    id: number;
+    name: string;
+    qty: number;
+    unitPrice: number;
+    totalPrice: number;
 }
 
 @Component({
@@ -157,6 +165,45 @@ interface SalesOption {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 0.75rem;
+        }
+        .selection-detail-panel {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
+            padding: 0.75rem;
+        }
+        .selection-detail-panel + .selection-detail-panel {
+            margin-top: 0.75rem;
+        }
+        .selection-detail-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #334155;
+            margin-bottom: 0.5rem;
+        }
+        .selection-detail-empty {
+            font-size: 0.78rem;
+            color: #94a3b8;
+        }
+        .selection-detail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            max-height: 220px;
+            overflow: auto;
+            padding-right: 0.2rem;
+        }
+        .selection-detail-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #475569;
+        }
+        .selection-detail-item strong {
+            color: #1e293b;
+            font-weight: 700;
+            white-space: nowrap;
         }
         .person-grid {
             display: grid;
@@ -321,9 +368,14 @@ interface SalesOption {
             font-style: italic;
             font-size: 0.74rem;
         }
-        .summary-card {
+        .summary-sticky {
             position: sticky;
             top: 1rem;
+            align-self: start;
+        }
+        .summary-card {
+            max-height: calc(100vh - 1.5rem);
+            overflow: auto;
         }
         .summary-row {
             display: flex;
@@ -365,6 +417,14 @@ interface SalesOption {
         @media (max-width: 960px) {
             .create-layout {
                 grid-template-columns: 1fr;
+            }
+            .summary-sticky {
+                position: static;
+                top: auto;
+            }
+            .summary-card {
+                max-height: none;
+                overflow: visible;
             }
             .two-col,
             .three-col,
@@ -632,7 +692,7 @@ interface SalesOption {
                     <div class="section-title">Set menu</div>
                     <div *ngIf="setMenuOptions.length === 0" class="empty-state">
                         <i class="pi pi-times-circle"></i>
-                        <span>Chọn chi nhánh hoặc sảnh để tải danh sách set menu</span>
+                        <span>Chọn chi nhánh để tải danh sách set menu</span>
                     </div>
 
                     <div *ngIf="setMenuOptions.length > 0" class="menu-grid">
@@ -651,17 +711,17 @@ interface SalesOption {
                 <div class="section-card">
                     <div class="section-title">Gói dịch vụ</div>
 
-                    <div *ngIf="!form.hallId" class="empty-state">
+                    <div *ngIf="!form.locationId" class="empty-state">
                         <i class="pi pi-briefcase"></i>
-                        <span>Chọn sảnh cưới để xem danh sách gói dịch vụ</span>
+                        <span>Chọn chi nhánh để xem danh sách gói dịch vụ</span>
                     </div>
 
-                    <div *ngIf="form.hallId && packageOptions.length === 0" class="empty-state">
+                    <div *ngIf="form.locationId && packageOptions.length === 0" class="empty-state">
                         <i class="pi pi-briefcase"></i>
-                        <span>Chưa có gói dịch vụ cho sảnh đã chọn</span>
+                        <span>Chưa có gói dịch vụ cho chi nhánh đã chọn</span>
                     </div>
 
-                    <div *ngIf="form.hallId && packageOptions.length > 0" class="menu-grid">
+                    <div *ngIf="form.locationId && packageOptions.length > 0" class="menu-grid">
                         <div
                             *ngFor="let pkg of packageOptions"
                             class="menu-card"
@@ -723,9 +783,9 @@ interface SalesOption {
                 </div>
             </div>
 
-            <div>
+            <div class="summary-sticky">
                 <div class="summary-card">
-                    <div class="summary-title">Tóm tắt booking</div>
+                    <div class="summary-title">Tóm tắt hợp đồng</div>
 
                     <div class="summary-row" *ngIf="bookingCode">
                         <span>Mã đơn</span>
@@ -754,7 +814,7 @@ interface SalesOption {
                     </div>
                     <div class="summary-row" *ngIf="summary.hallPrice > 0">
                         <span>Giá sảnh</span>
-                        <strong>{{ formatPrice(summary.hallPrice) }}/bàn</strong>
+                        <strong>{{ formatPrice(summary.hallPrice) }}</strong>
                     </div>
                     <div class="summary-row" *ngIf="form.bookingDate">
                         <span>Ngày tổ chức</span>
@@ -785,6 +845,46 @@ interface SalesOption {
                     <div class="summary-row" *ngIf="form.salesId">
                         <span>Sales phụ trách</span>
                         <strong>{{ getSalesLabel(form.salesId) }}</strong>
+                    </div>
+                    <div class="summary-divider"></div>
+                    <div class="summary-title" style="margin-bottom:0.75rem">Chi tiết mục đã chọn</div>
+
+                    <div class="selection-detail-panel">
+                        <div class="selection-detail-title">Món trong thực đơn</div>
+                        <ng-container *ngIf="form.setMenuId; else rightPickSetMenuHint">
+                            <div class="selection-detail-empty" *ngIf="setMenuItemsLoading">Đang tải danh sách món...</div>
+                            <div class="selection-detail-empty" *ngIf="!setMenuItemsLoading && selectedSetMenuItems.length === 0">
+                                Chưa có món trong set menu đã chọn.
+                            </div>
+                            <div class="selection-detail-list" *ngIf="!setMenuItemsLoading && selectedSetMenuItems.length > 0">
+                                <div class="selection-detail-item" *ngFor="let item of selectedSetMenuItems; index as i">
+                                    <span>{{ i + 1 }}. {{ item.name }} ({{ formatPrice(item.unitPrice) }} x {{ item.qty }})</span>
+                                    <strong>{{ formatPrice(item.totalPrice) }}</strong>
+                                </div>
+                            </div>
+                        </ng-container>
+                        <ng-template #rightPickSetMenuHint>
+                            <div class="selection-detail-empty">Chọn set menu để xem danh sách món.</div>
+                        </ng-template>
+                    </div>
+
+                    <div class="selection-detail-panel">
+                        <div class="selection-detail-title">Dịch vụ trong gói</div>
+                        <ng-container *ngIf="form.packageId; else rightPickPackageHint">
+                            <div class="selection-detail-empty" *ngIf="packageItemsLoading">Đang tải danh sách dịch vụ...</div>
+                            <div class="selection-detail-empty" *ngIf="!packageItemsLoading && selectedPackageItems.length === 0">
+                                Chưa có dịch vụ trong gói đã chọn.
+                            </div>
+                            <div class="selection-detail-list" *ngIf="!packageItemsLoading && selectedPackageItems.length > 0">
+                                <div class="selection-detail-item" *ngFor="let item of selectedPackageItems; index as i">
+                                    <span>{{ i + 1 }}. {{ item.name }} ({{ formatPrice(item.unitPrice) }} x {{ item.qty }})</span>
+                                    <strong>{{ formatPrice(item.totalPrice) }}</strong>
+                                </div>
+                            </div>
+                        </ng-container>
+                        <ng-template #rightPickPackageHint>
+                            <div class="selection-detail-empty">Chọn gói dịch vụ để xem danh sách dịch vụ.</div>
+                        </ng-template>
                     </div>
                 </div>
             </div>
@@ -823,6 +923,10 @@ export class BookingCreateComponent implements OnInit {
     hallOptions: HallOption[] = [];
     setMenuOptions: SetMenuOption[] = [];
     packageOptions: ServicePackageOption[] = [];
+    selectedSetMenuItems: SummaryDetailItem[] = [];
+    selectedPackageItems: SummaryDetailItem[] = [];
+    setMenuItemsLoading = false;
+    packageItemsLoading = false;
     salesOptions: SalesOption[] = [];
     selectedCustomer: CustomerOption | null = null;
     matchedExistingCustomer: CustomerOption | null = null;
@@ -839,6 +943,10 @@ export class BookingCreateComponent implements OnInit {
     saleRoleIds = new Set<number>();
     tableLayoutRequestDraft: TableLayoutRequest | null = null;
     private readonly layoutColorStyleCache = new Map<number, { border: string; background: string }>();
+    private readonly serviceNameCache = new Map<number, string>();
+    private readonly servicePriceCache = new Map<number, number>();
+    private readonly setMenuItemsCache = new Map<number, SummaryDetailItem[]>();
+    private readonly packageItemsCache = new Map<number, SummaryDetailItem[]>();
 
     shiftOptions = [
         { label: 'Ca sáng (10:00 - 14:00)', value: 'SLOT_1' },
@@ -909,7 +1017,6 @@ export class BookingCreateComponent implements OnInit {
     }
 
     constructor(
-        private http: HttpClient,
         private route: ActivatedRoute,
         private router: Router,
         private location: Location,
@@ -919,6 +1026,7 @@ export class BookingCreateComponent implements OnInit {
         private locationService: LocationService,
         private setMenuService: SetMenuService,
         private servicePackageService: ServicePackageService,
+        private serviceService: ServiceService,
         private userService: UserService,
         private roleService: RoleService,
         private messageService: MessageService,
@@ -1042,7 +1150,11 @@ export class BookingCreateComponent implements OnInit {
 
             if (this.hallOptions.length === 0) {
                 const selectedHallId = this.toNumberOrNull(this.form.hallId) ?? undefined;
-                this.loadHalls(this.loggedInLocationId, selectedHallId).subscribe(() => this.cdr.detectChanges());
+                forkJoin([
+                    this.loadHalls(this.loggedInLocationId, selectedHallId),
+                    this.loadSetMenus(this.loggedInLocationId, this.toNumberOrNull(this.form.setMenuId)),
+                    this.loadPackages(this.loggedInLocationId, this.toNumberOrNull(this.form.packageId)),
+                ]).subscribe(() => this.cdr.detectChanges());
             }
         }
     }
@@ -1344,13 +1456,21 @@ export class BookingCreateComponent implements OnInit {
         this.hallOptions = [];
         this.setMenuOptions = [];
         this.packageOptions = [];
+        this.selectedSetMenuItems = [];
+        this.selectedPackageItems = [];
+        this.setMenuItemsLoading = false;
+        this.packageItemsLoading = false;
 
         if (!locationId) {
             this.recalcEstimatedTotal();
             return;
         }
 
-        this.loadHalls(locationId).subscribe(() => this.cdr.detectChanges());
+        forkJoin([
+            this.loadHalls(locationId),
+            this.loadSetMenus(locationId),
+            this.loadPackages(locationId),
+        ]).subscribe(() => this.cdr.detectChanges());
     }
 
     private loadHalls(locationId: number, selectedHallId?: number): Observable<void> {
@@ -1380,27 +1500,12 @@ export class BookingCreateComponent implements OnInit {
 
     private loadSetMenus(locationId: number, selectedSetMenuId?: number | null): Observable<void> {
         return this.setMenuService.searchSetMenus({ locationId, page: 0, size: 100 }).pipe(
-            switchMap((res) => {
-                const locationMenus = (res.data?.content ?? []).map((menu) => ({
+            map((res) => {
+                return (res.data?.content ?? []).map((menu) => ({
                     id: Number(menu.id),
                     label: menu.name ?? `Set menu #${menu.id}`,
                     price: menu.setPrice ?? 0,
                 }));
-
-                // Keep branch-based behavior; fallback to hall endpoint if branch query is empty.
-                if (locationMenus.length > 0 || !this.form.hallId) {
-                    return of(locationMenus);
-                }
-
-                return this.http.get<any>('http://localhost:8080/api/v1/set-menu', {
-                    params: new HttpParams().set('hallId', this.form.hallId)
-                }).pipe(
-                    map((hallRes) => (hallRes.data ?? []).map((menu: any) => ({
-                        id: Number(menu.id),
-                        label: menu.name ?? `Set menu #${menu.id}`,
-                        price: menu.pricePerTable ?? menu.setPrice ?? menu.price ?? 0,
-                    })))
-                );
             }),
             tap((menus) => {
                 this.setMenuOptions = menus;
@@ -1461,25 +1566,6 @@ export class BookingCreateComponent implements OnInit {
 
     onHallChange() {
         this.syncHallSummary();
-
-        this.form.setMenuId = null;
-        this.form.packageId = null;
-        this.summary.setMenuName = '';
-        this.summary.setMenuPrice = 0;
-        this.summary.packageName = '';
-        this.summary.packagePrice = 0;
-        this.setMenuOptions = [];
-        this.packageOptions = [];
-
-        if (!this.form.hallId || !this.form.locationId) {
-            this.recalcEstimatedTotal();
-            return;
-        }
-
-        forkJoin([
-            this.loadSetMenus(this.form.locationId),
-            this.loadPackages(this.form.locationId),
-        ]).subscribe(() => this.cdr.detectChanges());
     }
 
     private syncHallSummary() {
@@ -1607,6 +1693,7 @@ export class BookingCreateComponent implements OnInit {
         const selectedMenu = this.setMenuOptions.find((menu) => menu.id === this.form.setMenuId);
         this.summary.setMenuName = selectedMenu?.label ?? '';
         this.summary.setMenuPrice = selectedMenu?.price ?? 0;
+        this.loadSelectedSetMenuItems();
         this.recalcEstimatedTotal();
     }
 
@@ -1614,7 +1701,176 @@ export class BookingCreateComponent implements OnInit {
         const selectedPackage = this.packageOptions.find((item) => item.id === this.form.packageId);
         this.summary.packageName = selectedPackage?.label ?? '';
         this.summary.packagePrice = selectedPackage?.price ?? 0;
+        this.loadSelectedPackageItems();
         this.recalcEstimatedTotal();
+    }
+
+    private loadSelectedSetMenuItems() {
+        const setMenuId = this.toNumberOrNull(this.form.setMenuId);
+        if (!setMenuId || setMenuId <= 0) {
+            this.selectedSetMenuItems = [];
+            this.setMenuItemsLoading = false;
+            return;
+        }
+
+        const cached = this.setMenuItemsCache.get(setMenuId);
+        if (cached) {
+            this.selectedSetMenuItems = cached;
+            this.setMenuItemsLoading = false;
+            return;
+        }
+
+        this.setMenuItemsLoading = true;
+        this.setMenuService.getById(setMenuId).pipe(
+            map((res) => this.extractSetMenuItems(res.data)),
+            catchError(() => of([] as SummaryDetailItem[]))
+        ).subscribe((items) => {
+            this.setMenuItemsCache.set(setMenuId, items);
+
+            if (this.form.setMenuId === setMenuId) {
+                this.selectedSetMenuItems = items;
+            }
+
+            this.setMenuItemsLoading = false;
+            this.cdr.detectChanges();
+        });
+    }
+
+    private loadSelectedPackageItems() {
+        const packageId = this.toNumberOrNull(this.form.packageId);
+        if (!packageId || packageId <= 0) {
+            this.selectedPackageItems = [];
+            this.packageItemsLoading = false;
+            return;
+        }
+
+        const cached = this.packageItemsCache.get(packageId);
+        if (cached) {
+            this.selectedPackageItems = cached;
+            this.packageItemsLoading = false;
+            return;
+        }
+
+        this.packageItemsLoading = true;
+        this.servicePackageService.getById(packageId).pipe(
+            map((res) => this.extractPackageItems(res.data)),
+            switchMap((items) => {
+                const unresolvedIds = Array.from(new Set(
+                    items
+                        .map((item) => item.id)
+                        .filter((id) => Number.isFinite(id) && id > 0 && !this.serviceNameCache.has(id))
+                ));
+
+                return this.resolveServiceNames(unresolvedIds).pipe(
+                    map(() => items.map((item) => ({
+                        ...item,
+                        name: this.serviceNameCache.get(item.id) ?? item.name,
+                        unitPrice: this.servicePriceCache.get(item.id) ?? item.unitPrice,
+                        totalPrice: (this.servicePriceCache.get(item.id) ?? item.unitPrice) * item.qty,
+                    })))
+                );
+            }),
+            catchError(() => of([] as SummaryDetailItem[]))
+        ).subscribe((items) => {
+            this.packageItemsCache.set(packageId, items);
+
+            if (this.form.packageId === packageId) {
+                this.selectedPackageItems = items;
+            }
+
+            this.packageItemsLoading = false;
+            this.cdr.detectChanges();
+        });
+    }
+
+    private extractSetMenuItems(setMenu: any): SummaryDetailItem[] {
+        const directItems = Array.isArray(setMenu?.menuItems) ? setMenu.menuItems : [];
+        const groupedItems = setMenu?.menuItemsByCategory
+            ? Object.values(setMenu.menuItemsByCategory).flatMap((items: any) => Array.isArray(items) ? items : [])
+            : [];
+
+        const source = directItems.length > 0 ? directItems : groupedItems;
+
+        return source.map((item: any, index: number) => {
+            const id = this.toNumberOrNull(item?.id) ?? (index + 1);
+            const name = String(item?.name ?? item?.code ?? `Món #${index + 1}`).trim();
+            const qty = this.toNumberOrDefault(item?.quantity, 1);
+            const unitPrice = this.toNumberOrDefault(
+                item?.unitPrice ?? item?.pricePerUnit ?? item?.price,
+                0
+            );
+
+            return {
+                id,
+                name: name || `Món #${index + 1}`,
+                qty: qty > 0 ? qty : 1,
+                unitPrice,
+                totalPrice: unitPrice * (qty > 0 ? qty : 1),
+            };
+        });
+    }
+
+    private extractPackageItems(servicePackage: any): SummaryDetailItem[] {
+        const responseList = Array.isArray(servicePackage?.serviceResponseList)
+            ? servicePackage.serviceResponseList
+            : Array.isArray(servicePackage?.ServiceResponseList)
+                ? servicePackage.ServiceResponseList
+                : [];
+
+        return responseList.map((item: any, index: number) => {
+            const serviceId = this.toNumberOrDefault(item?.serviceId, 0);
+            const qty = this.toNumberOrDefault(item?.qty, 1);
+            const normalizedQty = qty > 0 ? qty : 1;
+            const resolvedName = String(
+                item?.serviceName
+                ?? item?.service?.name
+                ?? this.serviceNameCache.get(serviceId)
+                ?? (serviceId > 0 ? `Dịch vụ #${serviceId}` : `Dịch vụ #${index + 1}`)
+            ).trim();
+            const resolvedUnitPrice = this.toNumberOrDefault(
+                item?.service?.basePrice
+                ?? item?.servicePrice
+                ?? item?.unitPrice
+                ?? this.servicePriceCache.get(serviceId),
+                0
+            );
+
+            return {
+                id: serviceId > 0 ? serviceId : 0,
+                name: resolvedName || `Dịch vụ #${index + 1}`,
+                qty: normalizedQty,
+                unitPrice: resolvedUnitPrice,
+                totalPrice: resolvedUnitPrice * normalizedQty,
+            };
+        });
+    }
+
+    private resolveServiceNames(serviceIds: number[]): Observable<void> {
+        const pendingIds = serviceIds.filter((id) => Number.isFinite(id) && id > 0 && !this.serviceNameCache.has(id));
+        if (!pendingIds.length) {
+            return of(void 0);
+        }
+
+        return forkJoin(
+            pendingIds.map((id) =>
+                this.serviceService.getServiceById(id).pipe(
+                    tap((res) => {
+                        const name = String(res.data?.name ?? '').trim();
+                        const unitPrice = this.toNumberOrDefault(res.data?.basePrice, 0);
+                        if (name) {
+                            this.serviceNameCache.set(id, name);
+                        }
+                        this.servicePriceCache.set(id, unitPrice);
+                    }),
+                    mapTo(void 0),
+                    catchError(() => {
+                        this.serviceNameCache.set(id, `Dịch vụ #${id}`);
+                        this.servicePriceCache.set(id, 0);
+                        return of(void 0);
+                    })
+                )
+            )
+        ).pipe(mapTo(void 0));
     }
 
     onBookingDateChange() {
@@ -1630,7 +1886,7 @@ export class BookingCreateComponent implements OnInit {
         const safeTables = Number.isFinite(tables) && tables > 0 ? tables : 0;
         this.summary.estimatedTotal =
             (this.summary.setMenuPrice * safeTables) +
-            (this.summary.hallPrice * safeTables) +
+            this.summary.hallPrice +
             this.summary.packagePrice;
     }
 
@@ -2017,14 +2273,11 @@ export class BookingCreateComponent implements OnInit {
         const setMenuId = this.toNumberOrNull(this.form.setMenuId);
         const packageId = this.toNumberOrNull(this.form.packageId);
 
-        const requests: Observable<void>[] = [this.loadHalls(locationId, hallId ?? undefined)];
-
-        if (hallId) {
-            requests.push(
-                this.loadSetMenus(locationId, setMenuId),
-                this.loadPackages(locationId, packageId)
-            );
-        }
+        const requests: Observable<void>[] = [
+            this.loadHalls(locationId, hallId ?? undefined),
+            this.loadSetMenus(locationId, setMenuId),
+            this.loadPackages(locationId, packageId),
+        ];
 
         forkJoin(requests).subscribe({
             next: () => {
