@@ -44,6 +44,7 @@ interface SetMenuOption {
     id: number;
     label: string;
     price: number;
+    imageUrl?: string;
 }
 
 interface ServicePackageOption {
@@ -236,6 +237,32 @@ interface SummaryDetailItem {
             border: 2px solid #10b981;
             background: #f0fdf4;
         }
+        .menu-head {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+        .menu-thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            flex-shrink: 0;
+        }
+        .menu-thumb-placeholder {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
         .menu-name {
             font-weight: 600;
             color: #1e293b;
@@ -373,10 +400,6 @@ interface SummaryDetailItem {
             top: 1rem;
             align-self: start;
         }
-        .summary-card {
-            max-height: calc(100vh - 1.5rem);
-            overflow: auto;
-        }
         .summary-row {
             display: flex;
             justify-content: space-between;
@@ -421,10 +444,6 @@ interface SummaryDetailItem {
             .summary-sticky {
                 position: static;
                 top: auto;
-            }
-            .summary-card {
-                max-height: none;
-                overflow: visible;
             }
             .two-col,
             .three-col,
@@ -702,7 +721,11 @@ interface SummaryDetailItem {
                             [class.selected]="form.setMenuId === menu.id"
                             (click)="selectSetMenu(menu)"
                         >
-                            <div class="menu-name">{{ menu.label }}</div>
+                            <div class="menu-head">
+                                <img *ngIf="menu.imageUrl" [src]="menu.imageUrl" [alt]="menu.label" class="menu-thumb" />
+                                <span *ngIf="!menu.imageUrl" class="menu-thumb-placeholder"><i class="pi pi-image"></i></span>
+                                <div class="menu-name">{{ menu.label }}</div>
+                            </div>
                             <div class="menu-price">{{ formatPrice(menu.price) }}/bàn</div>
                         </div>
                     </div>
@@ -1501,11 +1524,14 @@ export class BookingCreateComponent implements OnInit {
     private loadSetMenus(locationId: number, selectedSetMenuId?: number | null): Observable<void> {
         return this.setMenuService.searchSetMenus({ locationId, page: 0, size: 100 }).pipe(
             map((res) => {
-                return (res.data?.content ?? []).map((menu) => ({
+                return (res.data?.content ?? []).map((menu) => {
+                    return {
                     id: Number(menu.id),
                     label: menu.name ?? `Set menu #${menu.id}`,
                     price: menu.setPrice ?? 0,
-                }));
+                    imageUrl: this.resolveSetMenuImageUrl(menu),
+                    };
+                });
             }),
             tap((menus) => {
                 this.setMenuOptions = menus;
@@ -1528,6 +1554,46 @@ export class BookingCreateComponent implements OnInit {
                 return of(void 0);
             })
         );
+    }
+
+    private resolveSetMenuImageUrl(menu: any): string | undefined {
+        const direct = this.pickFirstNonEmptyUrl([
+            menu?.imageUrls?.thumbnailUrl,
+            menu?.imageUrls?.mediumUrl,
+            menu?.imageUrls?.largeUrl,
+            menu?.imageUrls?.originalUrl,
+        ]);
+        if (direct) {
+            return direct;
+        }
+
+        const grouped = menu?.menuItemsByCategory ? Object.values(menu.menuItemsByCategory) : [];
+        for (const group of grouped) {
+            if (!Array.isArray(group)) continue;
+            for (const item of group) {
+                const itemImage = this.pickFirstNonEmptyUrl([
+                    item?.imageUrls?.thumbnailUrl,
+                    item?.imageUrls?.mediumUrl,
+                    item?.imageUrls?.largeUrl,
+                    item?.imageUrls?.originalUrl,
+                ]);
+                if (itemImage) {
+                    return itemImage;
+                }
+            }
+        }
+
+        return undefined;
+    }
+
+    private pickFirstNonEmptyUrl(urls: Array<string | null | undefined>): string | undefined {
+        for (const url of urls) {
+            const value = String(url ?? '').trim();
+            if (value) {
+                return value;
+            }
+        }
+        return undefined;
     }
 
     private loadPackages(locationId: number, selectedPackageId?: number | null): Observable<void> {
