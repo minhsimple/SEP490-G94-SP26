@@ -72,8 +72,8 @@ export class AppMenu implements OnInit, OnDestroy {
     ACCOUNTING:   ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
     KETOAN:       ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
     KE_TOAN:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    MANAGER:      ['dashboard', 'calender', 'booking', 'beo', 'payment', 'invoice', 'leads', 'customers', 'hall', 'service', 'menu', 'users'],
-    ADMIN:        'all',
+    MANAGER:      ['dashboard', 'calender', 'booking', 'payment', 'invoice', 'customers', 'hall', 'service', 'menu', 'users'],
+    ADMIN:        ['dashboard', 'branch-reports', 'calender', 'booking', 'payment', 'invoice', 'role', 'location', 'users', 'customers', 'hall', 'service', 'menu'],
     COORDINATOR:  ['dashboard', 'calender', 'booking', 'beo'],
   };
 
