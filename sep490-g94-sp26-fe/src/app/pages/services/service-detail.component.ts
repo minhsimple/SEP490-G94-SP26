@@ -111,14 +111,14 @@ import { LocationService } from '../service/location.service';
 
                 <div class="flex justify-end gap-2 mt-5">
                     <p-button label="Quay lại" icon="pi pi-arrow-left" [outlined]="true" severity="secondary" (onClick)="goBack()" />
-                    <p-button *ngIf="!isSale"
+                    <p-button *ngIf="canManageService"
                         [label]="isInactive(service.status) ? 'Kích hoạt' : 'Vô hiệu hóa'"
                         [icon]="isInactive(service.status) ? 'pi pi-check-circle' : 'pi pi-ban'"
                         [severity]="isInactive(service.status) ? 'success' : 'warn'"
                         [outlined]="true"
                         (onClick)="toggleStatus()"
                         [loading]="togglingStatus" />
-                    <p-button *ngIf="!isSale" label="Chỉnh sửa dịch vụ" icon="pi pi-pencil" severity="primary" (onClick)="openEdit()" />
+                    <p-button *ngIf="canManageService" label="Chỉnh sửa dịch vụ" icon="pi pi-pencil" severity="primary" (onClick)="openEdit()" />
                 </div>
             </div>
 
@@ -383,11 +383,13 @@ import { LocationService } from '../service/location.service';
     providers: [MessageService, ServiceService, LocationService, ConfirmationService],
 })
 export class ServiceDetailComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canManageService = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+
     service: Service | null = null;
     loading = true;
     saving = false;
     togglingStatus = false;
-    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     editDialog = false;
     submitted = false;
@@ -469,6 +471,7 @@ export class ServiceDetailComponent implements OnInit {
     }
 
     openEdit() {
+        if (!this.canManageService) return;
         if (!this.service) return;
         this.editingService = { ...this.service };
         this.selectedEditVideoFile = null;
@@ -506,6 +509,7 @@ export class ServiceDetailComponent implements OnInit {
     }
 
     saveEdit() {
+        if (!this.canManageService) return;
         this.submitted = true;
         if (!this.service?.id || !this.editingService.name?.trim() || !this.editingService.locationId) {
             return;
@@ -566,6 +570,7 @@ export class ServiceDetailComponent implements OnInit {
     }
 
     toggleStatus() {
+        if (!this.canManageService) return;
         if (!this.service?.id) return;
 
         const action = this.isInactive(this.service.status) ? 'kích hoạt' : 'vô hiệu hóa';

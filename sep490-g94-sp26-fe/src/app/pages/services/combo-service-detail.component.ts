@@ -107,13 +107,14 @@ import { LocationService, Location } from '../service/location.service';
                 <div class="flex justify-end gap-2 mt-5">
                     <p-button label="Quay lại" icon="pi pi-arrow-left" [outlined]="true" severity="secondary" (onClick)="goBack()" />
                     <p-button
+                        *ngIf="canEditCombo"
                         [label]="item.status === 'inactive' ? 'Kích hoạt' : 'Vô hiệu hóa'"
                         [icon]="item.status === 'inactive' ? 'pi pi-check-circle' : 'pi pi-ban'"
                         [severity]="item.status === 'inactive' ? 'success' : 'warn'"
                         [outlined]="true"
                         (onClick)="toggleStatus()"
                         [loading]="togglingStatus" />
-                    <p-button label="Chỉnh sửa" icon="pi pi-pencil" severity="primary"
+                    <p-button *ngIf="canEditCombo" label="Chỉnh sửa" icon="pi pi-pencil" severity="primary"
                         (onClick)="goEdit()" />
                 </div>
             </div>
@@ -209,6 +210,9 @@ import { LocationService, Location } from '../service/location.service';
     providers: [MessageService, ServicePackageService, ServiceService, LocationService, ConfirmationService]
 })
 export class ComboServiceDetailComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canEditCombo = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+
     item: ServicePackage | null = null;
     loading = true;
     togglingStatus = false;
@@ -316,6 +320,7 @@ export class ComboServiceDetailComponent implements OnInit {
     }
 
     toggleStatus() {
+        if (!this.canEditCombo) return;
         if (!this.item) return;
         const action = this.item.status === 'inactive' ? 'kích hoạt' : 'vô hiệu hóa';
         this.confirmationService.confirm({
@@ -353,6 +358,7 @@ export class ComboServiceDetailComponent implements OnInit {
     }
 
     goEdit() {
+        if (!this.canEditCombo) return;
         this.router.navigate(['/pages/combo-services'], {
             queryParams: { edit: this.item?.id }
         });

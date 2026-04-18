@@ -50,7 +50,7 @@ interface Column { field: string; header: string; }
                         class="w-full"
                     />
                 </p-iconfield>
-                <p-button label="Thêm set menu" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
+                <p-button *ngIf="canEditMenu" label="Thêm set menu" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
             </div>
 
             <!-- Table -->
@@ -126,10 +126,10 @@ interface Column { field: string; header: string; }
                                     <p-button icon="pi pi-eye" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="viewSetMenu(menu)"
                                         pTooltip="Xem chi tiết" tooltipPosition="top" />
-                                    <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
+                                    <p-button *ngIf="canEditMenu" icon="pi pi-pencil" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="editSetMenu(menu)"
                                         pTooltip="Chỉnh sửa" tooltipPosition="top" />
-                                    <p-button
+                                    <p-button *ngIf="canEditMenu"
                                         [icon]="menu.status === 'INACTIVE' ? 'pi pi-check-circle' : 'pi pi-ban'"
                                         [severity]="menu.status === 'INACTIVE' ? 'success' : 'warn'"
                                         [rounded]="true" [text]="true"
@@ -291,6 +291,9 @@ interface Column { field: string; header: string; }
     providers: [MessageService, SetMenuService, ConfirmationService, LocationService]
 })
 export class SetMenuComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canEditMenu = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+
     setMenus = signal<SetMenu[]>([]);
     loading = false;
     saving = false;
@@ -399,6 +402,7 @@ export class SetMenuComponent implements OnInit {
 
     // ── CRUD ───────────────────────────────────────────────────────────────────
     openNew() {
+        if (!this.canEditMenu) return;
         this.editingMenu = { menuItems: [], code: this.generateUUID() };
         this.isActive = true;
         this.submitted = false;
@@ -406,6 +410,7 @@ export class SetMenuComponent implements OnInit {
     }
 
     editSetMenu(menu: SetMenu) {
+        if (!this.canEditMenu) return;
         this.setMenuService.getById(menu.id).subscribe({
             next: (res) => {
                 if (res.code === 200) {
@@ -431,6 +436,7 @@ export class SetMenuComponent implements OnInit {
     }
 
     saveSetMenu() {
+        if (!this.canEditMenu) return;
         this.submitted = true;
         if (!this.editingMenu.name?.trim() || !this.editingMenu.locationId) return;
 
@@ -482,6 +488,7 @@ export class SetMenuComponent implements OnInit {
     }
 
     toggleStatus(menu: SetMenu) {
+        if (!this.canEditMenu) return;
         const action = menu.status === 'INACTIVE' ? 'kích hoạt' : 'vô hiệu hóa';
         this.confirmationService.confirm({
             message: `Bạn có chắc muốn ${action} set menu "${menu.name}"?`,

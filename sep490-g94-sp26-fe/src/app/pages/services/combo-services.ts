@@ -84,6 +84,7 @@ interface Column {
                     />
                 </div>
                 <p-button
+                    *ngIf="canEditCombo"
                     label="Thêm combo"
                     icon="pi pi-plus"
                     severity="primary"
@@ -182,7 +183,7 @@ interface Column {
                                         tooltipPosition="top"
                                     />
                                     <p-button
-                                        *ngIf="combo.status === 'active'"
+                                        *ngIf="combo.status === 'active' && canEditCombo"
                                         icon="pi pi-pencil"
                                         [rounded]="true"
                                         [text]="true"
@@ -192,6 +193,7 @@ interface Column {
                                         tooltipPosition="top"
                                     />
                                     <p-button
+                                        *ngIf="canEditCombo"
                                         [icon]="combo.status === 'active' ? 'pi pi-ban' : 'pi pi-check-circle'"
                                         [rounded]="true"
                                         [text]="true"
@@ -556,6 +558,8 @@ interface Column {
     providers: [MessageService, ServiceService, ConfirmationService, LocationService]
 })
 export class CombosComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canEditCombo = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
 
     combos = signal<ServicePackage[]>([]);
     loading = false;
@@ -623,7 +627,7 @@ export class CombosComponent implements OnInit {
                 // Wait for combos to load, then open edit dialog
                 setTimeout(() => {
                     const comboToEdit = this.combos().find(c => c.id === editId);
-                    if (comboToEdit) {
+                    if (comboToEdit && this.canEditCombo) {
                         this.editCombo(comboToEdit);
                         // Clear query param
                         this.router.navigate([], { 
@@ -817,6 +821,7 @@ export class CombosComponent implements OnInit {
 
     // ── Create ─────────────────────────────────────────────────────────────────
     openNew() {
+        if (!this.canEditCombo) return;
         this.newCombo = { code: this.generateUUID() };
         this.newComboActive = true;
         this.newSelectedServiceIds = new Set();
@@ -831,6 +836,7 @@ export class CombosComponent implements OnInit {
     }
 
     saveNewCombo() {
+        if (!this.canEditCombo) return;
         this.submitted = true;
         if (!this.newCombo.name?.trim()) return;
 
@@ -900,6 +906,7 @@ export class CombosComponent implements OnInit {
 
     // ── Edit ───────────────────────────────────────────────────────────────────
     editCombo(combo: ServicePackage) {
+        if (!this.canEditCombo) return;
         this.editedCombo = { ...combo };
         this.editedComboActive = combo.status === 'active';
         this.editSelectedServiceIds = new Set(combo.serviceResponseList?.map(s => s.serviceId) ?? []);
@@ -914,6 +921,7 @@ export class CombosComponent implements OnInit {
     }
 
     saveEditCombo() {
+        if (!this.canEditCombo) return;
         this.editSubmitted = true;
         if (!this.editedCombo.name?.trim()) return;
 
@@ -981,6 +989,7 @@ export class CombosComponent implements OnInit {
 
     // ── Change Status ──────────────────────────────────────────────────────────
     confirmChangeStatus(combo: ServicePackage) {
+        if (!this.canEditCombo) return;
         if (!combo || !combo.id) {
             this.messageService.add({ 
                 severity: 'error', 

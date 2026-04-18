@@ -79,7 +79,7 @@ interface Column {
                 </div>
 
                 <p-button
-                    *ngIf="!isSale"
+                    *ngIf="canEditService"
                     label="Thêm dịch vụ"
                     icon="pi pi-plus"
                     severity="primary"
@@ -159,7 +159,7 @@ interface Column {
                                     tooltipPosition="top"
                                 />
                                 <p-button
-                                    *ngIf="!isSale"
+                                    *ngIf="canEditService"
                                     icon="pi pi-pencil"
                                     [rounded]="true"
                                     [text]="true"
@@ -541,6 +541,8 @@ export class ServicesComponent implements OnInit {
     selectedEditVideoPreviewUrl: string | null = null;
     editedService: Partial<Service> = {};
     editedServiceActive = true;
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canEditService = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
     isSale = localStorage.getItem('codeRole') === 'SALE';
 
     // Options
@@ -654,6 +656,7 @@ export class ServicesComponent implements OnInit {
 
     // ── Create ─────────────────────────────────────────────────────────────────
     openNew() {
+    if (!this.canEditService) return;
     this.newService = { 
         basePrice: 0, 
         unit: 'gói',
@@ -687,6 +690,7 @@ private generateUUID(): string {
     }
 
     saveNewService() {
+        if (!this.canEditService) return;
         this.submitted = true;
         if (!this.newService.name?.trim() || !this.newService.locationId || !this.selectedCreateVideoFile) return;
 
@@ -724,6 +728,7 @@ const payload = {
     }
 
     editService(service: Service) {
+        if (!this.canEditService) return;
         this.editedService = { ...service };
         this.selectedEditVideoFile = null;
         this.selectedEditVideoName = '';
@@ -760,6 +765,7 @@ const payload = {
     }
 
     saveEditService() {
+        if (!this.canEditService) return;
         this.editSubmitted = true;
         if (!this.editedService.name?.trim() || !this.editedService.locationId) return;
 
