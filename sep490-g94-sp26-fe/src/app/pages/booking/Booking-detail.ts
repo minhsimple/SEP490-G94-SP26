@@ -677,7 +677,7 @@ import { RoleService } from '../service/role.service';
                                 <p-button label="Xem hợp đồng" icon="pi pi-file" (onClick)="openContractDialog()" />
                                 <p-button label="In hợp đồng" icon="pi pi-print" severity="secondary" (onClick)="printContract()" />
                             </div>
-                            <div class="coordinator-panel" *ngIf="isAdminAccount">
+                            <div class="coordinator-panel" *ngIf="canAssignCoordinator">
                                 <div class="coordinator-panel-head">
                                     <span class="coordinator-panel-title">Phân công điều phối viên cho hợp đồng</span>
                                     <span class="coordinator-panel-current">Hiện tại: {{ coordinatorDisplayName() }}</span>
@@ -751,7 +751,10 @@ export class BookingDetailComponent implements OnInit {
     private readonly layoutColorStyleCache = new Map<number, { border: string; background: string }>();
     readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
+    readonly currentLocationId = Number(localStorage.getItem('locationId')) || 0;
     readonly isAdminAccount = this.codeRole.includes('ADMIN');
+    readonly isManagerAccount = this.codeRole.includes('MANAGER');
+    readonly canAssignCoordinator = this.isAdminAccount || this.isManagerAccount;
     readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
     coordinatorRoleIds = new Set<number>();
     coordinatorNameMap: Record<number, string> = {};
@@ -802,7 +805,7 @@ export class BookingDetailComponent implements OnInit {
             return;
         }
 
-        if (this.isAdminAccount) {
+        if (this.canAssignCoordinator) {
             this.loadCoordinatorOptions();
         }
 
@@ -880,11 +883,16 @@ export class BookingDetailComponent implements OnInit {
     }
 
     private fetchCoordinatorUsers() {
-        this.userService.searchUsers({ page: 0, size: 200, sort: 'fullName,ASC' }).subscribe({
+        this.userService.searchUsers({
+            page: 0,
+            size: 200,
+            sort: 'fullName,ASC',
+            locationId: this.isManagerAccount && this.currentLocationId > 0 ? this.currentLocationId : undefined,
+        }).subscribe({
             next: (res) => {
                 const users = res.data?.content ?? [];
                 this.coordinatorOptions = users
-                    .filter((user: any) => this.isCoordinatorUser(user))
+                    .filter((user: any) => this.isCoordinatorAssignableUser(user))
                     .map((user: any) => {
                         const id = Number(user.id);
                         const label = user.fullName?.trim() || `Coordinator #${id}`;
@@ -933,6 +941,23 @@ export class BookingDetailComponent implements OnInit {
         return roleCandidates.some((value) => value.includes('COORDINATOR') || value.includes('COORD'));
     }
 
+    private isCoordinatorAssignableUser(user: any): boolean {
+        if (!this.isCoordinatorUser(user)) {
+            return false;
+        }
+
+        if (!this.isManagerAccount) {
+            return true;
+        }
+
+        if (this.currentLocationId <= 0) {
+            return false;
+        }
+
+        const userLocationId = Number(user?.locationId ?? user?.location?.id ?? 0);
+        return Number.isFinite(userLocationId) && userLocationId === this.currentLocationId;
+    }
+
     coordinatorDisplayName(): string {
         if (this.selectedCoordinatorId == null) {
             return 'Chưa phân công';
@@ -944,7 +969,7 @@ export class BookingDetailComponent implements OnInit {
     }
 
     assignCoordinator() {
-        if (!this.isAdminAccount || !this.booking?.id || this.selectedCoordinatorId == null) {
+        if (!this.canAssignCoordinator || !this.booking?.id || this.selectedCoordinatorId == null) {
             return;
         }
 
