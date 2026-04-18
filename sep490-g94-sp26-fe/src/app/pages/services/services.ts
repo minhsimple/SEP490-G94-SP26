@@ -159,7 +159,7 @@ interface Column {
                                     tooltipPosition="top"
                                 />
                                 <p-button
-                                    *ngIf="!isSale"
+                                    *ngIf="canEditService"
                                     icon="pi pi-pencil"
                                     [rounded]="true"
                                     [text]="true"
@@ -541,6 +541,8 @@ export class ServicesComponent implements OnInit {
     selectedEditVideoPreviewUrl: string | null = null;
     editedService: Partial<Service> = {};
     editedServiceActive = true;
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canEditService = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
     isSale = localStorage.getItem('codeRole') === 'SALE';
 
     // Options

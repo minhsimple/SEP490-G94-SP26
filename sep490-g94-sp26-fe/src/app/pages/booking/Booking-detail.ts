@@ -10,7 +10,7 @@ import { MessageService } from 'primeng/api';
 import { Booking, BookingService, BookingUpsertPayload, TableLayoutRequest } from '../service/booking.service';
 import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
-import { SetMenuService } from '../service/set-menu';
+import { MenuItem, SetMenuService } from '../service/set-menu';
 import { ServicePackageService } from '../service/service-package.service';
 import { Invoice, InvoiceService } from '../service/invoice.service';
 import { Payment, PaymentService } from '../service/payment.service';
@@ -741,9 +741,11 @@ export class BookingDetailComponent implements OnInit {
     customer: Customer | null = null;
     customerName = '';
     hallName = '';
+    venueLocationName = '';
     hallPrice = 0;
     setMenuName = '';
     setMenuPrice = 0;
+    setMenuItems: Array<{ name: string; quantity: number; unitPrice: number; unit?: string }> = [];
     packageName = '';
     packagePrice = 0;
     private readonly layoutColorStyleCache = new Map<number, { border: string; background: string }>();
@@ -1280,6 +1282,7 @@ export class BookingDetailComponent implements OnInit {
         this.hallService.getHallById(hallId).subscribe({
             next: (res) => {
                 this.hallName = res.data?.name ?? '';
+                this.venueLocationName = String((res.data as any)?.locationName ?? '').trim();
                 const price = Number((res.data as any)?.basePrice ?? 0);
                 this.hallPrice = Number.isFinite(price) ? price : 0;
                 this.recalculatePaymentSummary();
@@ -1299,11 +1302,41 @@ export class BookingDetailComponent implements OnInit {
                 this.setMenuName = res.data?.name ?? '';
                 const price = Number((res.data as any)?.setPrice ?? (res.data as any)?.pricePerTable ?? (res.data as any)?.price ?? 0);
                 this.setMenuPrice = Number.isFinite(price) ? price : 0;
+
+                const rawMenuItems = this.flattenSetMenuItems(res.data as any);
+                this.setMenuItems = rawMenuItems
+                    .map((item) => {
+                        const quantity = Number((item as any)?.quantity ?? 1);
+                        const unitPrice = Number((item as any)?.unitPrice ?? 0);
+                        return {
+                            name: String((item as any)?.name ?? '').trim() || 'Món ăn',
+                            quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+                            unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+                            unit: String((item as any)?.unit ?? '').trim() || undefined,
+                        };
+                    })
+                    .filter((item) => item.name.length > 0);
+
                 this.recalculatePaymentSummary();
                 this.cdr.detectChanges();
             },
-            error: () => { this.cdr.detectChanges(); },
+            error: () => {
+                this.setMenuItems = [];
+                this.cdr.detectChanges();
+            },
         });
+    }
+
+    private flattenSetMenuItems(setMenu: { menuItems?: MenuItem[]; menuItemsByCategory?: Record<string, MenuItem[]> } | null | undefined): MenuItem[] {
+        if (!setMenu) {
+            return [];
+        }
+
+        if (setMenu.menuItemsByCategory && typeof setMenu.menuItemsByCategory === 'object') {
+            return Object.values(setMenu.menuItemsByCategory).flatMap((items) => items ?? []);
+        }
+
+        return setMenu.menuItems ?? [];
     }
 
     private loadPackage(packageId: number) {
@@ -1378,8 +1411,8 @@ export class BookingDetailComponent implements OnInit {
         const customerEmail = this.customer?.email || '-';
         const customerAddress = this.customer?.address || '-';
         const hallName = this.hallName || (this.booking.hallId ? `Sảnh #${this.booking.hallId}` : '-');
+        const venueProviderName = this.venueLocationName || '-';
         const shift = this.shiftLabel(this.booking.bookingTime ?? this.booking.shift);
-        const invoiceCode = this.invoicePreview?.code || (this.invoicePreview?.id ? `INV-${this.invoicePreview.id}` : '-');
         const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
         const amount = this.totalAmount > 0 ? this.totalAmount : this.apiTotalAmount;
         const hallAmount = this.hallPrice;
@@ -1387,12 +1420,18 @@ export class BookingDetailComponent implements OnInit {
         const packageAmount = this.packagePrice;
         const baseAmount = hallAmount + setMenuAmount + packageAmount;
         const estimatedExtra = Math.max(amount - baseAmount, 0);
-        const paidAmount = Number(this.paidAmount ?? 0);
-        const remainingAmount = Math.max(amount - paidAmount, 0);
         const deposit1 = Math.round(amount * 0.4);
         const deposit2 = Math.max(amount - deposit1, 0);
         const notes = this.booking.notes || '-';
-        const recordStatus = this.booking.contractState || this.booking.bookingState || '-';
+        const menuItemsHtml = this.setMenuItems.length > 0
+            ? this.setMenuItems
+                .map((item, index) => {
+                    const lineTotal = Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1);
+                    const unitText = item.unit ? ` / ${esc(item.unit)}` : '';
+                    return `<p>- Món ${index + 1}: ${esc(item.name)} · SL ${esc(item.quantity)}${unitText} · Đơn giá ${esc(this.formatPrice(item.unitPrice))} · Thành tiền ${esc(this.formatPrice(lineTotal))}</p>`;
+                })
+                .join('')
+            : '<p>- Chưa có dữ liệu chi tiết món ăn trong set menu.</p>';
 
         return `
             <p style="text-align:center; margin:0; font-size:10pt">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
@@ -1429,11 +1468,8 @@ export class BookingDetailComponent implements OnInit {
             </table>
 
             <p style="margin-top:10px"><strong>BÊN CUNG CẤP DỊCH VỤ CƯỚI (BÊN B)</strong></p>
-            <p><strong>Đơn vị:</strong> WEDDINGLINK</p>
+            <p><strong>Đơn vị:</strong> ${esc(venueProviderName)}</p>
             <p><strong>Vai trò:</strong> Đơn vị tổ chức và cung cấp dịch vụ tiệc cưới trọn gói theo thỏa thuận.</p>
-
-            <p><strong>THÔNG TIN THAM CHIẾU HÓA ĐƠN:</strong> ${esc(invoiceCode)}</p>
-            <p><strong>Trạng thái hợp đồng:</strong> ${esc(this.bookingStateLabel(recordStatus))}</p>
 
             <p style="margin-top:10px"><strong>ĐIỀU I: NỘI DUNG CÔNG VIỆC</strong></p>
             <p>1. Bên B cung cấp dịch vụ tổ chức tiệc cưới theo yêu cầu của Bên A, bao gồm các hạng mục đã xác nhận.</p>
@@ -1441,6 +1477,8 @@ export class BookingDetailComponent implements OnInit {
             <p>3. Danh mục dịch vụ dự kiến:</p>
             <p>- Sảnh tổ chức: ${esc(hallName)} (phí thuê: ${esc(this.formatPrice(hallAmount))}).</p>
             <p>- Set menu: ${esc(this.setMenuName || '-')}, đơn giá ${esc(this.setMenuPrice > 0 ? `${this.formatPrice(this.setMenuPrice)}/bàn` : '-')}.</p>
+            <p>- Chi tiết món ăn set menu:</p>
+            ${menuItemsHtml}
             <p>- Gói dịch vụ đi kèm: ${esc(this.packageName || '-')}, giá ${esc(this.formatPrice(packageAmount))}.</p>
             <p>- Ghi chú bổ sung: ${esc(notes)}.</p>
 
@@ -1454,10 +1492,7 @@ export class BookingDetailComponent implements OnInit {
             <p>3. Tiến độ thanh toán:</p>
             <p>- Đợt 1 (đặt cọc 40% khi ký hợp đồng): ${esc(this.formatPrice(deposit1))}.</p>
             <p>- Đợt 2 (60% còn lại + toàn bộ chi phí phát sinh): ${esc(this.formatPrice(deposit2))} + phí phát sinh (nếu có), thanh toán trước khi diễn ra tiệc.</p>
-            <p>4. Tình trạng thanh toán hiện tại:</p>
-            <p>- Đã thanh toán: ${esc(this.formatPrice(paidAmount))}.</p>
-            <p>- Còn phải thanh toán: ${esc(this.formatPrice(remainingAmount))}.</p>
-            <p>5. Hình thức thanh toán: tiền mặt/chuyển khoản/thanh toán điện tử theo thông tin do Bên B cung cấp.</p>
+            <p>4. Hình thức thanh toán: tiền mặt/chuyển khoản/thanh toán điện tử theo thông tin do Bên B cung cấp.</p>
 
             <p><strong>ĐIỀU III: THAY ĐỔI DỊCH VỤ VÀ PHÍ PHÁT SINH</strong></p>
             <p>1. Mọi thay đổi về thực đơn, số bàn, hạng mục dịch vụ, timeline chương trình phải được xác nhận trước ngày tổ chức theo quy định của Bên B.</p>

@@ -113,7 +113,7 @@ import { LocationService, Location } from '../service/location.service';
                         [outlined]="true"
                         (onClick)="toggleStatus()"
                         [loading]="togglingStatus" />
-                    <p-button label="Chỉnh sửa" icon="pi pi-pencil" severity="primary"
+                    <p-button *ngIf="canEditCombo" label="Chỉnh sửa" icon="pi pi-pencil" severity="primary"
                         (onClick)="goEdit()" />
                 </div>
             </div>
@@ -209,6 +209,9 @@ import { LocationService, Location } from '../service/location.service';
     providers: [MessageService, ServicePackageService, ServiceService, LocationService, ConfirmationService]
 })
 export class ComboServiceDetailComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canEditCombo = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+
     item: ServicePackage | null = null;
     loading = true;
     togglingStatus = false;
@@ -353,6 +356,7 @@ export class ComboServiceDetailComponent implements OnInit {
     }
 
     goEdit() {
+        if (!this.canEditCombo) return;
         this.router.navigate(['/pages/combo-services'], {
             queryParams: { edit: this.item?.id }
         });

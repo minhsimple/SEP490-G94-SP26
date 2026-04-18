@@ -126,7 +126,7 @@ interface Column { field: string; header: string; }
                                     <p-button icon="pi pi-eye" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="viewSetMenu(menu)"
                                         pTooltip="Xem chi tiết" tooltipPosition="top" />
-                                    <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
+                                    <p-button *ngIf="canEditMenu" icon="pi pi-pencil" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="editSetMenu(menu)"
                                         pTooltip="Chỉnh sửa" tooltipPosition="top" />
                                     <p-button
@@ -291,6 +291,9 @@ interface Column { field: string; header: string; }
     providers: [MessageService, SetMenuService, ConfirmationService, LocationService]
 })
 export class SetMenuComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canEditMenu = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+
     setMenus = signal<SetMenu[]>([]);
     loading = false;
     saving = false;

@@ -47,7 +47,7 @@ interface Column { field: string; header: string; }
                         class="w-full"
                     />
                 </p-iconfield>
-                <p-button label="Thêm danh mục" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
+                <p-button *ngIf="canManageCategory" label="Thêm danh mục" icon="pi pi-plus" severity="primary" (onClick)="openNew()" />
             </div>
 
             <!-- Table -->
@@ -111,10 +111,10 @@ interface Column { field: string; header: string; }
                             </td>
                             <td>
                                 <div class="flex gap-1">
-                                    <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
+                                    <p-button *ngIf="canManageCategory" icon="pi pi-pencil" [rounded]="true" [text]="true"
                                         severity="secondary" (click)="editCategory(category)"
                                         pTooltip="Chỉnh sửa" tooltipPosition="top" />
-                                    <p-button
+                                    <p-button *ngIf="canManageCategory"
                                         [icon]="category.status === 'inactive' ? 'pi pi-check-circle' : 'pi pi-ban'"
                                         [severity]="category.status === 'inactive' ? 'success' : 'warn'"
                                         [rounded]="true" [text]="true"
@@ -206,6 +206,9 @@ interface Column { field: string; header: string; }
     providers: [MessageService, CategoryMenuItemService, ConfirmationService]
 })
 export class CategoryMenuItemComponent implements OnInit {
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly canManageCategory = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+
     categories = signal<CategoryMenuItem[]>([]);
     loading = false;
     saving = false;
@@ -300,12 +303,14 @@ export class CategoryMenuItemComponent implements OnInit {
     }
 
     openNew() {
+        if (!this.canManageCategory) return;
         this.editingCategory = {};
         this.submitted = false;
         this.categoryDialog = true;
     }
 
     editCategory(category: CategoryMenuItem) {
+        if (!this.canManageCategory) return;
         this.categoryService.getById(category.id!).subscribe({
             next: (res) => {
                 if (res.code === 200) {
@@ -364,6 +369,7 @@ export class CategoryMenuItemComponent implements OnInit {
     }
 
     toggleStatus(category: CategoryMenuItem) {
+        if (!this.canManageCategory) return;
         const action = category.status === 'INACTIVE' ? 'kích hoạt' : 'vô hiệu hóa';
         this.confirmationService.confirm({
             message: `Bạn có chắc muốn ${action} danh mục "${category.name}"?`,

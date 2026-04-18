@@ -16,6 +16,11 @@ import { Invoice, Payment, InvoiceService } from '../service/invoice.service';
 import { PaymentService } from '../service/payment.service';
 import { BookingService } from '../service/booking.service';
 import { CustomerService } from '../service/customer.service';
+import { SetMenuService } from '../service/set-menu';
+import { ServicePackageService } from '../service/service-package.service';
+import { ServiceService } from '../service/service.service';
+import { catchError, map } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
 
 @Component({
     selector: 'app-invoice-detail',
@@ -232,6 +237,31 @@ import { CustomerService } from '../service/customer.service';
                                 </tr>
                             </tbody>
                         </table>
+
+                        <div class="section-title" style="margin:1rem 0 0.6rem; font-size:0.92rem;">Chi tiết món ăn theo set menu</div>
+                        <table class="cost-table" *ngIf="menuItemDetails.length; else noMenuDetailTpl">
+                            <thead>
+                                <tr>
+                                    <th>Danh mục</th>
+                                    <th>Tên món</th>
+                                    <th style="text-align:right;">Số lượng</th>
+                                    <th style="text-align:right;">Đơn giá</th>
+                                    <th>Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let dish of menuItemDetails">
+                                    <td>{{ dish.category }}</td>
+                                    <td>{{ dish.name }}</td>
+                                    <td style="text-align:right;">{{ dish.quantity }} {{ dish.unit || '' }}</td>
+                                    <td style="text-align:right;">{{ formatPrice(dish.unitPrice) }}</td>
+                                    <td>{{ formatPrice(dish.totalPrice) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <ng-template #noMenuDetailTpl>
+                            <div class="text-500" style="font-size:0.86rem;">Chưa có dữ liệu chi tiết món ăn của set menu.</div>
+                        </ng-template>
                     </div>
 
                     <!-- Dịch vụ đi kèm -->
@@ -259,6 +289,29 @@ import { CustomerService } from '../service/customer.service';
                                 </tr>
                             </tbody>
                         </table>
+
+                        <div class="section-title" style="margin:1rem 0 0.6rem; font-size:0.92rem;">Chi tiết thành phần dịch vụ</div>
+                        <table class="cost-table" *ngIf="serviceComponentDetails.length; else noServiceDetailTpl">
+                            <thead>
+                                <tr>
+                                    <th>Tên thành phần</th>
+                                    <th style="text-align:right;">Số lượng</th>
+                                    <th style="text-align:right;">Đơn giá</th>
+                                    <th>Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let detail of serviceComponentDetails">
+                                    <td>{{ detail.name }}</td>
+                                    <td style="text-align:right;">{{ detail.quantity }} {{ detail.unit || '' }}</td>
+                                    <td style="text-align:right;">{{ formatPrice(detail.unitPrice) }}</td>
+                                    <td>{{ formatPrice(detail.totalPrice) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <ng-template #noServiceDetailTpl>
+                            <div class="text-500" style="font-size:0.86rem;">Chưa có dữ liệu thành phần chi tiết của gói dịch vụ.</div>
+                        </ng-template>
                     </div>
 
                     <!-- Tổng hợp chi phí -->
@@ -464,6 +517,9 @@ export class InvoiceDetailComponent implements OnInit {
     paymentSubmitted = false;
     savingPayment = false;
     payingPaymentId: number | null = null;
+    resolvedSetMenuId: number | null = null;
+    menuItemDetails: Array<{ category: string; name: string; quantity: number; unitPrice: number; unit?: string; totalPrice: number }> = [];
+    serviceComponentDetails: Array<{ name: string; quantity: number; unitPrice: number; unit?: string; totalPrice: number }> = [];
 
     paymentForm: { amount: number | null; method: string; note: string; paymentDate: string; round: number } = {
         amount: null, method: 'CASH', note: '', paymentDate: '', round: 1
@@ -495,6 +551,9 @@ export class InvoiceDetailComponent implements OnInit {
         private paymentService: PaymentService,
         private bookingService: BookingService,
         private customerService: CustomerService,
+        private setMenuService: SetMenuService,
+        private servicePackageService: ServicePackageService,
+        private serviceService: ServiceService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private cdr: ChangeDetectorRef,
@@ -512,11 +571,13 @@ export class InvoiceDetailComponent implements OnInit {
 
     loadDetail(id: number) {
         this.loading = true;
+        this.resolvedSetMenuId = null;
         this.invoiceService.getById(id).subscribe({
             next: (res) => {
                 this.invoice = this.adaptInvoice(res.data);
                 this.loadPaymentsByContract();
                 this.enrichInvoiceMissingInfo();
+                this.loadDetailedQuotation();
                 this.loading = false;
                 this.cdr.detectChanges();
             },
@@ -825,12 +886,21 @@ export class InvoiceDetailComponent implements OnInit {
         if (!current?.contractId) return;
 
         const missingCore = !current.createdAt || !current.bookingDate || !current.customerName || !current.customerPhone;
-        if (!missingCore) return;
+        const missingSetMenuId = !this.resolveSetMenuId();
+        if (!missingCore && !missingSetMenuId) return;
 
         this.bookingService.getById(current.contractId).subscribe({
             next: (res) => {
                 const booking = res.data as any;
                 const customerId = Number(current.customerId ?? booking?.customerId ?? 0) || undefined;
+                const bookingSetMenuId = Number(booking?.setMenuId ?? 0);
+                const safeBookingSetMenuId = Number.isFinite(bookingSetMenuId) && bookingSetMenuId > 0 ? bookingSetMenuId : null;
+                this.resolvedSetMenuId = safeBookingSetMenuId;
+
+                const currentSetMenu = (this.invoice as any)?.setMenu;
+                const setMenuWithId = currentSetMenu
+                    ? { ...currentSetMenu, id: currentSetMenu.id ?? safeBookingSetMenuId ?? undefined }
+                    : (safeBookingSetMenuId ? { id: safeBookingSetMenuId } : undefined);
 
                 this.invoice = {
                     ...this.invoice,
@@ -839,7 +909,16 @@ export class InvoiceDetailComponent implements OnInit {
                     bookingDate: this.invoice?.bookingDate ?? booking?.bookingDate ?? booking?.eventDate,
                     expectedTables: this.invoice?.expectedTables ?? booking?.expectedTables,
                     tableCount: this.invoice?.tableCount ?? booking?.tableCount ?? booking?.expectedTables,
+                    setMenu: setMenuWithId,
+                    setMenus: (this.invoice?.setMenus ?? []).map((menu) => ({
+                        ...menu,
+                        id: menu.id ?? safeBookingSetMenuId ?? undefined,
+                    })),
                 };
+
+                if (safeBookingSetMenuId) {
+                    this.loadMenuItemDetails();
+                }
 
                 if (!this.invoice?.customerPhone && customerId) {
                     this.customerService.getCustomerById(customerId).subscribe({
@@ -941,6 +1020,145 @@ export class InvoiceDetailComponent implements OnInit {
                 : []),
             setMenus: normalizedSetMenus,
         };
+    }
+
+    private loadDetailedQuotation() {
+        this.loadMenuItemDetails();
+        this.loadServiceComponentDetails();
+    }
+
+    private loadMenuItemDetails() {
+        const inlineByCategory = (this.invoice as any)?.setMenu?.menuItemsByCategory as Record<string, any[]> | undefined;
+        if (inlineByCategory && Object.keys(inlineByCategory).length > 0) {
+            this.menuItemDetails = this.mapMenuItemsByCategory(inlineByCategory);
+            this.cdr.detectChanges();
+            return;
+        }
+
+        const setMenuId = this.resolveSetMenuId();
+        if (!Number.isFinite(setMenuId) || setMenuId <= 0) {
+            this.menuItemDetails = [];
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.setMenuService.getById(setMenuId).subscribe({
+            next: (res) => {
+                const byCategory = (res.data as any)?.menuItemsByCategory as Record<string, any[]> | undefined;
+                this.menuItemDetails = byCategory ? this.mapMenuItemsByCategory(byCategory) : [];
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.menuItemDetails = [];
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    private resolveSetMenuId(): number {
+        const raw = (this.invoice as any)?.setMenu?.id
+            ?? this.invoice?.setMenus?.[0]?.id
+            ?? this.resolvedSetMenuId
+            ?? 0;
+        const num = Number(raw);
+        return Number.isFinite(num) && num > 0 ? num : 0;
+    }
+
+    private mapMenuItemsByCategory(byCategory: Record<string, any[]>): Array<{ category: string; name: string; quantity: number; unitPrice: number; unit?: string; totalPrice: number }> {
+        return Object.entries(byCategory).flatMap(([category, rows]) =>
+            (rows ?? []).map((row) => {
+                const quantity = Number(row?.quantity ?? 1);
+                const unitPrice = Number(row?.unitPrice ?? 0);
+                const safeQty = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+                const safePrice = Number.isFinite(unitPrice) ? unitPrice : 0;
+                return {
+                    category: category || 'Khác',
+                    name: String(row?.name ?? '').trim() || 'Món ăn',
+                    quantity: safeQty,
+                    unitPrice: safePrice,
+                    unit: String(row?.unit ?? '').trim() || undefined,
+                    totalPrice: safeQty * safePrice,
+                };
+            })
+        );
+    }
+
+    private loadServiceComponentDetails() {
+        const packageId = Number((this.invoice as any)?.servicesPackage?.id ?? 0);
+        if (!Number.isFinite(packageId) || packageId <= 0) {
+            this.serviceComponentDetails = this.mapDirectServiceLines();
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.servicePackageService.getById(packageId).subscribe({
+            next: (res) => {
+                const rows = (res.data?.serviceResponseList ?? [])
+                    .map((row: any) => ({
+                        serviceId: Number(row?.serviceId ?? 0),
+                        qty: Number(row?.qty ?? 1),
+                    }))
+                    .filter((row: any) => Number.isFinite(row.serviceId) && row.serviceId > 0);
+
+                if (rows.length === 0) {
+                    this.serviceComponentDetails = this.mapDirectServiceLines();
+                    this.cdr.detectChanges();
+                    return;
+                }
+
+                forkJoin(
+                    rows.map((row: any) =>
+                        this.serviceService.getServiceById(row.serviceId).pipe(
+                            map((serviceRes) => {
+                                const basePrice = Number(serviceRes.data?.basePrice ?? 0);
+                                const safeUnitPrice = Number.isFinite(basePrice) ? basePrice : 0;
+                                const safeQty = Number.isFinite(row.qty) && row.qty > 0 ? row.qty : 1;
+                                return {
+                                    name: String(serviceRes.data?.name ?? '').trim() || `Dịch vụ #${row.serviceId}`,
+                                    quantity: safeQty,
+                                    unitPrice: safeUnitPrice,
+                                    unit: String(serviceRes.data?.unit ?? '').trim() || undefined,
+                                    totalPrice: safeQty * safeUnitPrice,
+                                };
+                            }),
+                            catchError(() =>
+                                of({
+                                    name: `Dịch vụ #${row.serviceId}`,
+                                    quantity: Number.isFinite(row.qty) && row.qty > 0 ? row.qty : 1,
+                                    unitPrice: 0,
+                                    unit: undefined,
+                                    totalPrice: 0,
+                                })
+                            )
+                        )
+                    )
+                ).subscribe((details) => {
+                    this.serviceComponentDetails = details;
+                    this.cdr.detectChanges();
+                });
+            },
+            error: () => {
+                this.serviceComponentDetails = this.mapDirectServiceLines();
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    private mapDirectServiceLines(): Array<{ name: string; quantity: number; unitPrice: number; unit?: string; totalPrice: number }> {
+        const serviceLines = this.invoice?.services ?? [];
+        return serviceLines.map((svc) => {
+            const quantity = Number(svc.quantity ?? 1);
+            const unitPrice = Number(svc.unitPrice ?? 0);
+            const safeQty = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+            const safePrice = Number.isFinite(unitPrice) ? unitPrice : 0;
+            return {
+                name: String(svc.name ?? '').trim() || 'Dịch vụ',
+                quantity: safeQty,
+                unitPrice: safePrice,
+                unit: undefined,
+                totalPrice: Number(svc.totalPrice ?? (safeQty * safePrice)),
+            };
+        });
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
