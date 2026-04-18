@@ -831,28 +831,22 @@ export class Dashboard implements OnInit {
                     .filter((id) => id > 0);
 
                 return forkJoin({
-                    customersRes: this.customerService.searchCustomers({
-                        page: 0,
-                        size: 1,
-                        locationId: this.assignedLocationId ?? undefined
-                    }),
                     contractsTotal: this.sumContractsByHall(hallIds),
                     contractsActive: this.sumContractsByHall(hallIds, { contractState: 'ACTIVE' }),
                     upcoming30Days: this.sumContractsByHall(hallIds, this.next30DayFilter()),
                     monthlyRevenue: this.getMonthlyRevenueByHall(hallIds),
-                    contractIds: this.getContractIdsByHall(hallIds),
+                    contractScope: this.getContractAndCustomerScopeByHall(hallIds),
                     invoicesRes: this.invoiceService.searchInvoices({ page: 0, size: 1000, sort: 'id,DESC' }),
                     paymentsRes: this.paymentService.searchPayments({ page: 0, size: 1000, sort: 'paidAt,DESC' })
                 });
             })
         ).subscribe({
             next: ({
-                customersRes,
                 contractsTotal,
                 contractsActive,
                 upcoming30Days,
                 monthlyRevenue,
-                contractIds,
+                contractScope,
                 invoicesRes,
                 paymentsRes
             }) => {
@@ -862,7 +856,7 @@ export class Dashboard implements OnInit {
                 this.chartData.set(null);
                 this.salesFinanceChartData.set(null);
 
-                const contractIdSet = new Set(contractIds);
+                const contractIdSet = new Set(contractScope.contractIds);
                 const invoiceRows = invoicesRes.data?.content ?? [];
                 const paymentRows = paymentsRes.data?.content ?? [];
 
@@ -884,9 +878,13 @@ export class Dashboard implements OnInit {
                 const paidInvoices = scopedInvoices.filter((invoice) => this.isPaidInvoiceState(invoice.invoiceState ?? invoice.status)).length;
                 const successfulPayments = scopedPayments.filter((payment) => this.isSuccessfulPaymentState(payment.paymentState ?? payment.status)).length;
                 const outstandingAmount = scopedInvoices.reduce((sum, invoice) => sum + this.toNumber(invoice.remainingAmount), 0);
+                const invoiceCustomerIds = scopedInvoices
+                    .map((invoice) => this.toNumber(invoice.customerId))
+                    .filter((id) => id > 0);
+                const customers = new Set([...contractScope.customerIds, ...invoiceCustomerIds]).size;
 
                 this.accountantMetrics.set({
-                    customers: customersRes.data?.totalElements ?? 0,
+                    customers,
                     contracts: contractsTotal,
                     activeContracts: contractsActive,
                     upcoming30Days,
@@ -901,7 +899,7 @@ export class Dashboard implements OnInit {
                     outstandingAmount
                 });
                 this.rebuildAccountantFinanceChart({
-                    customers: customersRes.data?.totalElements ?? 0,
+                    customers,
                     contracts: contractsTotal,
                     activeContracts: contractsActive,
                     upcoming30Days,
@@ -1074,9 +1072,9 @@ export class Dashboard implements OnInit {
         );
     }
 
-    private getContractIdsByHall(hallIds: number[]): Observable<number[]> {
+    private getContractAndCustomerScopeByHall(hallIds: number[]): Observable<{ contractIds: number[]; customerIds: number[] }> {
         if (!hallIds.length) {
-            return of([]);
+            return of({ contractIds: [], customerIds: [] });
         }
 
         return forkJoin(
@@ -1090,8 +1088,27 @@ export class Dashboard implements OnInit {
             )
         ).pipe(
             map((responses) => {
-                const ids = responses.flatMap((res) => (res.data?.content ?? []).map((item) => this.toNumber(item.id)));
-                return Array.from(new Set(ids.filter((id) => id > 0)));
+                const contractIds = new Set<number>();
+                const customerIds = new Set<number>();
+
+                responses.forEach((res) => {
+                    (res.data?.content ?? []).forEach((item) => {
+                        const contractId = this.toNumber(item.id);
+                        if (contractId > 0) {
+                            contractIds.add(contractId);
+                        }
+
+                        const customerId = this.toNumber(item.customerId);
+                        if (customerId > 0) {
+                            customerIds.add(customerId);
+                        }
+                    });
+                });
+
+                return {
+                    contractIds: Array.from(contractIds),
+                    customerIds: Array.from(customerIds)
+                };
             })
         );
     }
