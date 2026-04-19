@@ -13,7 +13,6 @@ import { TableModule, Table } from 'primeng/table';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { Invoice, InvoiceService } from '../service/invoice.service';
-import { forkJoin, of } from 'rxjs';
 
 interface Column { field: string; header: string; }
 
@@ -41,9 +40,9 @@ interface Column { field: string; header: string; }
                 <div class="px-4 py-3 flex items-center gap-3 border-bottom-1 surface-border flex-wrap">
                     <input
                         pInputText
-                        type="text"
-                        [(ngModel)]="filterContractCode"
-                        placeholder="Lọc theo mã hợp đồng"
+                        type="number"
+                        [(ngModel)]="filterContractId"
+                        placeholder="Lọc theo Contract ID"
                         style="width: 220px"
                     />
 
@@ -51,9 +50,25 @@ interface Column { field: string; header: string; }
                         [options]="invoiceStateOptions"
                         [(ngModel)]="filterInvoiceState"
                         optionLabel="label" optionValue="value"
-                        placeholder="Trạng thái hóa đơn"
+                        placeholder="Invoice state"
                         [showClear]="true"
                         style="width:180px"
+                    />
+
+                    <input
+                        pInputText
+                        type="number"
+                        [(ngModel)]="filterLowerBoundTotalAmount"
+                        placeholder="Tổng tiền từ"
+                        style="width: 170px"
+                    />
+
+                    <input
+                        pInputText
+                        type="number"
+                        [(ngModel)]="filterUpperBoundTotalAmount"
+                        placeholder="Đến"
+                        style="width: 170px"
                     />
 
                     <p-button label="Lọc" icon="pi pi-filter" size="small" (click)="onFilter()" />
@@ -199,13 +214,14 @@ export class InvoicesComponent implements OnInit {
     totalRecords = 0;
     pageSize = 20;
     currentPage = 0;
-    filterContractCode = '';
+    filterContractId: number | null = null;
     filterInvoiceState: string | null = null;
-    private readonly contractCodeFilterBatchSize = 100;
+    filterLowerBoundTotalAmount: number | null = null;
+    filterUpperBoundTotalAmount: number | null = null;
 
     invoiceStateOptions = [
         { label: 'Chưa thanh toán', value: 'UNPAID' },
-        { label: 'Thanh toán một phần', value: 'PARTIALLY_PAID' },
+        { label: 'Thanh toán một phần', value: 'PARTIAL' },
         { label: 'Đã thanh toán', value: 'PAID' },
     ];
 
@@ -236,80 +252,19 @@ export class InvoicesComponent implements OnInit {
 
     loadInvoices(page = 0, size = this.pageSize) {
         this.loading = true;
-        if (this.filterContractCode.trim()) {
-            this.loadInvoicesByContractCode(page, size);
-            return;
-        }
-
         this.invoiceService.searchInvoices({
-            page,
-            size,
+            page, size,
+            contractId: this.filterContractId ?? undefined,
             invoiceState: this.filterInvoiceState ?? undefined,
+            lowerBoundTotalAmount: this.filterLowerBoundTotalAmount ?? undefined,
+            upperBoundTotalAmount: this.filterUpperBoundTotalAmount ?? undefined,
         }).subscribe({
             next: (res) => {
                 if (res?.data) {
-                    this.invoices.set(res.data.content ?? []);
-                    this.totalRecords = res.data.totalElements ?? 0;
-                } else {
-                    this.invoices.set([]);
-                    this.totalRecords = 0;
+                    this.invoices.set(res.data.content);
+                    this.totalRecords = res.data.totalElements;
                 }
                 this.loading = false;
-            },
-            error: () => {
-                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách hóa đơn', life: 3000 });
-                this.loading = false;
-            }
-        });
-    }
-
-    private loadInvoicesByContractCode(page: number, size: number): void {
-        this.invoiceService.searchInvoices({
-            page: 0,
-            size: this.contractCodeFilterBatchSize,
-            invoiceState: this.filterInvoiceState ?? undefined,
-        }).subscribe({
-            next: (firstRes) => {
-                const firstData = firstRes?.data;
-                if (!firstData) {
-                    this.invoices.set([]);
-                    this.totalRecords = 0;
-                    this.loading = false;
-                    return;
-                }
-
-                const totalPages = firstData.totalPages ?? 1;
-                const nextPageCalls = Array.from({ length: Math.max(totalPages - 1, 0) }, (_, index) =>
-                    this.invoiceService.searchInvoices({
-                        page: index + 1,
-                        size: this.contractCodeFilterBatchSize,
-                        invoiceState: this.filterInvoiceState ?? undefined,
-                    })
-                );
-
-                (nextPageCalls.length ? forkJoin(nextPageCalls) : of([])).subscribe({
-                    next: (nextPageResponses: any[]) => {
-                        const allInvoices: Invoice[] = [
-                            ...(firstData.content ?? []),
-                            ...nextPageResponses.flatMap((r) => r?.data?.content ?? []),
-                        ];
-
-                        const keyword = this.filterContractCode.trim().toLowerCase();
-                        const filtered = allInvoices.filter((invoice) =>
-                            String(invoice.contractNo ?? '').toLowerCase().includes(keyword)
-                        );
-
-                        this.totalRecords = filtered.length;
-                        const start = page * size;
-                        const end = start + size;
-                        this.invoices.set(filtered.slice(start, end));
-                        this.loading = false;
-                    },
-                    error: () => {
-                        this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách hóa đơn', life: 3000 });
-                        this.loading = false;
-                    }
-                });
             },
             error: () => {
                 this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải danh sách hóa đơn', life: 3000 });
@@ -330,8 +285,10 @@ export class InvoicesComponent implements OnInit {
     }
 
     resetFilter() {
-        this.filterContractCode = '';
+        this.filterContractId = null;
         this.filterInvoiceState = null;
+        this.filterLowerBoundTotalAmount = null;
+        this.filterUpperBoundTotalAmount = null;
         if (this.dt) this.dt.reset();
         this.loadInvoices();
     }
@@ -386,7 +343,6 @@ export class InvoicesComponent implements OnInit {
         const m: Record<string, string> = {
             UNPAID:  'Chưa thanh toán',
             PARTIAL: 'Thanh toán 1 phần',
-            PARTIALLY_PAID: 'Thanh toán 1 phần',
             PAID:    'Đã thanh toán',
         };
         return m[s ?? ''] ?? s ?? '-';
@@ -396,7 +352,6 @@ export class InvoicesComponent implements OnInit {
         const m: Record<string, string> = {
             UNPAID:  '#ffffff',
             PARTIAL: '#1e293b',
-            PARTIALLY_PAID: '#1e293b',
             PAID:    '#166534',
         };
         return m[s ?? ''] ?? '#1e293b';
@@ -406,7 +361,6 @@ export class InvoicesComponent implements OnInit {
         const m: Record<string, string> = {
             UNPAID:  '#ef4444',
             PARTIAL: '#fef3c7',
-            PARTIALLY_PAID: '#fef3c7',
             PAID:    '#dcfce7',
         };
         return m[s ?? ''] ?? '#f1f5f9';

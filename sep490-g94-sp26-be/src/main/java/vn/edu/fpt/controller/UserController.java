@@ -29,6 +29,7 @@ public class UserController {
 
     private UserService userService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Xem danh sách tai khoan nguoi dung ")
     @GetMapping("/search")
     public ApiResponse<SimplePage<UserResponse>> getAllUsers(

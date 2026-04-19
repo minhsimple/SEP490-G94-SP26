@@ -1,6 +1,9 @@
 package vn.edu.fpt.service.impl;
 
 import jakarta.persistence.criteria.Predicate;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,8 +17,11 @@ import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
 import vn.edu.fpt.dto.request.customer.CustomerUpdateRequest;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
+import vn.edu.fpt.dto.request.task.TaskListCreateRequest;
+import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
+import vn.edu.fpt.dto.response.tablelayout.TableLayoutResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -49,11 +55,12 @@ public class ContractServiceImpl implements ContractService {
     private final InvoiceService invoiceService;
     private final CustomerService customerService;
 
+    private final TableLayoutService tableLayoutService;
+
     @Transactional
     @Override
     public ContractResponse createContract(ContractRequest request) throws Exception {
-        new CustomerResponse();
-        CustomerResponse customerResponse;
+        CustomerResponse customerResponse = new CustomerResponse();
 
         validateContract(request);
         if (request.getCustomerId() != null) {
@@ -84,10 +91,12 @@ public class ContractServiceImpl implements ContractService {
 
         Contract saved = bookingRepository.save(booking);
 
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.createTableLayout(request.getTableLayoutRequest(), saved.getId());
         ContractResponse contractResponse = contractMapper.toResponse(saved);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
         contractResponse.setCustomerResponse(customerResponse);
 
-        createPaymentForContract(saved, request.getPaymentPercentage());
+        createPaymentForContract(saved);
         invoiceService.createInvoice(saved.getId());
 
         return contractResponse;
@@ -128,11 +137,14 @@ public class ContractServiceImpl implements ContractService {
 
         contractMapper.updateEntity(booking, request);
 
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.updateTableLayout(request.getTableLayoutRequest(), booking.getId());
+
         // Tính lại startTime và endTime từ bookingDate + bookingTime slot
         calculateAndSetTimes(booking, request.getBookingDate(), request.getBookingTime());
 
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
         contractResponse.setCustomerResponse(customerResponse);
 
         return contractResponse;
@@ -145,9 +157,6 @@ public class ContractServiceImpl implements ContractService {
         if (request.getCustomerId() != null &&
                 !customerRepository.existsByIdAndStatus(request.getCustomerId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED);
-        }
-        if (request.getPaymentPercentage() == null|| request.getPaymentPercentage() <= 0 || request.getPaymentPercentage() > 100) {
-            throw new AppException(ERROR_CODE.PAYMENT_PERCENTAGE_INVALID);
         }
         if (request.getHallId() != null &&
                 !hallRepository.existsByIdAndStatus(request.getHallId(), RecordStatus.active)) {
@@ -208,7 +217,10 @@ public class ContractServiceImpl implements ContractService {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        return contractMapper.toResponse(booking);
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(id);
+        ContractResponse contractResponse = contractMapper.toResponse(booking);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
+        return contractResponse;
     }
 
     @Override
@@ -273,7 +285,9 @@ public class ContractServiceImpl implements ContractService {
         Page<Contract> page = bookingRepository.findAll(spec, pageable);
         List<ContractResponse> responses = page.getContent().stream()
                 .map(contract -> {
+                    TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(contract.getId());
                     ContractResponse contractResponse = contractMapper.toResponse(contract);
+                    contractResponse.setTableLayoutResponse(tableLayoutResponse);
                     contractResponse.setCustomerResponse(customerService.getCustomerById(contract.getCustomerId()));
                     return contractResponse;
                 })
@@ -287,6 +301,7 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse changeContractStatus(Integer id) {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(id);
         CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
 
         if (booking.getStatus() == RecordStatus.active) {
@@ -297,6 +312,7 @@ public class ContractServiceImpl implements ContractService {
 
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
         contractResponse.setCustomerResponse(customerResponse);
 
         return contractResponse;
@@ -329,16 +345,21 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse updateContractState(ContractStatusRequest request) {
         Contract booking = bookingRepository.findById(request.getContractId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+        TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(request.getContractId());
 
         CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
 
         validateStateTransition(booking.getContractState(), request.getContractState());
+        if (request.getContractState().equals(ContractState.CANCELLED)) {
+            booking.setStatus(RecordStatus.inactive);
+        }
         booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
 
         // Auto-create TaskList khi contract state = ACTIVE
 
         ContractResponse contractResponse = contractMapper.toResponse(saved);
+        contractResponse.setTableLayoutResponse(tableLayoutResponse);
         contractResponse.setCustomerResponse(customerResponse);
 
         return contractResponse;
@@ -350,20 +371,34 @@ public class ContractServiceImpl implements ContractService {
                 request.getStartTime(), request.getEndTime(), request.getLocationId());
     }
 
-    public void createPaymentForContract(Contract contract, Integer paymentPercentage) throws Exception {
+    // tạo 3 payment mới với thông tin từ contract
+    // payment đầu tiên: 40% tổng tiền, trạng thái PENDING
+    // payment thứ 2:  30% tổng tiền, trạng thái PENDING
+    // payment thứ 3: 30% tổng tiền +  penalty (nếu có) với số tiền phạt, trạng thái PENDING
+    public void createPaymentForContract(Contract contract) throws Exception {
         BigDecimal totalAmount = getTotalAmountForContract(contract);
 
-        BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(paymentPercentage)).divide(BigDecimal.valueOf(100));
+        BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(0.4));
+        BigDecimal secondAmount = totalAmount.multiply(BigDecimal.valueOf(0.6));
 
-        PaymentRequest request = PaymentRequest.builder()
+        PaymentRequest request1 = PaymentRequest.builder()
                 .contractId(contract.getId())
                 .amount(firstAmount)
                 .method(PaymentMethod.BANK_TRANSFER)
                 .paymentState(PaymentState.PENDING)
-                .note("Thanh toán đợt 1 - " + paymentPercentage + "% tổng tiền")
+                .note("Thanh toán đợt 1 - 40%")
                 .build();
 
-        paymentServiceImpl.createPayment(request);
+        PaymentRequest request2 = PaymentRequest.builder()
+                .contractId(contract.getId())
+                .amount(secondAmount)
+                .method(PaymentMethod.BANK_TRANSFER)
+                .paymentState(PaymentState.PENDING)
+                .note("Thanh toán đợt 2 - 60% + chi phí phát sinh (nếu có)")
+                .build();
+
+        paymentServiceImpl.createPayment(request1);
+        paymentServiceImpl.createPayment(request2);
 
     }
 

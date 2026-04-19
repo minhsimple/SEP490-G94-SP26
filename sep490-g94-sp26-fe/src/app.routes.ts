@@ -1,12 +1,10 @@
 import { Routes } from '@angular/router';
 import { AppLayout } from './app/layout/component/app.layout';
-import { authGuard } from './app/components/auth.guard';
 
 export const appRoutes: Routes = [
     {
         path: '',
         component: AppLayout,
-        canActivate: [authGuard],
         children: [
             { path: '', redirectTo: 'pages/dashboard', pathMatch: 'full' },
             { path: 'profile', loadComponent: () => import('./app/pages/profile/profile').then(m => m.ProfileComponent) },
@@ -14,6 +12,6 @@ export const appRoutes: Routes = [
         ]
     },
     { path: 'auth', loadChildren: () => import('./app/pages/auth/auth.routes') },
-    { path: 'notfound', loadComponent: () => import('./app/pages/notfound/notfound').then(m => m.Notfound) },
+    { path: 'notfound', redirectTo: '' },  // ← thêm dòng này
     { path: '**', redirectTo: '/notfound' }
 ];
