@@ -73,6 +73,6 @@ public class ContractRequest {
     String groomMotherName;
 
     @NotNull(message = "Phần trăm thanh toán không được để trống")
-    Integer PaymentPercent;
+    Integer paymentPercent;
 
 }
