@@ -323,9 +323,6 @@ public class ContractServiceImpl implements ContractService {
         CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
 
         validateStateTransition(booking.getContractState(), request.getContractState());
-        if (request.getContractState().equals(ContractState.CANCELLED)) {
-            booking.setStatus(RecordStatus.inactive);
-        }
         booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
