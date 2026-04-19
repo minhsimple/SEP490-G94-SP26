@@ -42,4 +42,6 @@ public class PaymentResponse {
     String createdBy;
 
     String updatedBy;
+
+    Integer PaymentPercent;
 }

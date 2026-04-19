@@ -48,6 +48,8 @@ public class ContractServiceImpl implements ContractService {
     private final SetMenuServiceImpl setMenuServiceImpl;
     private final InvoiceService invoiceService;
     private final CustomerService customerService;
+    private final TasksRepository tasksRepository;
+    private final TaskListRepository taskListRepository;
 
     @Transactional
     @Override
@@ -319,13 +321,20 @@ public class ContractServiceImpl implements ContractService {
     @Transactional
     @Override
     public ContractResponse updateContractState(ContractStatusRequest request) {
-        Contract booking = bookingRepository.findById(request.getContractId())
+        Contract contract  = bookingRepository.findById(request.getContractId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
-        CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
-
-        validateStateTransition(booking.getContractState(), request.getContractState());
-        booking.setContractState(request.getContractState());
-        Contract saved = bookingRepository.save(booking);
+        CustomerResponse customerResponse = customerService.getCustomerById(contract.getCustomerId());
+        if(request.getContractState().equals(ContractState.LIQUIDATED)){
+            Integer taskListId = taskListRepository.findTaskListByContractIdAndStatus(contract.getId(), RecordStatus.active)
+                    .orElseThrow(() -> new AppException(ERROR_CODE.TASK_LIST_NOT_FOUND))
+                    .getId();
+            if(tasksRepository.existsByTaskListIdAndStatusAndState(taskListId, RecordStatus.active, TaskState.NOT_COMPLETED)){
+                throw new AppException(ERROR_CODE.CONTRACT_TASKS_NOT_COMPLETED);
+            }
+        }
+        validateStateTransition(contract.getContractState(), request.getContractState());
+        contract.setContractState(request.getContractState());
+        Contract saved = bookingRepository.save(contract);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setCustomerResponse(customerResponse);
 

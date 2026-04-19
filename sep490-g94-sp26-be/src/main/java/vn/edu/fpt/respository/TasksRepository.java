@@ -18,6 +18,8 @@ public interface TasksRepository extends BaseRepository<Tasks, Integer>{
     List<Tasks> findAllByTaskListId(Integer taskListId);
 
     void deleteByTaskListId(Integer taskListId);
+
+    Boolean existsByTaskListIdAndStatusAndState(Integer taskListId, RecordStatus status, TaskState state);
 }
 
 
