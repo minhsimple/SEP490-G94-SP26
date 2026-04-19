@@ -335,9 +335,6 @@ public class ContractServiceImpl implements ContractService {
         validateStateTransition(booking.getContractState(), request.getContractState());
         booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
-
-        // Auto-create TaskList khi contract state = ACTIVE
-
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setCustomerResponse(customerResponse);
 
