@@ -52,7 +52,8 @@ public class ContractServiceImpl implements ContractService {
     @Transactional
     @Override
     public ContractResponse createContract(ContractRequest request) throws Exception {
-        CustomerResponse customerResponse = new CustomerResponse();
+        new CustomerResponse();
+        CustomerResponse customerResponse;
 
         validateContract(request);
         if (request.getCustomerId() != null) {
@@ -86,7 +87,7 @@ public class ContractServiceImpl implements ContractService {
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setCustomerResponse(customerResponse);
 
-        createPaymentForContract(saved);
+        createPaymentForContract(saved, request.getPaymentPercentage());
         invoiceService.createInvoice(saved.getId());
 
         return contractResponse;
@@ -144,6 +145,9 @@ public class ContractServiceImpl implements ContractService {
         if (request.getCustomerId() != null &&
                 !customerRepository.existsByIdAndStatus(request.getCustomerId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED);
+        }
+        if (request.getPaymentPercentage() == null|| request.getPaymentPercentage() <= 0 || request.getPaymentPercentage() > 100) {
+            throw new AppException(ERROR_CODE.PAYMENT_PERCENTAGE_INVALID);
         }
         if (request.getHallId() != null &&
                 !hallRepository.existsByIdAndStatus(request.getHallId(), RecordStatus.active)) {
@@ -329,9 +333,6 @@ public class ContractServiceImpl implements ContractService {
         CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
 
         validateStateTransition(booking.getContractState(), request.getContractState());
-        if (request.getContractState().equals(ContractState.CANCELLED)) {
-            booking.setStatus(RecordStatus.inactive);
-        }
         booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
 
@@ -349,34 +350,20 @@ public class ContractServiceImpl implements ContractService {
                 request.getStartTime(), request.getEndTime(), request.getLocationId());
     }
 
-    // tạo 3 payment mới với thông tin từ contract
-    // payment đầu tiên: 40% tổng tiền, trạng thái PENDING
-    // payment thứ 2:  30% tổng tiền, trạng thái PENDING
-    // payment thứ 3: 30% tổng tiền +  penalty (nếu có) với số tiền phạt, trạng thái PENDING
-    public void createPaymentForContract(Contract contract) throws Exception {
+    public void createPaymentForContract(Contract contract, Integer paymentPercentage) throws Exception {
         BigDecimal totalAmount = getTotalAmountForContract(contract);
 
-        BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(0.4));
-        BigDecimal secondAmount = totalAmount.multiply(BigDecimal.valueOf(0.6));
+        BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(paymentPercentage)).divide(BigDecimal.valueOf(100));
 
-        PaymentRequest request1 = PaymentRequest.builder()
+        PaymentRequest request = PaymentRequest.builder()
                 .contractId(contract.getId())
                 .amount(firstAmount)
                 .method(PaymentMethod.BANK_TRANSFER)
                 .paymentState(PaymentState.PENDING)
-                .note("Thanh toán đợt 1 - 40%")
+                .note("Thanh toán đợt 1 - " + paymentPercentage + "% tổng tiền")
                 .build();
 
-        PaymentRequest request2 = PaymentRequest.builder()
-                .contractId(contract.getId())
-                .amount(secondAmount)
-                .method(PaymentMethod.BANK_TRANSFER)
-                .paymentState(PaymentState.PENDING)
-                .note("Thanh toán đợt 2 - 60% + chi phí phát sinh (nếu có)")
-                .build();
-
-        paymentServiceImpl.createPayment(request1);
-        paymentServiceImpl.createPayment(request2);
+        paymentServiceImpl.createPayment(request);
 
     }
 

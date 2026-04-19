@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import vn.edu.fpt.dto.request.customer.CustomerRequest;
 import vn.edu.fpt.util.enums.BookingTime;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -66,4 +65,7 @@ public class ContractRequest {
     String groomFatherName;
 
     String groomMotherName;
+
+    Integer PaymentPercentage;
+
 }

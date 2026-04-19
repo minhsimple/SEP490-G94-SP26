@@ -46,6 +46,7 @@ public class ContractResponse {
     RecordStatus status;
     Integer assignCoordinatorId;
     String assignCoordinatorName;
+    LocalDateTime createdAt;
 }
 
 
