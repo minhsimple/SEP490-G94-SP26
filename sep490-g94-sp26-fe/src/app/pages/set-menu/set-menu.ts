@@ -271,6 +271,8 @@ interface Column { field: string; header: string; }
 export class SetMenuComponent implements OnInit {
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly canManageSetMenu = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+    readonly isSale = this.roleCode.includes('SALE');
+    readonly saleLocationId = Number(localStorage.getItem('locationId') ?? 0) || null;
 
     setMenus = signal<SetMenu[]>([]);
     loading = false;
@@ -283,7 +285,6 @@ export class SetMenuComponent implements OnInit {
     searchName = '';
     selectedLocationId: number | null = null;
     locationFilterOptions: { label: string; value: number }[] = [];
-    isSale = localStorage.getItem('codeRole') === 'SALE';
 
     menuDialog = false;
     submitted = false;
@@ -307,9 +308,8 @@ export class SetMenuComponent implements OnInit {
     ) { }
 
     ngOnInit() {
-        if (this.isSale) {
-            const locId = localStorage.getItem('locationId');
-            if (locId) this.selectedLocationId = Number(locId);
+        if (this.isSale && this.saleLocationId) {
+            this.selectedLocationId = this.saleLocationId;
         }
         this.cols = [
             { field: 'name', header: 'Tên set menu' },
@@ -346,7 +346,8 @@ export class SetMenuComponent implements OnInit {
     loadSetMenus(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
         this.loading = true;
         const params: any = { page, size, name };
-        if (locationId) params.locationId = locationId;
+        const effectiveLocationId = this.isSale ? this.saleLocationId : locationId;
+        if (effectiveLocationId) params.locationId = effectiveLocationId;
         this.setMenuService.searchSetMenus(params).subscribe({
             next: (res: any) => {
                 if (res.data) {
@@ -376,6 +377,9 @@ export class SetMenuComponent implements OnInit {
     }
 
     onLocationChange(event: any) {
+        if (this.isSale) {
+            return;
+        }
         this.selectedLocationId = event.value;
         this.loadSetMenus(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
         if (this.dt) {
