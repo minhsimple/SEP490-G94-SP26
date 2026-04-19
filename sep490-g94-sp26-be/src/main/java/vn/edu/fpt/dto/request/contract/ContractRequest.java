@@ -71,5 +71,6 @@ public class ContractRequest {
 
     String groomMotherName;
 
+    Integer PaymentPercent;
 
 }
