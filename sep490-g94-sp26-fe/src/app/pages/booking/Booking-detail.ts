@@ -7,7 +7,7 @@ import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { Booking, BookingService, BookingUpsertPayload, TableLayoutRequest } from '../service/booking.service';
+import { Booking, BookingService, BookingUpsertPayload } from '../service/booking.service';
 import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
 import { MenuItem, SetMenuService } from '../service/set-menu';
@@ -299,114 +299,12 @@ import { RoleService } from '../service/role.service';
             line-height: 1.45;
             font-size: 10pt;
         }
-        .btn-setup {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.35rem 0.9rem;
-            font-size: 0.82rem;
-            font-weight: 500;
-            color: #475569;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.15s, border-color 0.15s;
-            white-space: nowrap;
-        }
-        .btn-setup:hover {
-            background: #f1f5f9;
-            border-color: #94a3b8;
-        }
-        .seat-card-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 2rem 0;
-            color: #94a3b8;
-        }
-        .seat-card-empty i {
-            font-size: 2rem;
-            color: #cbd5e1;
-        }
-        .layout-preview-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-            margin-top: 0.4rem;
-        }
-        .layout-zone-card {
-            border: 2px solid #d6dde8;
-            border-radius: 8px;
-            padding: 0.8rem 0.75rem;
-            background: #f8fafc;
-        }
-        .layout-zone-header {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-        }
-        .layout-zone-groups {
-            font-size: 0.78rem;
-            color: #475569;
-        }
-        .layout-group-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
-        .layout-group-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .layout-group-left {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            min-width: 0;
-            flex: 1;
-        }
-        .layout-group-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 999px;
-            border: 2px solid #cbd5e1;
-            background: #fff;
-            flex-shrink: 0;
-        }
-        .layout-group-name {
-            font-weight: 500;
-            color: #334155;
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .layout-group-count {
-            font-weight: 600;
-            color: #64748b;
-            white-space: nowrap;
-        }
-        .layout-zone-empty {
-            color: #cbd5e1;
-            font-style: italic;
-            font-size: 0.74rem;
-        }
         @media (max-width: 992px) {
             .layout {
                 grid-template-columns: 1fr;
             }
             .meta-grid,
-            .detail-grid,
-            .layout-preview-grid {
+            .detail-grid {
                 grid-template-columns: 1fr;
             }
             .hero-right {
@@ -510,6 +408,13 @@ import { RoleService } from '../service/role.service';
                                 </div>
                             </div>
                             <div class="meta-row">
+                                <div class="meta-icon"><i class="pi pi-percentage"></i></div>
+                                <div>
+                                    <div class="muted">Phần trăm cọc</div>
+                                    <div class="value">{{ resolvePaymentPercent(booking.paymentPercent) }}%</div>
+                                </div>
+                            </div>
+                            <div class="meta-row">
                                 <div class="meta-icon"><i class="pi pi-list"></i></div>
                                 <div>
                                     <div class="muted">Set menu</div>
@@ -555,42 +460,6 @@ import { RoleService } from '../service/role.service';
                         <div class="value" style="margin-top:0.3rem; font-weight:500">{{ customer?.address || '-' }}</div>
                     </div>
 
-                    <!-- Layout chỗ ngồi (chỉ xem) -->
-                    <div class="card" style="margin-bottom:1rem">
-                        <h2 class="section-title" style="margin-bottom:0.65rem">Layout chỗ ngồi</h2>
-                        <div *ngIf="totalLayoutTables() > 0; else noTableLayoutTpl">
-                            <div class="line" style="margin:0 0 0.6rem">
-                                <span class="muted">Tổng số bàn theo layout</span>
-                                <strong>{{ totalLayoutTables() }} bàn</strong>
-                            </div>
-                            <div class="layout-preview-grid">
-                                <div class="layout-zone-card" *ngFor="let zone of groupedLayoutByZone()">
-                                    <div class="layout-zone-header">{{ zone.zoneLabel }}</div>
-                                    <div class="layout-zone-groups">
-                                        <div *ngIf="zone.groups.length > 0; else noGroupsInZone" class="layout-group-list">
-                                            <div class="layout-group-item" *ngFor="let group of zone.groups">
-                                                <span class="layout-group-left">
-                                                    <i class="layout-group-dot" [ngStyle]="layoutLegendDotStyle(group.colorIndex)"></i>
-                                                    <span class="layout-group-name">{{ group.groupName }}</span>
-                                                </span>
-                                                <span class="layout-group-count">Bàn {{ group.startSeat }}-{{ group.endSeat }} · {{ group.numberOfTables }} bàn</span>
-                                            </div>
-                                        </div>
-                                        <ng-template #noGroupsInZone>
-                                            <div class="layout-zone-empty">Không có nhóm</div>
-                                        </ng-template>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <ng-template #noTableLayoutTpl>
-                            <div class="seat-card-empty" style="padding:1.2rem 0 0.8rem">
-                                <i class="pi pi-stop"></i>
-                                <span style="font-size:0.88rem">Chưa có sơ đồ chỗ ngồi</span>
-                            </div>
-                        </ng-template>
-                    </div>
-
                     <!-- Lịch sử thanh toán -->
                     <div class="card">
                         <h2 class="section-title">Lịch sử thanh toán</h2>
@@ -624,6 +493,7 @@ import { RoleService } from '../service/role.service';
                         <div class="line" *ngIf="hallPrice > 0"><span>Phí thuê sảnh</span><strong>{{ formatPrice(hallPrice) }}</strong></div>
                         <div class="line" *ngIf="packageName || booking.packageId"><span>Gói dịch vụ</span><strong>{{ packageName || ('#' + booking.packageId) }}</strong></div>
                         <div class="line" *ngIf="packagePrice > 0"><span>Giá gói dịch vụ</span><strong>{{ formatPrice(packagePrice) }}</strong></div>
+                        <div class="line"><span>Tỷ lệ cọc</span><strong>{{ resolvePaymentPercent(booking.paymentPercent) }}%</strong></div>
                         <div class="line"><span>Tổng tiền</span><strong>{{ formatPrice(totalAmount) }}</strong></div>
                         <div class="line" style="color:#16a34a"><span>Đã thanh toán</span><strong style="color:#16a34a">{{ formatPrice(paidAmount) }}</strong></div>
                         <div class="line total"><span>Còn lại</span><strong>{{ formatPrice(remainingAmount) }}</strong></div>
@@ -758,7 +628,6 @@ export class BookingDetailComponent implements OnInit {
     setMenuItems: Array<{ name: string; quantity: number; unitPrice: number; unit?: string }> = [];
     packageName = '';
     packagePrice = 0;
-    private readonly layoutColorStyleCache = new Map<number, { border: string; background: string }>();
     readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
     readonly isAdminAccount = this.codeRole.includes('ADMIN');
@@ -1010,13 +879,8 @@ export class BookingDetailComponent implements OnInit {
         const expectedGuests = Number(b.expectedGuests ?? b.guestCount ?? 0);
         const brideName = String(b.brideName ?? '').trim();
         const groomName = String(b.groomName ?? '').trim();
-        const tableLayoutRequest = this.extractTableLayoutRequestFromBooking(b);
 
         if (!customerId || !hallId || !bookingDate || !bookingTime || !expectedTables || !expectedGuests || !brideName || !groomName) {
-            return null;
-        }
-
-        if (!tableLayoutRequest?.tableLayoutDetailRequestList?.length) {
             return null;
         }
 
@@ -1033,6 +897,7 @@ export class BookingDetailComponent implements OnInit {
             bookingTime,
             expectedTables,
             expectedGuests,
+            paymentPercent: this.resolvePaymentPercent(b.paymentPercent),
             assignCoordinatorId,
             packageId: b.packageId ?? null,
             setMenuId: b.setMenuId ?? null,
@@ -1047,7 +912,6 @@ export class BookingDetailComponent implements OnInit {
             brideMotherName: b.brideMotherName ?? undefined,
             groomFatherName: b.groomFatherName ?? undefined,
             groomMotherName: b.groomMotherName ?? undefined,
-            tableLayoutRequest,
         };
     }
 
@@ -1077,48 +941,18 @@ export class BookingDetailComponent implements OnInit {
         };
     }
 
-    private extractTableLayoutRequestFromBooking(booking: Booking): TableLayoutRequest | null {
-        const details = booking.tableLayoutResponse?.tableLayoutDetails;
-        if (!details) return null;
-
-        const knownOrder = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
-        const knownItems = knownOrder.flatMap((key) =>
-            (details[key] ?? []).map((item) => ({ key, item }))
-        );
-        const fallbackItems = Object.entries(details)
-            .filter(([key]) => !knownOrder.includes(key))
-            .flatMap(([, arr]) => arr.map((item) => ({ item })));
-
-        const source = knownItems.length > 0 ? knownItems : fallbackItems;
-        if (source.length === 0) {
-            return null;
-        }
-
-        const mapped = source
-            .map((entry, index) => {
-                const fallbackKey = knownOrder[index % knownOrder.length];
-                const tableLayoutEnum = (entry as any).key ?? fallbackKey;
-                const numberOfTables = Number(entry.item?.numberOfTables ?? 0);
-                return {
-                    tableLayoutEnum,
-                    groupName: String(entry.item?.groupName ?? 'Khách mời'),
-                    numberOfTables: Number.isFinite(numberOfTables) ? Math.max(1, Math.floor(numberOfTables)) : 1,
-                };
-            })
-            .filter((item) => Number(item.numberOfTables ?? 0) > 0);
-
-        if (mapped.length === 0) {
-            return null;
-        }
-
-        return {
-            tableLayoutDetailRequestList: mapped,
-        };
-    }
-
     private toNumberOrNull(value: unknown): number | null {
         const num = Number(value);
         return Number.isFinite(num) && num > 0 ? num : null;
+    }
+
+    resolvePaymentPercent(value: unknown): number {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) {
+            return 10;
+        }
+
+        return Math.min(100, Math.max(10, Math.round(parsed)));
     }
 
     private ensureCoordinatorName(coordinatorId: number | null, fallbackName?: string | null) {
@@ -1431,7 +1265,9 @@ export class BookingDetailComponent implements OnInit {
         const packageAmount = this.packagePrice;
         const baseAmount = hallAmount + setMenuAmount + packageAmount;
         const estimatedExtra = Math.max(amount - baseAmount, 0);
-        const deposit1 = Math.round(amount * 0.4);
+        const paymentPercent = this.resolvePaymentPercent(this.booking.paymentPercent);
+        const remainingPercent = Math.max(0, 100 - paymentPercent);
+        const deposit1 = Math.round(amount * (paymentPercent / 100));
         const deposit2 = Math.max(amount - deposit1, 0);
         const notes = this.booking.notes || '-';
         const menuItemsHtml = this.setMenuItems.length > 0
@@ -1501,8 +1337,8 @@ export class BookingDetailComponent implements OnInit {
             <p>- Chi phí gói dịch vụ: ${esc(this.formatPrice(packageAmount))}.</p>
             <p>- Chi phí phát sinh tạm tính: ${esc(this.formatPrice(estimatedExtra))} (sẽ quyết toán theo thực tế).</p>
             <p>3. Tiến độ thanh toán:</p>
-            <p>- Đợt 1 (đặt cọc 40% khi ký hợp đồng): ${esc(this.formatPrice(deposit1))}.</p>
-            <p>- Đợt 2 (60% còn lại + toàn bộ chi phí phát sinh): ${esc(this.formatPrice(deposit2))} + phí phát sinh (nếu có), thanh toán trước khi diễn ra tiệc.</p>
+            <p>- Đợt 1 (đặt cọc ${esc(paymentPercent)}% khi ký hợp đồng): ${esc(this.formatPrice(deposit1))}.</p>
+            <p>- Đợt 2 (${esc(remainingPercent)}% còn lại + toàn bộ chi phí phát sinh): ${esc(this.formatPrice(deposit2))} + phí phát sinh (nếu có), thanh toán trước khi diễn ra tiệc.</p>
             <p>4. Hình thức thanh toán: tiền mặt/chuyển khoản/thanh toán điện tử theo thông tin do Bên B cung cấp.</p>
 
             <p><strong>ĐIỀU III: THAY ĐỔI DỊCH VỤ VÀ PHÍ PHÁT SINH</strong></p>
@@ -1718,102 +1554,6 @@ export class BookingDetailComponent implements OnInit {
     isPaidState(value?: string): boolean {
         const state = String(value ?? '').toUpperCase();
         return state === 'SUCCESS' || state === 'CONFIRMED' || state === 'PAID';
-    }
-
-    groupedLayoutByZone(): Array<{
-        zoneEnum: string;
-        zoneLabel: string;
-        groups: Array<{ groupName: string; numberOfTables: number; startSeat: number; endSeat: number; colorIndex: number }>;
-    }> {
-        const details = this.booking?.tableLayoutResponse?.tableLayoutDetails;
-        const zoneEnums = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
-        let seatCursor = 1;
-        let colorCursor = 0;
-
-        return zoneEnums.map((zoneEnum) => {
-            const rows = details?.[zoneEnum] ?? [];
-            const groups = (rows ?? [])
-                .map((row) => {
-                    const numberOfTables = Number(row.numberOfTables ?? 0);
-                    const safeTables = Number.isFinite(numberOfTables) && numberOfTables > 0 ? Math.floor(numberOfTables) : 0;
-                    if (safeTables <= 0) {
-                        return null;
-                    }
-
-                    const startSeat = seatCursor;
-                    const endSeat = seatCursor + safeTables - 1;
-                    const colorIndex = colorCursor;
-                    seatCursor = endSeat + 1;
-                    colorCursor += 1;
-
-                    return {
-                        groupName: row.groupName || 'Khách mời',
-                        numberOfTables: safeTables,
-                        startSeat,
-                        endSeat,
-                        colorIndex,
-                    };
-                })
-                .filter((row): row is { groupName: string; numberOfTables: number; startSeat: number; endSeat: number; colorIndex: number } => row !== null);
-
-            return {
-                zoneEnum,
-                zoneLabel: this.layoutAreaLabel(zoneEnum),
-                groups,
-            };
-        });
-    }
-
-    layoutLegendDotStyle(colorIndex: number): Record<string, string> {
-        const token = this.resolveLayoutColorToken(colorIndex);
-        return {
-            'border-color': token.border,
-            background: token.background,
-        };
-    }
-
-    private resolveLayoutColorToken(colorIndex: number): { border: string; background: string } {
-        const key = this.normalizeLayoutColorIndex(colorIndex);
-        const cached = this.layoutColorStyleCache.get(key);
-        if (cached) {
-            return cached;
-        }
-
-        const hue = (key * 137.508) % 360;
-        const saturation = 70 + (key % 3) * 6;
-        const lightness = 88 - (Math.floor(key / 3) % 3) * 8;
-        const token = {
-            border: `hsl(${hue} ${Math.min(94, saturation + 8)}% ${Math.max(34, lightness - 28)}%)`,
-            background: `hsl(${hue} ${Math.min(90, saturation)}% ${Math.max(64, lightness)}%)`,
-        };
-        this.layoutColorStyleCache.set(key, token);
-        return token;
-    }
-
-    private normalizeLayoutColorIndex(colorIndex: number): number {
-        const value = Number(colorIndex);
-        if (!Number.isFinite(value) || value < 0) {
-            return 0;
-        }
-        return Math.floor(value);
-    }
-
-    totalLayoutTables(): number {
-        return this.groupedLayoutByZone().reduce(
-            (zoneSum, zone) => zoneSum + zone.groups.reduce((groupSum, group) => groupSum + Number(group.numberOfTables ?? 0), 0),
-            0
-        );
-    }
-
-    private layoutAreaLabel(key: string): string {
-        const normalized = String(key ?? '').toUpperCase();
-        const map: Record<string, string> = {
-            SIDE_A: 'Khu A',
-            SIDE_B: 'Khu B',
-            SIDE_C: 'Khu C',
-            SIDE_D: 'Khu D',
-        };
-        return map[normalized] ?? key;
     }
 
     private canCurrentUserAccessBooking(booking: Booking | null): boolean {

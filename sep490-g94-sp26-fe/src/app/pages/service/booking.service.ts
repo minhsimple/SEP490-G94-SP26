@@ -40,32 +40,11 @@ export interface Booking {
     brideMotherName?: string;
     groomFatherName?: string;
     groomMotherName?: string;
+    paymentPercent?: number | null;
     totalAmount?: number;
     status?: string;
     createdAt?: string;
     updatedAt?: string;
-    tableLayoutResponse?: TableLayoutResponse;
-}
-
-export interface TableLayoutDetailRequest {
-    tableLayoutEnum: string;
-    groupName: string;
-    numberOfTables: number;
-}
-
-export interface TableLayoutRequest {
-    tableLayoutDetailRequestList: TableLayoutDetailRequest[];
-}
-
-export interface TableLayoutDetailResponse {
-    id?: number;
-    groupName?: string;
-    numberOfTables?: number;
-}
-
-export interface TableLayoutResponse {
-    contractId?: number;
-    tableLayoutDetails?: Record<string, TableLayoutDetailResponse[]>;
 }
 
 export interface BookingSearchParams {
@@ -119,7 +98,7 @@ export interface BookingUpsertPayload {
     brideMotherName?: string;
     groomFatherName?: string;
     groomMotherName?: string;
-    tableLayoutRequest?: TableLayoutRequest;
+    paymentPercent: number;
 }
 
 export interface UpdateBookingStatePayload {
