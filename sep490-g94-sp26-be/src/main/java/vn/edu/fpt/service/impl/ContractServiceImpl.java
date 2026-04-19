@@ -86,7 +86,7 @@ public class ContractServiceImpl implements ContractService {
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setCustomerResponse(customerResponse);
 
-        createPaymentForContract(saved);
+        createPaymentForContract(saved, request.getPaymentPercent());
         invoiceService.createInvoice(saved.getId());
 
         return contractResponse;
@@ -288,11 +288,9 @@ public class ContractServiceImpl implements ContractService {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
         CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
-
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setCustomerResponse(customerResponse);
-
         return contractResponse;
     }
 
