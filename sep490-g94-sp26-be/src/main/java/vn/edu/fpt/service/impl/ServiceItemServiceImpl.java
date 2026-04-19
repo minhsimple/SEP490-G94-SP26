@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ServiceItemServiceImpl implements ServiceItemService {
     private final ServiceItemRepository serviceItemRepository;
+    private final ServicePackageRepository servicePackageRepository;
     private final ServiceMapper serviceMapper; // Add this dependency
     private final LocationRepository locationRepository;
     private final PackageServiceRepository packageServiceRepository;

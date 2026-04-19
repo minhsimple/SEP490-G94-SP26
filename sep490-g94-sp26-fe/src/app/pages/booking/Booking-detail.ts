@@ -429,12 +429,12 @@ import { RoleService } from '../service/role.service';
         <p-toast />
 
         <div class="card" *ngIf="loading" style="text-align:center; color:#64748b">
-            Đang tải thông tin đặt tiệc...
+            Đang tải thông tin hợp đồng...
         </div>
 
         <ng-container *ngIf="!loading && booking">
             <div class="page-header">
-                <h1 class="page-title">Chi tiết đặt tiệc</h1>
+                <h1 class="page-title">Chi tiết hợp đồng</h1>
             </div>
 
             <div class="hero">
@@ -459,6 +459,16 @@ import { RoleService } from '../service/role.service';
                                 {{ bookingStateLabel(booking.contractState ?? booking.bookingState ?? 'DRAFT') }}
                             </span>
                             <small class="muted">Trạng thái được đồng bộ tự động theo thanh toán.</small>
+                            <p-button
+                                label="Cập nhật Hủy hợp đồng"
+                                icon="pi pi-times-circle"
+                                severity="danger"
+                                [outlined]="true"
+                                size="small"
+                                (onClick)="cancelContract()"
+                                [loading]="updatingContractState"
+                                [disabled]="updatingContractState || !canCancelContract()"
+                            />
                         </div>
                     </div>
                 </div>
@@ -677,7 +687,7 @@ import { RoleService } from '../service/role.service';
                                 <p-button label="Xem hợp đồng" icon="pi pi-file" (onClick)="openContractDialog()" />
                                 <p-button label="In hợp đồng" icon="pi pi-print" severity="secondary" (onClick)="printContract()" />
                             </div>
-                            <div class="coordinator-panel" *ngIf="canAssignCoordinator">
+                            <div class="coordinator-panel" *ngIf="isAdminAccount">
                                 <div class="coordinator-panel-head">
                                     <span class="coordinator-panel-title">Phân công điều phối viên cho hợp đồng</span>
                                     <span class="coordinator-panel-current">Hiện tại: {{ coordinatorDisplayName() }}</span>
@@ -751,16 +761,14 @@ export class BookingDetailComponent implements OnInit {
     private readonly layoutColorStyleCache = new Map<number, { border: string; background: string }>();
     readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
-    readonly currentLocationId = Number(localStorage.getItem('locationId')) || 0;
     readonly isAdminAccount = this.codeRole.includes('ADMIN');
-    readonly isManagerAccount = this.codeRole.includes('MANAGER');
-    readonly canAssignCoordinator = this.isAdminAccount || this.isManagerAccount;
     readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
     coordinatorRoleIds = new Set<number>();
     coordinatorNameMap: Record<number, string> = {};
     coordinatorOptions: Array<{ id: number; label: string }> = [];
     selectedCoordinatorId: number | null = null;
     assigningCoordinator = false;
+    updatingContractState = false;
     invoicePreview: Invoice | null = null;
     paymentHistory: Payment[] = [];
 
@@ -805,7 +813,7 @@ export class BookingDetailComponent implements OnInit {
             return;
         }
 
-        if (this.canAssignCoordinator) {
+        if (this.isAdminAccount) {
             this.loadCoordinatorOptions();
         }
 
@@ -883,16 +891,11 @@ export class BookingDetailComponent implements OnInit {
     }
 
     private fetchCoordinatorUsers() {
-        this.userService.searchUsers({
-            page: 0,
-            size: 200,
-            sort: 'fullName,ASC',
-            locationId: this.isManagerAccount && this.currentLocationId > 0 ? this.currentLocationId : undefined,
-        }).subscribe({
+        this.userService.searchUsers({ page: 0, size: 200, sort: 'fullName,ASC' }).subscribe({
             next: (res) => {
                 const users = res.data?.content ?? [];
                 this.coordinatorOptions = users
-                    .filter((user: any) => this.isCoordinatorAssignableUser(user))
+                    .filter((user: any) => this.isCoordinatorUser(user))
                     .map((user: any) => {
                         const id = Number(user.id);
                         const label = user.fullName?.trim() || `Coordinator #${id}`;
@@ -941,23 +944,6 @@ export class BookingDetailComponent implements OnInit {
         return roleCandidates.some((value) => value.includes('COORDINATOR') || value.includes('COORD'));
     }
 
-    private isCoordinatorAssignableUser(user: any): boolean {
-        if (!this.isCoordinatorUser(user)) {
-            return false;
-        }
-
-        if (!this.isManagerAccount) {
-            return true;
-        }
-
-        if (this.currentLocationId <= 0) {
-            return false;
-        }
-
-        const userLocationId = Number(user?.locationId ?? user?.location?.id ?? 0);
-        return Number.isFinite(userLocationId) && userLocationId === this.currentLocationId;
-    }
-
     coordinatorDisplayName(): string {
         if (this.selectedCoordinatorId == null) {
             return 'Chưa phân công';
@@ -969,7 +955,7 @@ export class BookingDetailComponent implements OnInit {
     }
 
     assignCoordinator() {
-        if (!this.canAssignCoordinator || !this.booking?.id || this.selectedCoordinatorId == null) {
+        if (!this.isAdminAccount || !this.booking?.id || this.selectedCoordinatorId == null) {
             return;
         }
 
@@ -1617,6 +1603,56 @@ export class BookingDetailComponent implements OnInit {
         printWindow.document.close();
     }
 
+    canCancelContract(): boolean {
+        if (!this.booking?.id) {
+            return false;
+        }
+        const state = String(this.booking.contractState ?? this.booking.bookingState ?? '').toUpperCase();
+        return state !== 'CANCELLED' && state !== 'LIQUIDATED';
+    }
+
+    cancelContract() {
+        if (!this.booking?.id || !this.canCancelContract() || this.updatingContractState) {
+            return;
+        }
+
+        const confirmed = window.confirm('Bạn có chắc muốn cập nhật trạng thái hợp đồng sang Hủy hợp đồng?');
+        if (!confirmed) {
+            return;
+        }
+
+        this.updatingContractState = true;
+        this.bookingService.updateState({ contractId: this.booking.id, contractState: 'CANCELLED' }).subscribe({
+            next: (res) => {
+                this.updatingContractState = false;
+                const updated = res.data;
+                this.booking = {
+                    ...this.booking,
+                    ...(updated ?? {}),
+                    contractState: updated?.contractState ?? 'CANCELLED',
+                    bookingState: updated?.bookingState ?? 'CANCELLED',
+                };
+                this.messageService.add({
+                    severity: 'success',
+                    summary: 'Thành công',
+                    detail: 'Đã cập nhật trạng thái hủy hợp đồng.',
+                    life: 2500,
+                });
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                this.updatingContractState = false;
+                this.messageService.add({
+                    severity: 'error',
+                    summary: 'Lỗi',
+                    detail: err?.error?.message ?? 'Không thể cập nhật trạng thái hủy hợp đồng.',
+                    life: 3500,
+                });
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
     goBack() {
         if (this.returnUrl) {
             this.router.navigateByUrl(this.returnUrl);
@@ -1646,7 +1682,7 @@ export class BookingDetailComponent implements OnInit {
             DRAFT: 'Nháp',
             ACTIVE: 'Khách hàng đóng cọc',
             LIQUIDATED: 'Thanh lý hợp đồng',
-            CANCELLED: 'Hủy contract',
+            CANCELLED: 'Hủy hợp đồng',
         };
         return map[value ?? ''] ?? (value || '-');
     }

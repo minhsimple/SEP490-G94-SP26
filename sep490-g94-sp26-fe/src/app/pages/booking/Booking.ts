@@ -12,12 +12,11 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { ToastModule } from 'primeng/toast';
 import { TableModule, Table } from 'primeng/table';
 import { MessageService } from 'primeng/api';
-import { Booking, BookingSearchParams, BookingService } from '../service/booking.service';
+import { Booking, BookingService } from '../service/booking.service';
 import { HallService } from '../service/hall.service';
 import { CustomerService } from '../service/customer.service';
 import { SetMenuService } from '../service/set-menu';
 import { ServicePackageService } from '../service/service-package.service';
-import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 
 @Component({
     selector: 'app-bookings',
@@ -106,16 +105,24 @@ import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
             <!-- Table -->
             <div class="surface-card border-round-xl shadow-1 overflow-hidden">
                 <div class="px-4 pt-4 pb-3 border-bottom-1 surface-border">
-                    <div class="text-xl font-bold text-900">Danh sách đặt tiệc</div>
-                    <div class="text-sm text-500 mt-1">Quản lý các đơn đặt tiệc cưới</div>
+                    <div class="text-xl font-bold text-900">Danh sách hợp đồng</div>
+                    <div class="text-sm text-500 mt-1">Quản lý các hợp đồng cưới</div>
                 </div>
 
                 <p-table
                     #dt
                     [value]="bookings()"
+                    [rows]="pageSize"
+                    [paginator]="true"
+                    [totalRecords]="totalRecords"
+                    [lazy]="true"
+                    (onLazyLoad)="onLazyLoad($event)"
                     [tableStyle]="{ 'min-width': '70rem' }"
                     [rowHover]="true"
                     dataKey="id"
+                    currentPageReportTemplate="Hiển thị {first} đến {last} trong tổng số {totalRecords} đơn"
+                    [showCurrentPageReport]="true"
+                    [rowsPerPageOptions]="[10, 20, 30]"
                     [loading]="loading"
                     styleClass="p-datatable-sm"
                 >
@@ -138,7 +145,7 @@ import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
                         <tr>
                             <!-- STT -->
                             <td>
-                                <span class="text-sm text-700">{{ rowIndex + 1 }}</span>
+                                <span class="text-sm text-700">{{ currentPage * pageSize + rowIndex + 1 }}</span>
                             </td>
 
                             <!-- Mã hợp đồng -->
@@ -230,7 +237,7 @@ import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
                         <tr>
                             <td colspan="10" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
-                                Không có đơn đặt tiệc nào
+                                Không có đơn hợp đồng nào nào
                             </td>
                         </tr>
                     </ng-template>
@@ -265,6 +272,8 @@ export class BookingsComponent implements OnInit {
     bookings = signal<Booking[]>([]);
     loading = false;
     totalRecords = 0;
+    pageSize = 20;
+    currentPage = 0;
     searchKeyword = '';
     searchTimeout: any;
 
@@ -277,7 +286,7 @@ export class BookingsComponent implements OnInit {
         { label: 'Nháp', value: 'DRAFT' },
         { label: 'Khách hàng đóng cọc', value: 'ACTIVE' },
         { label: 'Thanh lý hợp đồng', value: 'LIQUIDATED' },
-        { label: 'Hủy contract', value: 'CANCELLED' },
+        { label: 'Hủy hợp đồng', value: 'CANCELLED' },
     ];
 
     shiftOptions = [
@@ -352,7 +361,7 @@ export class BookingsComponent implements OnInit {
         });
     }
 
-    loadBookings() {
+    loadBookings(page = 0, size = this.pageSize) {
         this.loading = true;
 
         const phoneKeyword = this.searchKeyword.trim();
@@ -369,7 +378,12 @@ export class BookingsComponent implements OnInit {
             bookingDateTo   = `${year}-${m}-${String(lastDay).padStart(2, '0')}`;
         }
 
-        const filters: Omit<BookingSearchParams, 'page' | 'size'> = {
+        const queryPage = this.isCoordinatorAccount || shouldSearchByPhone ? 0 : page;
+        const querySize = this.isCoordinatorAccount || shouldSearchByPhone ? 500 : size;
+
+        this.bookingService.searchBookings({
+            page: queryPage,
+            size: querySize,
             sort: 'updatedAt,DESC',
             hallId:       this.filterHallId  || undefined,
             bookingTime:  this.filterShift   || undefined,
@@ -377,32 +391,55 @@ export class BookingsComponent implements OnInit {
             assignCoordinatorId: this.isCoordinatorAccount && this.currentUserId > 0 ? this.currentUserId : undefined,
             bookingDateFrom,
             bookingDateTo,
-        };
+        }).subscribe({
+            next: (res) => {
+                if (res?.data) {
+                    let rows = res.data.content ?? [];
 
-        this.fetchAllBookings(filters).subscribe({
-            next: (rows) => {
-                if (this.isCoordinatorAccount) {
-                    rows = rows.filter((booking) => this.isBookingAssignedToCurrentCoordinator(booking));
+                    if (this.isCoordinatorAccount) {
+                        rows = rows.filter((booking) => this.isBookingAssignedToCurrentCoordinator(booking));
+                    }
+
+                    if (!shouldSearchByPhone) {
+                        if (this.isCoordinatorAccount) {
+                            this.setPagedRows(rows, page, size);
+                        } else {
+                            this.bookings.set(rows);
+                            this.resolveMissingCustomerNames(rows);
+                            this.resolveMissingPrices(rows);
+                            this.totalRecords = res.data.totalElements ?? 0;
+                        }
+                        this.loading = false;
+                        return;
+                    }
+
+                    this.filterRowsByCustomerPhone(rows, phoneKeyword, page, size);
+                } else {
+                    if (this.isCoordinatorAccount || shouldSearchByPhone) {
+                        this.setPagedRows([], page, size);
+                    } else {
+                        this.bookings.set([]);
+                        this.totalRecords = 0;
+                    }
                 }
-
-                if (!shouldSearchByPhone) {
-                    this.setDisplayedRows(rows);
-                    this.loading = false;
-                    return;
-                }
-
-                this.filterRowsByCustomerPhone(rows, phoneKeyword);
+                this.loading = false;
             },
             error: () => {
                 this.messageService.add({
                     severity: 'error',
                     summary: 'Lỗi',
-                    detail: 'Không thể tải danh sách đặt tiệc',
+                    detail: 'Không thể tải danh sách hợp đồng',
                     life: 3000,
                 });
                 this.loading = false;
             },
         });
+    }
+
+    onLazyLoad(event: any) {
+        this.currentPage = event.first / event.rows;
+        this.pageSize    = event.rows;
+        this.loadBookings(this.currentPage, this.pageSize);
     }
 
     onSearch() {
@@ -566,7 +603,7 @@ export class BookingsComponent implements OnInit {
             DRAFT:      'Nháp',
             ACTIVE:     'Khách hàng đóng cọc',
             LIQUIDATED: 'Thanh lý hợp đồng',
-            CANCELLED:  'Hủy contract',
+            CANCELLED:  'Hủy hợp đồng',
         };
         return m[status ?? ''] ?? status ?? '-';
     }
@@ -591,14 +628,16 @@ export class BookingsComponent implements OnInit {
         return m[status ?? ''] ?? '#f1f5f9';
     }
 
-    private setDisplayedRows(rows: Booking[]): void {
-        this.bookings.set(rows);
-        this.resolveMissingCustomerNames(rows);
-        this.resolveMissingPrices(rows);
+    private setPagedRows(rows: Booking[], page: number, size: number): void {
+        const start = page * size;
+        const pagedRows = rows.slice(start, start + size);
+        this.bookings.set(pagedRows);
+        this.resolveMissingCustomerNames(pagedRows);
+        this.resolveMissingPrices(pagedRows);
         this.totalRecords = rows.length;
     }
 
-    private filterRowsByCustomerPhone(rows: Booking[], phoneKeyword: string): void {
+    private filterRowsByCustomerPhone(rows: Booking[], phoneKeyword: string, page: number, size: number): void {
         this.customerService.searchCustomers({
             phone: phoneKeyword,
             page: 0,
@@ -631,7 +670,7 @@ export class BookingsComponent implements OnInit {
                     return Number.isFinite(customerId) && matchedCustomerIds.has(customerId);
                 });
 
-                this.setDisplayedRows(filteredRows);
+                this.setPagedRows(filteredRows, page, size);
                 this.loading = false;
             },
             error: () => {
@@ -645,36 +684,10 @@ export class BookingsComponent implements OnInit {
                     return phone.toLowerCase().includes(phoneKeyword.toLowerCase());
                 });
 
-                this.setDisplayedRows(filteredRows);
+                this.setPagedRows(filteredRows, page, size);
                 this.loading = false;
             },
         });
-    }
-
-    private fetchAllBookings(filters: Omit<BookingSearchParams, 'page' | 'size'>): Observable<Booking[]> {
-        const size = 500;
-
-        return this.bookingService.searchBookings({ ...filters, page: 0, size }).pipe(
-            switchMap((firstRes) => {
-                const firstRows = firstRes.data?.content ?? [];
-                const totalPages = firstRes.data?.totalPages ?? 1;
-
-                if (totalPages <= 1) {
-                    return of(firstRows);
-                }
-
-                const restRequests = Array.from({ length: totalPages - 1 }, (_, index) =>
-                    this.bookingService.searchBookings({ ...filters, page: index + 1, size })
-                );
-
-                return forkJoin(restRequests).pipe(
-                    map((responses) => [
-                        ...firstRows,
-                        ...responses.flatMap((res) => res.data?.content ?? [])
-                    ])
-                );
-            })
-        );
     }
 
     private normalizePhone(value: string): string {

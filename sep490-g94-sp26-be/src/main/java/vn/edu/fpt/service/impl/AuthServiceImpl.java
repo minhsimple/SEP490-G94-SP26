@@ -66,6 +66,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        log.info("User login attempt for email: {}", request.getEmail());
+
         try {
             authenticateUser(request.getEmail(), request.getPassword());
         } catch (Exception ex) {

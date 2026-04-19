@@ -135,7 +135,6 @@ public enum ERROR_CODE {
     PAYMENT_INVALID_SIGNATURE(15003, "Chữ ký webhook không hợp lệ", HttpStatus.BAD_REQUEST),
     PAYMENT_INVALID_STATE(15004, "Trạng thái thanh toán không phù hợp với payos", HttpStatus.BAD_REQUEST),
     PAYMENT_NOT_FOUND(16001, "Thanh toán không tồn tại", HttpStatus.NOT_FOUND),
-    PAYMENT_PERCENTAGE_INVALID(16002, "Phần trăm thanh toán không hợp lệ", HttpStatus.BAD_REQUEST),
 
     /**
      * Invoice Error
