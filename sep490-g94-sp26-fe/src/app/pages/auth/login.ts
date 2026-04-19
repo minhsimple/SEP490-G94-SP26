@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
@@ -10,21 +9,6 @@ import { RippleModule } from 'primeng/ripple';
 import { MessageModule } from 'primeng/message';
 import { AppFloatingConfigurator } from '../../layout/component/app.floatingconfigurator';
 import { AuthService } from '../service/auth.service';
-
-interface LoginResponse {
-    code: number;
-    message: string;
-    data: {
-        codeRole: string;
-        accessToken: string;
-        refreshToken: string;
-        tokenType: string;
-        userId: number;
-        email: string;
-        fullName: string;
-        locationId: number;
-    };
-}
 
 @Component({
     selector: 'app-login',
@@ -122,8 +106,8 @@ export class Login {
     errorMessage = '';
 
     constructor(
-        private http: HttpClient,
         private router: Router,
+        private route: ActivatedRoute,
         private authService: AuthService
     ) {}
 
@@ -144,35 +128,25 @@ export class Login {
         this.isLoading = true;
         this.errorMessage = '';
 
-        this.http
-            .post<LoginResponse>('http://localhost:8080/api/v1/auth/login', {
+        this.authService
+            .login({
                 email: this.email,
                 password: this.password
             })
             .subscribe({
                 next: (response) => {
                     if (response.code === 200 && response.data) {
-    const postLoginRoute = this.resolvePostLoginRoute(response.data.codeRole);
-    localStorage.setItem('accessToken',  response.data.accessToken);
-    localStorage.setItem('refreshToken', response.data.refreshToken);
-    localStorage.setItem('userId',       response.data.userId.toString());
-    localStorage.setItem('email',        response.data.email);
-    localStorage.setItem('fullName',     response.data.fullName);
-    localStorage.setItem('locationId',   response.data.locationId?.toString() ?? '');
+                        const postLoginRoute = this.resolvePostLoginRoute(response.data.codeRole);
+                        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
 
-    // Dùng service thay vì localStorage trực tiếp
-    this.authService.setCodeRole(response.data.codeRole);
+                        this.authService.saveSession(response.data);
 
-    this.authService.getMe().subscribe({
-        next: () => {
-            this.isLoading = false;
-            this.router.navigate(postLoginRoute);
-        },
-        error: () => {
-            this.isLoading = false;
-            this.router.navigate(postLoginRoute);
-        }
-    });
+                        this.isLoading = false;
+                        if (returnUrl && returnUrl !== '/auth/login') {
+                            void this.router.navigateByUrl(returnUrl);
+                        } else {
+                            void this.router.navigate(postLoginRoute);
+                        }
                     } else {
                         this.errorMessage = response.message || 'Login failed.';
                         this.isLoading = false;
