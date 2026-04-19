@@ -19,6 +19,7 @@ public interface ContractMapper {
     @Mapping(target = "contractState", ignore = true)
     @Mapping(target = "startTime", ignore = true)
     @Mapping(target = "endTime", ignore = true)
+    @Mapping(target = "PaymentPercent", ignore = true)
     Contract toEntity(ContractRequest request);
 
     @Mapping(target = "bookingDate", source = "startTime", qualifiedByName = "toLocalDate")
@@ -30,6 +31,7 @@ public interface ContractMapper {
     @Mapping(target = "contractState", ignore = true)
     @Mapping(target = "startTime", ignore = true)
     @Mapping(target = "endTime", ignore = true)
+    @Mapping(target = "PaymentPercent", ignore = true)
     void updateEntity(@MappingTarget Contract contract, ContractRequest request);
 
     @Named("toLocalDate")

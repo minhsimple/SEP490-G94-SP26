@@ -149,6 +149,9 @@ public class ContractServiceImpl implements ContractService {
                 !hallRepository.existsByIdAndStatus(request.getHallId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.HALL_NOT_EXISTED);
         }
+        if(request.getPaymentPercent() != null || request.getPaymentPercent() <= 0 || request.getPaymentPercent() > 100 ) {
+            throw new AppException(ERROR_CODE.BOOKING_INVALID_PAYMENT_PERCENT);
+        }
         if (request.getSetMenuId() != null &&
                 !setMenuRepository.existsByIdAndStatus(request.getSetMenuId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED);
@@ -340,34 +343,21 @@ public class ContractServiceImpl implements ContractService {
                 request.getStartTime(), request.getEndTime(), request.getLocationId());
     }
 
-    // tạo 3 payment mới với thông tin từ contract
-    // payment đầu tiên: 40% tổng tiền, trạng thái PENDING
-    // payment thứ 2:  30% tổng tiền, trạng thái PENDING
-    // payment thứ 3: 30% tổng tiền +  penalty (nếu có) với số tiền phạt, trạng thái PENDING
-    public void createPaymentForContract(Contract contract) throws Exception {
+    public void createPaymentForContract(Contract contract, Integer paymentPercent) throws Exception {
         BigDecimal totalAmount = getTotalAmountForContract(contract);
 
-        BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(0.4));
-        BigDecimal secondAmount = totalAmount.multiply(BigDecimal.valueOf(0.6));
+        BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(paymentPercent)
+                .divide(BigDecimal.valueOf(100)));
 
         PaymentRequest request1 = PaymentRequest.builder()
                 .contractId(contract.getId())
                 .amount(firstAmount)
                 .method(PaymentMethod.BANK_TRANSFER)
                 .paymentState(PaymentState.PENDING)
-                .note("Thanh toán đợt 1 - 40%")
-                .build();
-
-        PaymentRequest request2 = PaymentRequest.builder()
-                .contractId(contract.getId())
-                .amount(secondAmount)
-                .method(PaymentMethod.BANK_TRANSFER)
-                .paymentState(PaymentState.PENDING)
-                .note("Thanh toán đợt 2 - 60% + chi phí phát sinh (nếu có)")
+                .note("Thanh toán đợt 1 - " + paymentPercent + "% tổng giá trị hợp đồng")
                 .build();
 
         paymentServiceImpl.createPayment(request1);
-        paymentServiceImpl.createPayment(request2);
 
     }
 
