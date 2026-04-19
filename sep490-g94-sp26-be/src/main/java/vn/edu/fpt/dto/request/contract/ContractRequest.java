@@ -71,32 +71,5 @@ public class ContractRequest {
 
     String groomMotherName;
 
-    @NotNull(message = "Thông tin bố trí bàn không được để trống")
-    @Valid
-    TableLayoutRequest tableLayoutRequest;
 
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class TableLayoutRequest {
-        @Valid
-        @NotEmpty(message = "Danh sách bố trí bàn không được để trống")
-        List<TableLayoutDetailRequest> tableLayoutDetailRequestList;
-
-        @Data
-        @Builder
-        @NoArgsConstructor
-        @AllArgsConstructor
-        public static class TableLayoutDetailRequest {
-            @NotNull(message = "Khu vực bàn không được để trống")
-            TableLayoutEnum tableLayoutEnum;
-
-            @NotBlank(message = "Tên nhóm không được để trống")
-            String groupName;
-
-            @NotNull(message = "Số lượng bàn không được để trống")
-            Integer numberOfTables;
-        }
-    }
 }
