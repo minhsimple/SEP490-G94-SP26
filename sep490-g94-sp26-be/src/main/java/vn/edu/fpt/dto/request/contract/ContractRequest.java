@@ -71,6 +71,8 @@ public class ContractRequest {
 
     String groomMotherName;
 
+    Integer PaymentPercentage;
+
     @NotNull(message = "Thông tin bố trí bàn không được để trống")
     @Valid
     TableLayoutRequest tableLayoutRequest;

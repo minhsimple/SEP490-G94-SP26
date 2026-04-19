@@ -19,6 +19,7 @@ public interface ContractMapper {
     @Mapping(target = "contractState", ignore = true)
     @Mapping(target = "startTime", ignore = true)
     @Mapping(target = "endTime", ignore = true)
+    @Mapping(target = "PaymentPercentage", ignore = true)
     Contract toEntity(ContractRequest request);
 
     @Mapping(target = "bookingDate", source = "startTime", qualifiedByName = "toLocalDate")
