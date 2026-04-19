@@ -12,7 +12,7 @@ import { TextareaModule } from 'primeng/textarea';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { Booking, BookingService, BookingUpsertPayload, TableLayoutRequest } from '../service/booking.service';
+import { Booking, BookingService, BookingUpsertPayload } from '../service/booking.service';
 import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
 import { LocationService } from '../service/location.service';
@@ -216,111 +216,6 @@ interface SalesOption {
         .empty-state span {
             font-size: 0.82rem;
         }
-        .btn-setup {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.35rem 0.9rem;
-            font-size: 0.82rem;
-            font-weight: 500;
-            color: #475569;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.15s, border-color 0.15s;
-            white-space: nowrap;
-        }
-        .btn-setup:hover:not(:disabled) {
-            background: #f1f5f9;
-            border-color: #94a3b8;
-        }
-        .btn-setup:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        .seat-card-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 2rem 0;
-            color: #94a3b8;
-        }
-        .seat-card-empty i {
-            font-size: 2rem;
-            color: #cbd5e1;
-        }
-        .layout-preview-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-            margin-top: 0.4rem;
-        }
-        .layout-zone-card {
-            border: 2px solid #d6dde8;
-            border-radius: 8px;
-            padding: 0.8rem 0.75rem;
-            background: #f8fafc;
-        }
-        .layout-zone-header {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #0f172a;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-        }
-        .layout-zone-groups {
-            font-size: 0.78rem;
-            color: #475569;
-        }
-        .layout-group-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
-        .layout-group-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .layout-group-left {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            min-width: 0;
-            flex: 1;
-        }
-        .layout-group-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 999px;
-            border: 2px solid #cbd5e1;
-            background: #fff;
-            flex-shrink: 0;
-        }
-        .layout-group-name {
-            font-weight: 500;
-            color: #334155;
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .layout-group-count {
-            font-weight: 600;
-            color: #64748b;
-            white-space: nowrap;
-        }
-        .layout-zone-empty {
-            color: #cbd5e1;
-            font-style: italic;
-            font-size: 0.74rem;
-        }
         .summary-card {
             position: sticky;
             top: 1rem;
@@ -369,8 +264,7 @@ interface SalesOption {
             .two-col,
             .three-col,
             .menu-grid,
-            .person-grid,
-            .layout-preview-grid {
+            .person-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -626,6 +520,19 @@ interface SalesOption {
                             />
                         </div>
                     </div>
+
+                    <div class="field-wrap" style="max-width: 320px; margin-top: 0.75rem;">
+                        <label class="field-label">Phần trăm cọc hợp đồng (%) <span class="req">*</span></label>
+                        <p-inputnumber
+                            [(ngModel)]="form.paymentPercent"
+                            [min]="10"
+                            [max]="100"
+                            [minFractionDigits]="0"
+                            [maxFractionDigits]="0"
+                            styleClass="w-full"
+                            inputStyleClass="w-full"
+                        />
+                    </div>
                 </div>
 
                 <div class="section-card">
@@ -672,43 +579,6 @@ interface SalesOption {
                             <div class="menu-price">{{ formatPrice(pkg.price) }}</div>
                         </div>
                     </div>
-                </div>
-
-                <div class="section-card">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin:0 0 0.75rem">
-                        <h2 class="section-title" style="margin:0">Layout chỗ ngồi</h2>
-                        <button class="btn-setup" (click)="openSeatLayout()">
-                            Chỉnh sửa
-                        </button>
-                    </div>
-                    <div *ngIf="layoutEntries.length > 0; else noLayoutPreview">
-                        <div class="layout-preview-grid">
-                            <div class="layout-zone-card" *ngFor="let zone of groupLayoutByZone()">
-                                <div class="layout-zone-header">{{ zone.zoneLabel }}</div>
-                                <div class="layout-zone-groups">
-                                    <div *ngIf="zone.groups.length > 0; else noGroupsInZone" class="layout-group-list">
-                                        <div class="layout-group-item" *ngFor="let group of zone.groups">
-                                            <span class="layout-group-left">
-                                                <i class="layout-group-dot" [ngStyle]="layoutLegendDotStyle(group.colorIndex)"></i>
-                                                <span class="layout-group-name">{{ group.groupName }}</span>
-                                            </span>
-                                            <span class="layout-group-count">Bàn {{ group.startSeat }}-{{ group.endSeat }} · {{ group.numberOfTables }} bàn</span>
-                                        </div>
-                                    </div>
-                                    <ng-template #noGroupsInZone>
-                                        <div class="layout-zone-empty">Không có nhóm</div>
-                                    </ng-template>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <ng-template #noLayoutPreview>
-                    <div class="seat-card-empty">
-                        <i class="pi pi-stop"></i>
-                        <span style="font-size:0.88rem">Chưa có sơ đồ chỗ ngồi</span>
-                        <span style="font-size:0.78rem">Nhấn "Thiết lập" để cấu hình layout</span>
-                    </div>
-                    </ng-template>
                 </div>
 
                 <div class="section-card">
@@ -767,6 +637,10 @@ interface SalesOption {
                     <div class="summary-row">
                         <span>Số bàn / khách</span>
                         <strong>{{ form.expectedTables }} bàn / {{ form.expectedGuests }} khách</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Phần trăm cọc</span>
+                        <strong>{{ form.paymentPercent }}%</strong>
                     </div>
                     <div class="summary-divider"></div>
                     <div class="summary-row" *ngIf="summary.setMenuName">
@@ -837,9 +711,6 @@ export class BookingCreateComponent implements OnInit {
     };
     salesNameMap: Record<number, string> = {};
     saleRoleIds = new Set<number>();
-    tableLayoutRequestDraft: TableLayoutRequest | null = null;
-    private readonly layoutColorStyleCache = new Map<number, { border: string; background: string }>();
-
     shiftOptions = [
         { label: 'Ca sáng (10:00 - 14:00)', value: 'SLOT_1' },
         { label: 'Ca chiều (17:00 - 21:00)', value: 'SLOT_2' },
@@ -854,6 +725,7 @@ export class BookingCreateComponent implements OnInit {
         bookingTime: 'SLOT_1',
         expectedTables: 20,
         expectedGuests: 200,
+        paymentPercent: 10,
         packageId: Number(localStorage.getItem('packageId')) || null,
         setMenuId: null as number | null,
         salesId: Number(localStorage.getItem('userId')) || null,
@@ -888,26 +760,6 @@ export class BookingCreateComponent implements OnInit {
         return this.isSaleAccount && !this.isEditMode;
     }
 
-    get layoutEntries() {
-        return this.tableLayoutRequestDraft?.tableLayoutDetailRequestList ?? [];
-    }
-
-    get totalLayoutTables(): number {
-        return this.layoutEntries.reduce((sum, item) => sum + Number(item.numberOfTables ?? 0), 0);
-    }
-
-    get seatLayoutDraftBooking(): Partial<Booking> {
-        return {
-            hallId: this.form.hallId ?? undefined,
-            hallName: this.summary.hallName || undefined,
-            bookingDate: this.toISODate(this.form.bookingDate),
-            expectedTables: this.form.expectedTables,
-            tableCount: this.form.expectedTables,
-            brideName: this.form.brideName || undefined,
-            groomName: this.form.groomName || undefined,
-        };
-    }
-
     constructor(
         private http: HttpClient,
         private route: ActivatedRoute,
@@ -926,39 +778,6 @@ export class BookingCreateComponent implements OnInit {
     ) {}
 
     ngOnInit() {
-        const navState = history.state ?? {};
-        const stateLayout = navState?.tableLayoutRequest as TableLayoutRequest | undefined;
-
-        let storageLayout: TableLayoutRequest | null = null;
-        let storageSavedToDb = false;
-        try {
-            const rawLayout = sessionStorage.getItem('bookingCreateTableLayoutDraft');
-            if (rawLayout) {
-                storageLayout = JSON.parse(rawLayout) as TableLayoutRequest;
-            }
-            storageSavedToDb = sessionStorage.getItem('bookingCreateTableLayoutSavedToDb') === '1';
-            sessionStorage.removeItem('bookingCreateTableLayoutDraft');
-            sessionStorage.removeItem('bookingCreateTableLayoutSavedToDb');
-        } catch {
-            storageLayout = null;
-        }
-
-        const incomingLayout = stateLayout?.tableLayoutDetailRequestList?.length
-            ? stateLayout
-            : (storageLayout?.tableLayoutDetailRequestList?.length ? storageLayout : null);
-
-        if (incomingLayout) {
-            this.tableLayoutRequestDraft = incomingLayout;
-            this.messageService.add({
-                severity: 'success',
-                summary: 'Lưu thành công',
-                detail: (navState?.layoutSavedToDb || storageSavedToDb)
-                    ? 'Đã lưu layout vào hệ thống và cập nhật lên hợp đồng.'
-                    : 'Đã lưu layout tạm thời cho hợp đồng đang tạo.',
-                life: 2600,
-            });
-        }
-
         const id = Number(this.route.snapshot.paramMap.get('id'));
         if (Number.isFinite(id) && id > 0) {
             this.bookingId = id;
@@ -1116,6 +935,7 @@ export class BookingCreateComponent implements OnInit {
         this.form.bookingTime = booking.bookingTime ?? 'SLOT_1';
         this.form.expectedTables = this.toNumberOrDefault(booking.expectedTables ?? booking.tableCount, 20);
         this.form.expectedGuests = this.toNumberOrDefault(booking.expectedGuests ?? booking.guestCount, 200);
+        this.form.paymentPercent = this.normalizePaymentPercent(booking.paymentPercent);
         this.form.packageId = this.toNumberOrNull(booking.packageId);
         this.form.setMenuId = this.toNumberOrNull(booking.setMenuId);
         this.form.salesId = this.toNumberOrNull(booking.salesId) ?? this.form.salesId;
@@ -1133,7 +953,6 @@ export class BookingCreateComponent implements OnInit {
         this.form.brideMotherName = booking.brideMotherName ?? '';
         this.form.groomFatherName = booking.groomFatherName ?? '';
         this.form.groomMotherName = booking.groomMotherName ?? '';
-        this.tableLayoutRequestDraft = this.extractTableLayoutRequestFromBooking(booking);
     }
 
     private loadSalesOptions() {
@@ -1846,6 +1665,10 @@ export class BookingCreateComponent implements OnInit {
             this.warn('Vui lòng nhập số bàn và số khách dự kiến');
             return false;
         }
+        if (this.form.paymentPercent == null || this.form.paymentPercent < 10 || this.form.paymentPercent > 100) {
+            this.warn('Phần trăm cọc phải từ 10% đến 100%');
+            return false;
+        }
         return true;
     }
 
@@ -1887,6 +1710,7 @@ export class BookingCreateComponent implements OnInit {
             bookingTime: this.form.bookingTime,
             expectedTables: this.form.expectedTables,
             expectedGuests: this.form.expectedGuests,
+            paymentPercent: this.form.paymentPercent,
             packageId: this.form.packageId,
             setMenuId: this.form.setMenuId,
             salesId: enforcedSalesId,
@@ -1903,9 +1727,6 @@ export class BookingCreateComponent implements OnInit {
         } as BookingUpsertPayload;
 
         payload.assignCoordinatorId = this.form.assignCoordinatorId ?? enforcedSalesId ?? null;
-        if (this.tableLayoutRequestDraft?.tableLayoutDetailRequestList?.length) {
-            payload.tableLayoutRequest = this.tableLayoutRequestDraft;
-        }
 
         return payload;
     }
@@ -1916,30 +1737,6 @@ export class BookingCreateComponent implements OnInit {
             return;
         }
         this.router.navigate(['/pages/booking']);
-    }
-
-    openSeatLayout() {
-        this.persistFormDraft();
-
-        if (this.bookingId) {
-            this.router.navigate(['/pages/seat-layout', this.bookingId], {
-                state: {
-                    returnUrl: this.router.url,
-                    draftTableLayoutRequest: this.tableLayoutRequestDraft,
-                }
-            });
-            return;
-        }
-
-        this.router.navigate(['/pages/seat-layout'], {
-            state: {
-                returnUrl: this.router.url,
-                draftBooking: this.seatLayoutDraftBooking,
-                draftCustomerName: this.customerDraft.fullName?.trim() || this.selectedCustomer?.label || '',
-                draftHallName: this.summary.hallName || '',
-                draftTableLayoutRequest: this.tableLayoutRequestDraft,
-            }
-        });
     }
 
     private persistFormDraft() {
@@ -2041,112 +1838,6 @@ export class BookingCreateComponent implements OnInit {
         });
     }
 
-    private extractTableLayoutRequestFromBooking(booking: Booking): TableLayoutRequest | null {
-        const details = booking.tableLayoutResponse?.tableLayoutDetails;
-        if (!details) return null;
-
-        const knownOrder = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
-        const knownList = knownOrder
-            .flatMap((key) => (details[key] ?? []).map((item) => ({ key, item })));
-
-        const fallbackList = Object.entries(details)
-            .filter(([key]) => !knownOrder.includes(key))
-            .flatMap(([, arr]) => arr.map((item) => ({ item })));
-
-        const source = knownList.length > 0 ? knownList : fallbackList;
-        if (source.length === 0) return null;
-
-        const mapped = source.map((entry, index) => {
-            const fallbackKey = knownOrder[index % knownOrder.length];
-            const tableLayoutEnum = (entry as any).key ?? fallbackKey;
-            const numberOfTables = Number(entry.item?.numberOfTables ?? 0);
-            return {
-                tableLayoutEnum,
-                groupName: String(entry.item?.groupName ?? 'Khách mời'),
-                numberOfTables: Number.isFinite(numberOfTables) ? Math.max(1, numberOfTables) : 1,
-            };
-        });
-
-        return { tableLayoutDetailRequestList: mapped };
-    }
-
-    groupLayoutByZone() {
-        const zones = ['SIDE_A', 'SIDE_B', 'SIDE_C', 'SIDE_D'];
-        let seatCursor = 1;
-
-        const grouped = zones.map((zoneEnum) => {
-            const groups = this.layoutEntries
-                .map((item, index) => ({ item, index }))
-                .filter((entry) => String(entry.item.tableLayoutEnum ?? '').toUpperCase() === zoneEnum)
-                .map((entry) => {
-                    const numberOfTables = Math.max(1, Number(entry.item.numberOfTables ?? 1));
-                    const startSeat = seatCursor;
-                    const endSeat = seatCursor + numberOfTables - 1;
-                    seatCursor = endSeat + 1;
-
-                    return {
-                        groupName: String(entry.item.groupName ?? 'Khách mời'),
-                        numberOfTables,
-                        startSeat,
-                        endSeat,
-                        colorIndex: entry.index,
-                    };
-                });
-
-            return {
-                zoneEnum,
-                zoneLabel: this.getLayoutAreaLabel(zoneEnum),
-                groups,
-            };
-        });
-        return grouped;
-    }
-
-    layoutLegendDotStyle(colorIndex: number): Record<string, string> {
-        const token = this.resolveLayoutColorToken(colorIndex);
-        return {
-            'border-color': token.border,
-            background: token.background,
-        };
-    }
-
-    private resolveLayoutColorToken(colorIndex: number): { border: string; background: string } {
-        const key = this.normalizeLayoutColorIndex(colorIndex);
-        const cached = this.layoutColorStyleCache.get(key);
-        if (cached) {
-            return cached;
-        }
-
-        const hue = (key * 137.508) % 360;
-        const saturation = 70 + (key % 3) * 6;
-        const lightness = 88 - (Math.floor(key / 3) % 3) * 8;
-        const token = {
-            border: `hsl(${hue} ${Math.min(94, saturation + 8)}% ${Math.max(34, lightness - 28)}%)`,
-            background: `hsl(${hue} ${Math.min(90, saturation)}% ${Math.max(64, lightness)}%)`,
-        };
-        this.layoutColorStyleCache.set(key, token);
-        return token;
-    }
-
-    private normalizeLayoutColorIndex(colorIndex: number): number {
-        const value = Number(colorIndex);
-        if (!Number.isFinite(value) || value < 0) {
-            return 0;
-        }
-        return Math.floor(value);
-    }
-
-    getLayoutAreaLabel(value?: string): string {
-        const key = String(value ?? '').toUpperCase();
-        const map: Record<string, string> = {
-            SIDE_A: 'Khu A',
-            SIDE_B: 'Khu B',
-            SIDE_C: 'Khu C',
-            SIDE_D: 'Khu D',
-        };
-        return map[key] ?? (value || 'Khu');
-    }
-
     private warn(detail: string) {
         this.messageService.add({ severity: 'warn', summary: 'Thiếu thông tin', detail, life: 3000 });
     }
@@ -2183,6 +1874,15 @@ export class BookingCreateComponent implements OnInit {
     private toNumberOrDefault(value: unknown, fallback: number): number {
         const parsed = this.toNumberOrNull(value);
         return parsed ?? fallback;
+    }
+
+    private normalizePaymentPercent(value: unknown): number {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) {
+            return 10;
+        }
+
+        return Math.min(100, Math.max(10, Math.round(parsed)));
     }
 
     formatPrice(value?: number): string {
