@@ -106,8 +106,8 @@ import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
             <!-- Table -->
             <div class="surface-card border-round-xl shadow-1 overflow-hidden">
                 <div class="px-4 pt-4 pb-3 border-bottom-1 surface-border">
-                    <div class="text-xl font-bold text-900">Danh sách đặt tiệc</div>
-                    <div class="text-sm text-500 mt-1">Quản lý các đơn đặt tiệc cưới</div>
+                    <div class="text-xl font-bold text-900">Danh sách hợp đồng</div>
+                    <div class="text-sm text-500 mt-1">Quản lý các hợp đồng cưới</div>
                 </div>
 
                 <p-table
@@ -230,7 +230,7 @@ import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
                         <tr>
                             <td colspan="10" class="text-center py-8 text-500">
                                 <i class="pi pi-inbox text-4xl mb-3 block"></i>
-                                Không có đơn đặt tiệc nào
+                                Không có đơn hợp đồng nào nào
                             </td>
                         </tr>
                     </ng-template>
@@ -277,7 +277,7 @@ export class BookingsComponent implements OnInit {
         { label: 'Nháp', value: 'DRAFT' },
         { label: 'Khách hàng đóng cọc', value: 'ACTIVE' },
         { label: 'Thanh lý hợp đồng', value: 'LIQUIDATED' },
-        { label: 'Hủy contract', value: 'CANCELLED' },
+        { label: 'Hủy hợp đồng', value: 'CANCELLED' },
     ];
 
     shiftOptions = [
@@ -397,7 +397,7 @@ export class BookingsComponent implements OnInit {
                 this.messageService.add({
                     severity: 'error',
                     summary: 'Lỗi',
-                    detail: 'Không thể tải danh sách đặt tiệc',
+                    detail: 'Không thể tải danh sách hợp đồng',
                     life: 3000,
                 });
                 this.loading = false;
@@ -566,7 +566,7 @@ export class BookingsComponent implements OnInit {
             DRAFT:      'Nháp',
             ACTIVE:     'Khách hàng đóng cọc',
             LIQUIDATED: 'Thanh lý hợp đồng',
-            CANCELLED:  'Hủy contract',
+            CANCELLED:  'Hủy hợp đồng',
         };
         return m[status ?? ''] ?? status ?? '-';
     }

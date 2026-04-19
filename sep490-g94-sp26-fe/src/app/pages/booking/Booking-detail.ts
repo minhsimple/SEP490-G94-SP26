@@ -429,12 +429,12 @@ import { RoleService } from '../service/role.service';
         <p-toast />
 
         <div class="card" *ngIf="loading" style="text-align:center; color:#64748b">
-            Đang tải thông tin đặt tiệc...
+            Đang tải thông tin hợp đồng...
         </div>
 
         <ng-container *ngIf="!loading && booking">
             <div class="page-header">
-                <h1 class="page-title">Chi tiết đặt tiệc</h1>
+                <h1 class="page-title">Chi tiết hợp đồng</h1>
             </div>
 
             <div class="hero">
@@ -459,6 +459,16 @@ import { RoleService } from '../service/role.service';
                                 {{ bookingStateLabel(booking.contractState ?? booking.bookingState ?? 'DRAFT') }}
                             </span>
                             <small class="muted">Trạng thái được đồng bộ tự động theo thanh toán.</small>
+                            <p-button
+                                label="Cập nhật Hủy hợp đồng"
+                                icon="pi pi-times-circle"
+                                severity="danger"
+                                [outlined]="true"
+                                size="small"
+                                (onClick)="cancelContract()"
+                                [loading]="updatingContractState"
+                                [disabled]="updatingContractState || !canCancelContract()"
+                            />
                         </div>
                     </div>
                 </div>
@@ -761,6 +771,7 @@ export class BookingDetailComponent implements OnInit {
     coordinatorOptions: Array<{ id: number; label: string }> = [];
     selectedCoordinatorId: number | null = null;
     assigningCoordinator = false;
+    updatingContractState = false;
     invoicePreview: Invoice | null = null;
     paymentHistory: Payment[] = [];
 
@@ -1617,6 +1628,56 @@ export class BookingDetailComponent implements OnInit {
         printWindow.document.close();
     }
 
+    canCancelContract(): boolean {
+        if (!this.booking?.id) {
+            return false;
+        }
+        const state = String(this.booking.contractState ?? this.booking.bookingState ?? '').toUpperCase();
+        return state !== 'CANCELLED' && state !== 'LIQUIDATED';
+    }
+
+    cancelContract() {
+        if (!this.booking?.id || !this.canCancelContract() || this.updatingContractState) {
+            return;
+        }
+
+        const confirmed = window.confirm('Bạn có chắc muốn cập nhật trạng thái hợp đồng sang Hủy hợp đồng?');
+        if (!confirmed) {
+            return;
+        }
+
+        this.updatingContractState = true;
+        this.bookingService.updateState({ contractId: this.booking.id, contractState: 'CANCELLED' }).subscribe({
+            next: (res) => {
+                this.updatingContractState = false;
+                const updated = res.data;
+                this.booking = {
+                    ...this.booking,
+                    ...(updated ?? {}),
+                    contractState: updated?.contractState ?? 'CANCELLED',
+                    bookingState: updated?.bookingState ?? 'CANCELLED',
+                };
+                this.messageService.add({
+                    severity: 'success',
+                    summary: 'Thành công',
+                    detail: 'Đã cập nhật trạng thái hủy hợp đồng.',
+                    life: 2500,
+                });
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                this.updatingContractState = false;
+                this.messageService.add({
+                    severity: 'error',
+                    summary: 'Lỗi',
+                    detail: err?.error?.message ?? 'Không thể cập nhật trạng thái hủy hợp đồng.',
+                    life: 3500,
+                });
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
     goBack() {
         if (this.returnUrl) {
             this.router.navigateByUrl(this.returnUrl);
@@ -1646,7 +1707,7 @@ export class BookingDetailComponent implements OnInit {
             DRAFT: 'Nháp',
             ACTIVE: 'Khách hàng đóng cọc',
             LIQUIDATED: 'Thanh lý hợp đồng',
-            CANCELLED: 'Hủy contract',
+            CANCELLED: 'Hủy hợp đồng',
         };
         return map[value ?? ''] ?? (value || '-');
     }
