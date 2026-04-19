@@ -7,6 +7,7 @@ import { AppConfigurator } from './app.configurator';
 import { LayoutService } from '../service/layout.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { AuthService } from '../../pages/service/auth.service';
 
 @Component({
   selector: 'app-topbar',
@@ -292,6 +293,7 @@ export class AppTopbar implements OnInit {
   constructor(
     private http: HttpClient,
     private router: Router,
+    private authService: AuthService,
   ) {}
 
   ngOnInit() {
@@ -345,13 +347,7 @@ export class AppTopbar implements OnInit {
   }
 
   private clearAndRedirect() {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('fullName');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('email');
-    localStorage.removeItem('locationId');
-    localStorage.removeItem('codeRole');
-    this.router.navigate(['/auth/login']);
+    this.authService.clearAuth();
+    void this.router.navigate(['/auth/login']);
   }
 }
