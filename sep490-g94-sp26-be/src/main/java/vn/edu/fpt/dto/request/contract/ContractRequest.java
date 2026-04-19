@@ -1,5 +1,6 @@
 package vn.edu.fpt.dto.request.contract;
 
+import jakarta.persistence.Column;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -71,6 +72,7 @@ public class ContractRequest {
 
     String groomMotherName;
 
+    @NotNull(message = "Phần trăm thanh toán không được để trống")
     Integer PaymentPercent;
 
 }

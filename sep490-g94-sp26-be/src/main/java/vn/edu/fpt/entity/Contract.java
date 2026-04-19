@@ -97,5 +97,8 @@ public class Contract extends BaseEntity {
 
     @Column(name = "assign_coordinator_id")
     Integer assignCoordinatorId;
+
+    @Column(name = "payment_percentage")
+    private Integer paymentPercent;
 }
 

@@ -157,6 +157,8 @@ public enum ERROR_CODE {
      * Task Error
      */
     TASK_NOT_EXISTED(20001, "Công việc không tồn tại", HttpStatus.NOT_FOUND),
+    TASK_LIST_NOT_FOUND(20002, "Danh sách công việc không tồn tại", HttpStatus.NOT_FOUND),
+    CONTRACT_TASKS_NOT_COMPLETED(20003, "Tồn tại công việc chưa hoàn thành", HttpStatus.BAD_REQUEST),
 
     /**
      * Other Error
