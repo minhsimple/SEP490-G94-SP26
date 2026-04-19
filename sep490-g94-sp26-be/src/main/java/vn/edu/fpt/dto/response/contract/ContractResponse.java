@@ -46,7 +46,7 @@ public class ContractResponse {
     RecordStatus status;
     Integer assignCoordinatorId;
     String assignCoordinatorName;
-    Integer PaymentPercent;
+    Integer paymentPercent;
 }
 
 
