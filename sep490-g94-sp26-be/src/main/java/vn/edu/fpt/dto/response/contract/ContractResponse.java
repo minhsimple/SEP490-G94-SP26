@@ -3,7 +3,6 @@ package vn.edu.fpt.dto.response.contract;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
-import vn.edu.fpt.dto.response.tablelayout.TableLayoutResponse;
 import vn.edu.fpt.util.enums.BookingTime;
 import vn.edu.fpt.util.enums.ContractState;
 import vn.edu.fpt.util.enums.RecordStatus;
@@ -48,7 +47,6 @@ public class ContractResponse {
     Integer assignCoordinatorId;
     String assignCoordinatorName;
     LocalDateTime createdAt;
-    TableLayoutResponse tableLayoutResponse;
 }
 
 

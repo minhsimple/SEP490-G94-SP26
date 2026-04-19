@@ -67,13 +67,13 @@ export class AppMenu implements OnInit, OnDestroy {
     SALE:         ['dashboard', 'leads', 'customers', 'service', 'menu', 'hall', 'booking', 'payment'],
     RECEPTION:    ['leads', 'calender'],
     RECEPTIONIST: ['leads', 'calender'],
-    ACCOUNT:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    ACCOUNTANT:   ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    ACCOUNTING:   ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    KETOAN:       ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    KE_TOAN:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    MANAGER:      ['dashboard', 'calender', 'booking', 'beo', 'payment', 'invoice', 'leads', 'customers', 'hall', 'service', 'menu', 'users'],
-    ADMIN:        'all',
+    ACCOUNT:      ['dashboard', 'booking', 'invoice', 'payment'],
+    ACCOUNTANT:   ['dashboard', 'booking', 'invoice', 'payment'],
+    ACCOUNTING:   ['dashboard', 'booking', 'invoice', 'payment'],
+    KETOAN:       ['dashboard', 'booking', 'invoice', 'payment'],
+    KE_TOAN:      ['dashboard', 'booking', 'invoice', 'payment'],
+    MANAGER:      ['dashboard', 'calender', 'booking', 'payment', 'invoice', 'customers', 'hall', 'service', 'menu', 'users'],
+    ADMIN:        ['dashboard', 'branch-reports', 'calender', 'booking', 'payment', 'invoice', 'role', 'location', 'users', 'customers', 'hall', 'service', 'menu'],
     COORDINATOR:  ['dashboard', 'calender', 'booking', 'beo'],
   };
 
@@ -92,15 +92,21 @@ export class AppMenu implements OnInit, OnDestroy {
   }
 
   private buildMenu(codeRole: string): void {
-    const normalizedRole = (codeRole ?? '').toUpperCase();
-    const allowed = this.rolePermissions[normalizedRole];
+    const normalizedRole = (codeRole ?? '').toUpperCase().trim();
+    const allowed = this.rolePermissions[normalizedRole] ?? (normalizedRole.includes('ADMIN') ? 'all' : undefined);
+    const isAdmin = normalizedRole.includes('ADMIN');
+    const adminHiddenIds = ['leads', 'beo'];
 
-    const filteredItems =
+    let filteredItems =
       allowed === 'all'
         ? this.allMenuItems
         : this.allMenuItems.filter(item =>
             (allowed ?? []).includes((item as any).id ?? '')
           );
+
+    if (isAdmin) {
+      filteredItems = filteredItems.filter(item => !adminHiddenIds.includes((item as any).id ?? ''));
+    }
 
     this.model = [
       {

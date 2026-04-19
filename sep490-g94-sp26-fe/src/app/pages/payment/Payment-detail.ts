@@ -62,10 +62,6 @@ import { catchError, finalize, map, of } from 'rxjs';
                         <span class="val">{{ payment.methodNote }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="label">Mã tham chiếu</span>
-                        <span class="val">{{ payment.referenceNo || '-' }}</span>
-                    </div>
-                    <div class="info-row">
                         <span class="label">Ngày thanh toán</span>
                         <span class="val">{{ formatDateTime(payment.paidAt || payment.paymentDate) }}</span>
                     </div>

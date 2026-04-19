@@ -1,9 +1,6 @@
 package vn.edu.fpt.service.impl;
 
 import jakarta.persistence.criteria.Predicate;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,11 +14,8 @@ import vn.edu.fpt.dto.request.contract.ContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractStatusRequest;
 import vn.edu.fpt.dto.request.customer.CustomerUpdateRequest;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
-import vn.edu.fpt.dto.request.task.TaskListCreateRequest;
-import vn.edu.fpt.dto.request.task.TaskListRequest;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
-import vn.edu.fpt.dto.response.tablelayout.TableLayoutResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -54,8 +48,6 @@ public class ContractServiceImpl implements ContractService {
     private final SetMenuServiceImpl setMenuServiceImpl;
     private final InvoiceService invoiceService;
     private final CustomerService customerService;
-
-    private final TableLayoutService tableLayoutService;
 
     @Transactional
     @Override
@@ -92,9 +84,7 @@ public class ContractServiceImpl implements ContractService {
 
         Contract saved = bookingRepository.save(booking);
 
-        TableLayoutResponse tableLayoutResponse = tableLayoutService.createTableLayout(request.getTableLayoutRequest(), saved.getId());
         ContractResponse contractResponse = contractMapper.toResponse(saved);
-        contractResponse.setTableLayoutResponse(tableLayoutResponse);
         contractResponse.setCustomerResponse(customerResponse);
 
         createPaymentForContract(saved, request.getPaymentPercentage());
@@ -138,14 +128,11 @@ public class ContractServiceImpl implements ContractService {
 
         contractMapper.updateEntity(booking, request);
 
-        TableLayoutResponse tableLayoutResponse = tableLayoutService.updateTableLayout(request.getTableLayoutRequest(), booking.getId());
-
         // Tính lại startTime và endTime từ bookingDate + bookingTime slot
         calculateAndSetTimes(booking, request.getBookingDate(), request.getBookingTime());
 
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
-        contractResponse.setTableLayoutResponse(tableLayoutResponse);
         contractResponse.setCustomerResponse(customerResponse);
 
         return contractResponse;
@@ -221,10 +208,7 @@ public class ContractServiceImpl implements ContractService {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(id);
-        ContractResponse contractResponse = contractMapper.toResponse(booking);
-        contractResponse.setTableLayoutResponse(tableLayoutResponse);
-        return contractResponse;
+        return contractMapper.toResponse(booking);
     }
 
     @Override
@@ -289,9 +273,7 @@ public class ContractServiceImpl implements ContractService {
         Page<Contract> page = bookingRepository.findAll(spec, pageable);
         List<ContractResponse> responses = page.getContent().stream()
                 .map(contract -> {
-                    TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(contract.getId());
                     ContractResponse contractResponse = contractMapper.toResponse(contract);
-                    contractResponse.setTableLayoutResponse(tableLayoutResponse);
                     contractResponse.setCustomerResponse(customerService.getCustomerById(contract.getCustomerId()));
                     return contractResponse;
                 })
@@ -305,7 +287,6 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse changeContractStatus(Integer id) {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
-        TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(id);
         CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
 
         if (booking.getStatus() == RecordStatus.active) {
@@ -316,7 +297,6 @@ public class ContractServiceImpl implements ContractService {
 
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
-        contractResponse.setTableLayoutResponse(tableLayoutResponse);
         contractResponse.setCustomerResponse(customerResponse);
 
         return contractResponse;
@@ -349,7 +329,6 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse updateContractState(ContractStatusRequest request) {
         Contract booking = bookingRepository.findById(request.getContractId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
-        TableLayoutResponse tableLayoutResponse = tableLayoutService.getTableLayoutByContractId(request.getContractId());
 
         CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
 
@@ -363,7 +342,6 @@ public class ContractServiceImpl implements ContractService {
         // Auto-create TaskList khi contract state = ACTIVE
 
         ContractResponse contractResponse = contractMapper.toResponse(saved);
-        contractResponse.setTableLayoutResponse(tableLayoutResponse);
         contractResponse.setCustomerResponse(customerResponse);
 
         return contractResponse;
