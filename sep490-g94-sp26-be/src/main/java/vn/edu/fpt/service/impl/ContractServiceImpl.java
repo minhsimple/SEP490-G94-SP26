@@ -151,7 +151,7 @@ public class ContractServiceImpl implements ContractService {
                 !hallRepository.existsByIdAndStatus(request.getHallId(), RecordStatus.active)) {
             throw new AppException(ERROR_CODE.HALL_NOT_EXISTED);
         }
-        if(request.getPaymentPercent() != null || request.getPaymentPercent() <= 0 || request.getPaymentPercent() > 100 ) {
+        if(request.getPaymentPercent() == null || request.getPaymentPercent() <= 0 || request.getPaymentPercent() > 100 ) {
             throw new AppException(ERROR_CODE.BOOKING_INVALID_PAYMENT_PERCENT);
         }
         if (request.getSetMenuId() != null &&
