@@ -211,7 +211,7 @@ import { ServicePackageService } from '../service/service-package.service';
                             <!-- Thao tác -->
                             <td>
                                 <p-button
-                                    *ngIf="!isCoordinatorAccount"
+                                    *ngIf="!isCoordinatorAccount && canEditBooking(booking)"
                                     icon="pi pi-pencil"
                                     [rounded]="true"
                                     [text]="true"
@@ -460,6 +460,15 @@ export class BookingsComponent implements OnInit {
     }
 
     editBooking(booking: any) {
+        if (!this.canEditBooking(booking)) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Không thể chỉnh sửa',
+                detail: 'Hợp đồng đã thanh lý hoặc hủy không thể chỉnh sửa.',
+                life: 3000,
+            });
+            return;
+        }
         this.router.navigate(['/pages/booking', booking.id, 'edit']);
     }
 
@@ -493,6 +502,26 @@ export class BookingsComponent implements OnInit {
         }
 
         return 'Chưa có tên khách hàng';
+    }
+
+    canEditBooking(booking: Booking): boolean {
+        const row = booking as any;
+        const status = row.contractState ?? row.bookingState;
+        return !this.isTerminalBookingState(status);
+    }
+
+    private isTerminalBookingState(status?: string): boolean {
+        if (!status) {
+            return false;
+        }
+
+        const normalizedCode = status.trim().toUpperCase();
+        if (normalizedCode === 'LIQUIDATED' || normalizedCode === 'CANCELLED') {
+            return true;
+        }
+
+        const normalizedLabel = status.trim().toLocaleLowerCase('vi-VN');
+        return normalizedLabel.includes('thanh lý') || normalizedLabel.includes('hủy');
     }
 
     private resolveMissingCustomerNames(rows: Booking[]) {
