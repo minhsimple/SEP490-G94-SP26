@@ -355,9 +355,6 @@ public class ContractServiceImpl implements ContractService {
         }
         booking.setContractState(request.getContractState());
         Contract saved = bookingRepository.save(booking);
-
-        // Auto-create TaskList khi contract state = ACTIVE
-
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setTableLayoutResponse(tableLayoutResponse);
         contractResponse.setCustomerResponse(customerResponse);
