@@ -21,6 +21,45 @@ export interface InvoiceSetMenu {
     totalPrice?: number;
 }
 
+export interface InvoiceDataMenuItem {
+    id?: number;
+    code?: string;
+    name?: string;
+    price?: number;
+    unit?: string;
+    quantity?: number;
+    category_name?: string;
+}
+
+export interface InvoiceDataPayload {
+    hall_invoice?: {
+        id?: number;
+        code?: string;
+        name?: string;
+        price?: number;
+    };
+    set_menu_invoice?: {
+        id?: number;
+        code?: string;
+        name?: string;
+        price?: number;
+        menu_items?: InvoiceDataMenuItem[];
+    };
+    service_package_invoice?: {
+        id?: number;
+        code?: string;
+        name?: string;
+        price?: number;
+        services?: Array<{
+            id?: number;
+            code?: string;
+            name?: string;
+            price?: number;
+            unit?: string;
+        }>;
+    };
+}
+
 export interface Payment {
     id?: number;
     code?: string;
@@ -40,6 +79,7 @@ export interface Invoice {
     expectedTables?: number;
     invoiceState?: string;
     status?: string;
+    data?: InvoiceDataPayload;
 
     hall?: {
         id?: number;
@@ -167,6 +207,10 @@ export class InvoiceService {
 
     getById(id: number): Observable<SingleResponse<Invoice>> {
         return this.http.get<SingleResponse<Invoice>>(`${BASE}/invoice/${id}`, { headers: this.headers });
+    }
+
+    getDataById(id: number): Observable<SingleResponse<InvoiceDataPayload>> {
+        return this.http.get<SingleResponse<InvoiceDataPayload>>(`${BASE}/invoice/data/${id}`, { headers: this.headers });
     }
 
     deleteInvoice(id: number): Observable<SingleResponse<any>> {
