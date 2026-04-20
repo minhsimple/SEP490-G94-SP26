@@ -539,7 +539,7 @@ interface SalesOption {
                     <div class="section-title">Set menu</div>
                     <div *ngIf="setMenuOptions.length === 0" class="empty-state">
                         <i class="pi pi-times-circle"></i>
-                        <span>Chọn chi nhánh hoặc sảnh để tải danh sách set menu</span>
+                        <span>Chọn chi nhánh để tải danh sách set menu</span>
                     </div>
 
                     <div *ngIf="setMenuOptions.length > 0" class="menu-grid">
@@ -558,17 +558,17 @@ interface SalesOption {
                 <div class="section-card">
                     <div class="section-title">Gói dịch vụ</div>
 
-                    <div *ngIf="!form.hallId" class="empty-state">
+                    <div *ngIf="!form.locationId" class="empty-state">
                         <i class="pi pi-briefcase"></i>
-                        <span>Chọn sảnh cưới để xem danh sách gói dịch vụ</span>
+                        <span>Chọn chi nhánh để xem danh sách gói dịch vụ</span>
                     </div>
 
-                    <div *ngIf="form.hallId && packageOptions.length === 0" class="empty-state">
+                    <div *ngIf="form.locationId && packageOptions.length === 0" class="empty-state">
                         <i class="pi pi-briefcase"></i>
-                        <span>Chưa có gói dịch vụ cho sảnh đã chọn</span>
+                        <span>Chưa có gói dịch vụ cho chi nhánh đã chọn</span>
                     </div>
 
-                    <div *ngIf="form.hallId && packageOptions.length > 0" class="menu-grid">
+                    <div *ngIf="form.locationId && packageOptions.length > 0" class="menu-grid">
                         <div
                             *ngFor="let pkg of packageOptions"
                             class="menu-card"
@@ -859,9 +859,23 @@ export class BookingCreateComponent implements OnInit {
                 return;
             }
 
+            const selectedHallId = this.toNumberOrNull(this.form.hallId) ?? undefined;
+            const selectedSetMenuId = this.toNumberOrNull(this.form.setMenuId);
+            const selectedPackageId = this.toNumberOrNull(this.form.packageId);
+            const requests: Observable<void>[] = [];
+
             if (this.hallOptions.length === 0) {
-                const selectedHallId = this.toNumberOrNull(this.form.hallId) ?? undefined;
-                this.loadHalls(this.loggedInLocationId, selectedHallId).subscribe(() => this.cdr.detectChanges());
+                requests.push(this.loadHalls(this.loggedInLocationId, selectedHallId));
+            }
+            if (this.setMenuOptions.length === 0) {
+                requests.push(this.loadSetMenus(this.loggedInLocationId, selectedSetMenuId));
+            }
+            if (this.packageOptions.length === 0) {
+                requests.push(this.loadPackages(this.loggedInLocationId, selectedPackageId));
+            }
+
+            if (requests.length > 0) {
+                forkJoin(requests).subscribe(() => this.cdr.detectChanges());
             }
         }
     }
@@ -1169,7 +1183,11 @@ export class BookingCreateComponent implements OnInit {
             return;
         }
 
-        this.loadHalls(locationId).subscribe(() => this.cdr.detectChanges());
+        forkJoin([
+            this.loadHalls(locationId),
+            this.loadSetMenus(locationId),
+            this.loadPackages(locationId),
+        ]).subscribe(() => this.cdr.detectChanges());
     }
 
     private loadHalls(locationId: number, selectedHallId?: number): Observable<void> {
@@ -1281,24 +1299,14 @@ export class BookingCreateComponent implements OnInit {
     onHallChange() {
         this.syncHallSummary();
 
-        this.form.setMenuId = null;
-        this.form.packageId = null;
-        this.summary.setMenuName = '';
-        this.summary.setMenuPrice = 0;
-        this.summary.packageName = '';
-        this.summary.packagePrice = 0;
-        this.setMenuOptions = [];
-        this.packageOptions = [];
-
-        if (!this.form.hallId || !this.form.locationId) {
-            this.recalcEstimatedTotal();
+        if (!this.form.locationId) {
             return;
         }
 
-        forkJoin([
-            this.loadSetMenus(this.form.locationId),
-            this.loadPackages(this.form.locationId),
-        ]).subscribe(() => this.cdr.detectChanges());
+        // Keep options scoped by location. Only retry set menu fallback by hall when branch query returned empty.
+        if (this.form.hallId && this.setMenuOptions.length === 0) {
+            this.loadSetMenus(this.form.locationId, this.form.setMenuId).subscribe(() => this.cdr.detectChanges());
+        }
     }
 
     private syncHallSummary() {
@@ -1814,14 +1822,11 @@ export class BookingCreateComponent implements OnInit {
         const setMenuId = this.toNumberOrNull(this.form.setMenuId);
         const packageId = this.toNumberOrNull(this.form.packageId);
 
-        const requests: Observable<void>[] = [this.loadHalls(locationId, hallId ?? undefined)];
-
-        if (hallId) {
-            requests.push(
-                this.loadSetMenus(locationId, setMenuId),
-                this.loadPackages(locationId, packageId)
-            );
-        }
+        const requests: Observable<void>[] = [
+            this.loadHalls(locationId, hallId ?? undefined),
+            this.loadSetMenus(locationId, setMenuId),
+            this.loadPackages(locationId, packageId),
+        ];
 
         forkJoin(requests).subscribe({
             next: () => {
