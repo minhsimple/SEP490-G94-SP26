@@ -16,7 +16,9 @@ import vn.edu.fpt.dto.request.customer.CustomerUpdateRequest;
 import vn.edu.fpt.dto.request.payment.PaymentRequest;
 import vn.edu.fpt.dto.response.contract.ContractResponse;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
+import vn.edu.fpt.dto.response.invoice.InvoiceResponse;
 import vn.edu.fpt.entity.Contract;
+import vn.edu.fpt.entity.Invoice;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.ContractMapper;
@@ -50,6 +52,7 @@ public class ContractServiceImpl implements ContractService {
     private final CustomerService customerService;
     private final TasksRepository tasksRepository;
     private final TaskListRepository taskListRepository;
+    private final InvoiceRepository invoiceRepository;
 
     @Transactional
     @Override
@@ -89,7 +92,9 @@ public class ContractServiceImpl implements ContractService {
         contractResponse.setCustomerResponse(customerResponse);
 
         createPaymentForContract(saved, request.getPaymentPercent());
-        invoiceService.createInvoice(saved.getId());
+        InvoiceResponse invoiceResponse = invoiceService.createInvoice(saved.getId());
+
+        contractResponse.setInvoiceData(invoiceResponse.getData());
 
         return contractResponse;
     }
@@ -209,7 +214,12 @@ public class ContractServiceImpl implements ContractService {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
+        Invoice invoice = invoiceRepository.findByContractIdAndStatus(id, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+
         ContractResponse contractResponse = contractMapper.toResponse(booking);
+        contractResponse.setInvoiceData(invoice.getData());
+
         return contractResponse;
     }
 
@@ -275,8 +285,11 @@ public class ContractServiceImpl implements ContractService {
         Page<Contract> page = bookingRepository.findAll(spec, pageable);
         List<ContractResponse> responses = page.getContent().stream()
                 .map(contract -> {
+                    Invoice invoice = invoiceRepository.findByContractIdAndStatus(contract.getId(), RecordStatus.active)
+                            .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
                     ContractResponse contractResponse = contractMapper.toResponse(contract);
                     contractResponse.setCustomerResponse(customerService.getCustomerById(contract.getCustomerId()));
+                    contractResponse.setInvoiceData(invoice.getData());
                     return contractResponse;
                 })
                 .toList();
@@ -289,10 +302,13 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse changeContractStatus(Integer id) {
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+        Invoice invoice = invoiceRepository.findByContractIdAndStatus(id, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
         CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setCustomerResponse(customerResponse);
+        contractResponse.setInvoiceData(invoice.getData());
         return contractResponse;
     }
 
@@ -323,6 +339,9 @@ public class ContractServiceImpl implements ContractService {
     public ContractResponse updateContractState(ContractStatusRequest request) {
         Contract contract  = bookingRepository.findById(request.getContractId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+        Invoice invoice = invoiceRepository.findByContractIdAndStatus(request.getContractId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+
         CustomerResponse customerResponse = customerService.getCustomerById(contract.getCustomerId());
         if(request.getContractState().equals(ContractState.LIQUIDATED)){
             Integer taskListId = taskListRepository.findTaskListByContractIdAndStatus(contract.getId(), RecordStatus.active)
@@ -337,6 +356,7 @@ public class ContractServiceImpl implements ContractService {
         Contract saved = bookingRepository.save(contract);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setCustomerResponse(customerResponse);
+        contractResponse.setInvoiceData(invoice.getData());
 
         return contractResponse;
     }
@@ -348,7 +368,10 @@ public class ContractServiceImpl implements ContractService {
     }
 
     public void createPaymentForContract(Contract contract, Integer paymentPercent) throws Exception {
-        BigDecimal totalAmount = getTotalAmountForContract(contract);
+        Invoice invoice = invoiceRepository.findByContractIdAndStatus(contract.getId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+
+        BigDecimal totalAmount = invoice.getTotalAmount();
 
         BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(paymentPercent)
                 .divide(BigDecimal.valueOf(100)));
@@ -365,17 +388,17 @@ public class ContractServiceImpl implements ContractService {
 
     }
 
-    public BigDecimal getTotalAmountForContract(Contract contract) throws Exception {
-        BigDecimal setMenuPrice = setMenuServiceImpl.getSetMenuById(contract.getSetMenuId()).getSetPrice();
-        BigDecimal servicePrice = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND))
-                .getBasePrice();
-        BigDecimal totalPrice = setMenuPrice.multiply(BigDecimal.valueOf(contract.getExpectedTables()));
-        BigDecimal hallPrice = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED))
-                .getBasePrice();
-        return totalPrice.add(servicePrice).add(hallPrice);
-    }
+//    public BigDecimal getTotalAmountForContract(Contract contract) throws Exception {
+//        BigDecimal setMenuPrice = setMenuServiceImpl.getSetMenuById(contract.getSetMenuId()).getSetPrice();
+//        BigDecimal servicePrice = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
+//                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND))
+//                .getBasePrice();
+//        BigDecimal totalPrice = setMenuPrice.multiply(BigDecimal.valueOf(contract.getExpectedTables()));
+//        BigDecimal hallPrice = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
+//                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED))
+//                .getBasePrice();
+//        return totalPrice.add(servicePrice).add(hallPrice);
+//    }
 
     /**
      * Validate chuyển trạng thái contract:

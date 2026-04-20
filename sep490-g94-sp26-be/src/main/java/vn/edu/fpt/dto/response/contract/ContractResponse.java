@@ -3,6 +3,7 @@ package vn.edu.fpt.dto.response.contract;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
+import vn.edu.fpt.entity.Invoice;
 import vn.edu.fpt.util.enums.BookingTime;
 import vn.edu.fpt.util.enums.ContractState;
 import vn.edu.fpt.util.enums.RecordStatus;
@@ -22,15 +23,12 @@ public class ContractResponse {
     Integer id;
     String contractNo;
     Integer customerId;
-    Integer hallId;
     LocalDate bookingDate;
     BookingTime bookingTime;
     LocalDateTime startTime;
     LocalDateTime endTime;
     Integer expectedTables;
     Integer expectedGuests;
-    Integer packageId;
-    Integer setMenuId;
     ContractState contractState;
     Integer salesId;
     LocalDateTime reservedUntil;
@@ -48,6 +46,8 @@ public class ContractResponse {
     String assignCoordinatorName;
     Integer paymentPercent;
     LocalDateTime createdAt;
+
+    Invoice.InvoiceData invoiceData;
 }
 
 
