@@ -65,9 +65,10 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .add(servicePackage.getBasePrice());
 
         invoice.setTotalAmount(totalAmount);
+        invoice.setData(generateInvoiceData(setMenu, hall, servicePackage));
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-        return mapToInvoiceResponse(savedInvoice, contract, generateInvoiceData(contractId));
+        return mapToInvoiceResponse(savedInvoice, contract);
     }
 
     @Override
@@ -78,7 +79,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         Contract contract = contractRepository.findById(invoice.getContractId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        return mapToInvoiceResponse(invoice, contract, invoice.getData());
+        return mapToInvoiceResponse(invoice, contract);
     }
 
     @Override
@@ -125,8 +126,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         List<InvoiceResponse> invoiceResponseList = invoiceList.stream()
                 .map(invoice -> mapToInvoiceResponse(invoice,
-                        mapContract.getOrDefault(invoice.getContractId(), new Contract()),
-                        invoice.getData()))
+                        mapContract.getOrDefault(invoice.getContractId(), new Contract())))
                 .toList();
 
         return new SimplePage<>(
@@ -136,18 +136,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         );
     }
 
-    private Invoice.InvoiceData generateInvoiceData(Integer contractId) {
-        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
-
-        SetMenu setMenu = setMenuRepository.findSetMenuByIdAndStatus(contract.getSetMenuId(), RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
-
-        Hall hall = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED));
-
-        ServicePackage servicePackage = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND));
+    private Invoice.InvoiceData generateInvoiceData(SetMenu setMenu, Hall hall, ServicePackage servicePackage) {
         List<Integer> serviceIds = packageServiceRepository.findByPackageIdAndStatus(servicePackage.getId(), RecordStatus.active)
                 .stream()
                 .map(PackageService::getServiceId)
@@ -209,7 +198,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         return data;
     }
 
-    private InvoiceResponse mapToInvoiceResponse(Invoice invoice, Contract contract, Invoice.InvoiceData data) {
+    private InvoiceResponse mapToInvoiceResponse(Invoice invoice, Contract contract) {
         InvoiceResponse invoiceResponse = new InvoiceResponse();
 
         invoiceResponse.setId(invoice.getId());
@@ -218,7 +207,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoiceResponse.setExpectedTables(contract.getExpectedTables());
         invoiceResponse.setInvoiceState(invoice.getInvoiceState());
         invoiceResponse.setTotalAmount(invoice.getTotalAmount());
-        invoiceResponse.setData(data);
+        invoiceResponse.setData(invoice.getData());
         return invoiceResponse;
     }
 }
