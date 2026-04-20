@@ -43,6 +43,7 @@ export interface Booking {
     paymentPercent?: number | null;
     totalAmount?: number;
     status?: string;
+    createAt?: string;
     createdAt?: string;
     updatedAt?: string;
 }

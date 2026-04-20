@@ -382,8 +382,8 @@ import { RoleService } from '../service/role.service';
                                 <div class="meta-icon"><i class="pi pi-building"></i></div>
                                 <div>
                                     <div class="muted">Sảnh cưới</div>
-                                    <div class="value">{{ hallName || ('Sảnh #' + (booking.hallId || '-')) }}</div>
-                                    <div class="muted" *ngIf="hallPrice > 0" style="margin-top:0.2rem">Phí thuê: {{ formatPrice(hallPrice) }}</div>
+                                    <div class="value">{{ resolvedHallName() || ('Sảnh #' + (booking.hallId || '-')) }}</div>
+                                    <div class="muted" *ngIf="resolvedHallPrice() > 0" style="margin-top:0.2rem">Phí thuê: {{ formatPrice(resolvedHallPrice()) }}</div>
                                 </div>
                             </div>
                             <div class="meta-row">
@@ -418,16 +418,16 @@ import { RoleService } from '../service/role.service';
                                 <div class="meta-icon"><i class="pi pi-list"></i></div>
                                 <div>
                                     <div class="muted">Set menu</div>
-                                    <div class="value">{{ setMenuName || (booking.setMenuId ? ('Set menu #' + booking.setMenuId) : '-') }}</div>
-                                    <div class="muted" *ngIf="setMenuPrice > 0" style="margin-top:0.2rem">{{ formatPrice(setMenuPrice) }}/bàn</div>
+                                    <div class="value">{{ resolvedSetMenuName() || (booking.setMenuId ? ('Set menu #' + booking.setMenuId) : '-') }}</div>
+                                    <div class="muted" *ngIf="resolvedSetMenuPrice() > 0" style="margin-top:0.2rem">{{ formatPrice(resolvedSetMenuPrice()) }}/bàn</div>
                                 </div>
                             </div>
                             <div class="meta-row">
                                 <div class="meta-icon"><i class="pi pi-briefcase"></i></div>
                                 <div>
                                     <div class="muted">Gói dịch vụ</div>
-                                    <div class="value">{{ packageName || (booking.packageId ? ('Gói dịch vụ #' + booking.packageId) : '-') }}</div>
-                                    <div class="muted" *ngIf="packagePrice > 0" style="margin-top:0.2rem">{{ formatPrice(packagePrice) }}</div>
+                                    <div class="value">{{ resolvedPackageName() || (booking.packageId ? ('Gói dịch vụ #' + booking.packageId) : '-') }}</div>
+                                    <div class="muted" *ngIf="resolvedPackagePrice() > 0" style="margin-top:0.2rem">{{ formatPrice(resolvedPackagePrice()) }}</div>
                                 </div>
                             </div>
                         </div>
@@ -487,12 +487,12 @@ import { RoleService } from '../service/role.service';
                     <!-- Tổng quan thanh toán -->
                     <div class="card" style="margin-bottom:1rem">
                         <h2 class="section-title">Tổng quan thanh toán</h2>
-                        <div class="line" *ngIf="setMenuName || booking.setMenuId"><span>Set menu</span><strong>{{ setMenuName || ('#' + booking.setMenuId) }}</strong></div>
-                        <div class="line" *ngIf="setMenuPrice > 0"><span>Giá set menu</span><strong>{{ formatPrice(setMenuPrice) }}/bàn</strong></div>
-                        <div class="line" *ngIf="hallName || booking.hallId"><span>Sảnh</span><strong>{{ hallName || ('#' + booking.hallId) }}</strong></div>
-                        <div class="line" *ngIf="hallPrice > 0"><span>Phí thuê sảnh</span><strong>{{ formatPrice(hallPrice) }}</strong></div>
-                        <div class="line" *ngIf="packageName || booking.packageId"><span>Gói dịch vụ</span><strong>{{ packageName || ('#' + booking.packageId) }}</strong></div>
-                        <div class="line" *ngIf="packagePrice > 0"><span>Giá gói dịch vụ</span><strong>{{ formatPrice(packagePrice) }}</strong></div>
+                        <div class="line" *ngIf="resolvedSetMenuName() || booking.setMenuId"><span>Set menu</span><strong>{{ resolvedSetMenuName() || ('#' + booking.setMenuId) }}</strong></div>
+                        <div class="line" *ngIf="resolvedSetMenuPrice() > 0"><span>Giá set menu</span><strong>{{ formatPrice(resolvedSetMenuPrice()) }}/bàn</strong></div>
+                        <div class="line" *ngIf="resolvedHallName() || booking.hallId"><span>Sảnh</span><strong>{{ resolvedHallName() || ('#' + booking.hallId) }}</strong></div>
+                        <div class="line" *ngIf="resolvedHallPrice() > 0"><span>Phí thuê sảnh</span><strong>{{ formatPrice(resolvedHallPrice()) }}</strong></div>
+                        <div class="line" *ngIf="resolvedPackageName() || booking.packageId"><span>Gói dịch vụ</span><strong>{{ resolvedPackageName() || ('#' + booking.packageId) }}</strong></div>
+                        <div class="line" *ngIf="resolvedPackagePrice() > 0"><span>Giá gói dịch vụ</span><strong>{{ formatPrice(resolvedPackagePrice()) }}</strong></div>
                         <div class="line"><span>Tỷ lệ cọc</span><strong>{{ resolvePaymentPercent(booking.paymentPercent) }}%</strong></div>
                         <div class="line"><span>Tổng tiền</span><strong>{{ formatPrice(totalAmount) }}</strong></div>
                         <div class="line" style="color:#16a34a"><span>Đã thanh toán</span><strong style="color:#16a34a">{{ formatPrice(paidAmount) }}</strong></div>
@@ -1012,6 +1012,66 @@ export class BookingDetailComponent implements OnInit {
         this.coordinatorOptions = this.coordinatorOptions.filter((item) => item.id !== id);
     }
 
+    private getInvoiceData(): NonNullable<Invoice['data']> | null {
+        return this.invoicePreview?.data ?? null;
+    }
+
+    resolvedHallName(): string {
+        const dataName = this.getInvoiceData()?.hall_invoice?.name;
+        return String(dataName ?? this.hallName ?? '').trim();
+    }
+
+    resolvedHallPrice(): number {
+        const dataPrice = Number(this.getInvoiceData()?.hall_invoice?.price ?? Number.NaN);
+        if (Number.isFinite(dataPrice) && dataPrice > 0) {
+            return dataPrice;
+        }
+        return this.hallPrice;
+    }
+
+    resolvedSetMenuName(): string {
+        const dataName = this.getInvoiceData()?.set_menu_invoice?.name;
+        return String(dataName ?? this.setMenuName ?? '').trim();
+    }
+
+    resolvedSetMenuPrice(): number {
+        const dataPrice = Number(this.getInvoiceData()?.set_menu_invoice?.price ?? Number.NaN);
+        if (Number.isFinite(dataPrice) && dataPrice > 0) {
+            return dataPrice;
+        }
+        return this.setMenuPrice;
+    }
+
+    resolvedPackageName(): string {
+        const dataName = this.getInvoiceData()?.service_package_invoice?.name;
+        return String(dataName ?? this.packageName ?? '').trim();
+    }
+
+    resolvedPackagePrice(): number {
+        const dataPrice = Number(this.getInvoiceData()?.service_package_invoice?.price ?? Number.NaN);
+        if (Number.isFinite(dataPrice) && dataPrice > 0) {
+            return dataPrice;
+        }
+        return this.packagePrice;
+    }
+
+    resolvedSetMenuItems(): Array<{ name: string; quantity: number; unitPrice: number; unit?: string }> {
+        const menuItems = this.getInvoiceData()?.set_menu_invoice?.menu_items ?? [];
+        if (menuItems.length > 0) {
+            return menuItems.map((item) => {
+                const quantity = Number(item?.quantity ?? 1);
+                const unitPrice = Number(item?.price ?? 0);
+                return {
+                    name: String(item?.name ?? '').trim() || 'Món ăn',
+                    quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+                    unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+                    unit: String(item?.unit ?? '').trim() || undefined,
+                };
+            });
+        }
+        return this.setMenuItems;
+    }
+
     private loadInvoicePreview(contractId: number) {
         this.invoiceService.searchInvoices({ contractId, page: 0, size: 1 }).subscribe({
             next: (res) => {
@@ -1028,6 +1088,7 @@ export class BookingDetailComponent implements OnInit {
                     paidAmount: Number(preview?.paidAmount ?? this.paidAmount ?? 0),
                     createdAt: this.resolveInvoiceCreatedAt(preview),
                 };
+                this.recalculatePaymentSummary();
                 this.cdr.detectChanges();
 
                 if (!this.invoicePreview?.createdAt && this.invoicePreview?.id) {
@@ -1040,6 +1101,7 @@ export class BookingDetailComponent implements OnInit {
                                 paidAmount: Number(detail?.paidAmount ?? this.paidAmount ?? 0),
                                 createdAt: this.resolveInvoiceCreatedAt({ ...this.invoicePreview, ...detail }),
                             };
+                            this.recalculatePaymentSummary();
                             this.cdr.detectChanges();
                         },
                         error: () => { this.cdr.detectChanges(); },
@@ -1207,8 +1269,11 @@ export class BookingDetailComponent implements OnInit {
         }
 
         const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
+        const resolvedSetMenuPrice = this.resolvedSetMenuPrice();
+        const resolvedHallPrice = this.resolvedHallPrice();
+        const resolvedPackagePrice = this.resolvedPackagePrice();
         const computedTotal = Number.isFinite(tables) && tables > 0
-            ? (this.setMenuPrice * tables) + this.hallPrice + this.packagePrice
+            ? (resolvedSetMenuPrice * tables) + resolvedHallPrice + resolvedPackagePrice
             : 0;
 
         this.totalAmount = computedTotal > 0 ? computedTotal : this.apiTotalAmount;
@@ -1255,14 +1320,14 @@ export class BookingDetailComponent implements OnInit {
         const customerPhone = this.customer?.phone || '-';
         const customerEmail = this.customer?.email || '-';
         const customerAddress = this.customer?.address || '-';
-        const hallName = this.hallName || (this.booking.hallId ? `Sảnh #${this.booking.hallId}` : '-');
+        const hallName = this.resolvedHallName() || (this.booking.hallId ? `Sảnh #${this.booking.hallId}` : '-');
         const venueProviderName = this.venueLocationName || '-';
         const shift = this.shiftLabel(this.booking.bookingTime ?? this.booking.shift);
         const tables = Number(this.booking.expectedTables ?? this.booking.tableCount ?? 0);
         const amount = this.totalAmount > 0 ? this.totalAmount : this.apiTotalAmount;
-        const hallAmount = this.hallPrice;
-        const setMenuAmount = tables > 0 ? this.setMenuPrice * tables : 0;
-        const packageAmount = this.packagePrice;
+        const hallAmount = this.resolvedHallPrice();
+        const setMenuAmount = tables > 0 ? this.resolvedSetMenuPrice() * tables : 0;
+        const packageAmount = this.resolvedPackagePrice();
         const baseAmount = hallAmount + setMenuAmount + packageAmount;
         const estimatedExtra = Math.max(amount - baseAmount, 0);
         const paymentPercent = this.resolvePaymentPercent(this.booking.paymentPercent);
@@ -1270,8 +1335,8 @@ export class BookingDetailComponent implements OnInit {
         const deposit1 = Math.round(amount * (paymentPercent / 100));
         const deposit2 = Math.max(amount - deposit1, 0);
         const notes = this.booking.notes || '-';
-        const menuItemsHtml = this.setMenuItems.length > 0
-            ? this.setMenuItems
+        const menuItemsHtml = this.resolvedSetMenuItems().length > 0
+            ? this.resolvedSetMenuItems()
                 .map((item, index) => {
                     const lineTotal = Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1);
                     const unitText = item.unit ? ` / ${esc(item.unit)}` : '';
@@ -1323,10 +1388,10 @@ export class BookingDetailComponent implements OnInit {
             <p>2. Bên A xác nhận thông tin sự kiện: ngày tổ chức, sảnh, ca tiệc, số bàn, số khách và các yêu cầu riêng.</p>
             <p>3. Danh mục dịch vụ dự kiến:</p>
             <p>- Sảnh tổ chức: ${esc(hallName)} (phí thuê: ${esc(this.formatPrice(hallAmount))}).</p>
-            <p>- Set menu: ${esc(this.setMenuName || '-')}, đơn giá ${esc(this.setMenuPrice > 0 ? `${this.formatPrice(this.setMenuPrice)}/bàn` : '-')}.</p>
+            <p>- Set menu: ${esc(this.resolvedSetMenuName() || '-')}, đơn giá ${esc(this.resolvedSetMenuPrice() > 0 ? `${this.formatPrice(this.resolvedSetMenuPrice())}/bàn` : '-')}.</p>
             <p>- Chi tiết món ăn set menu:</p>
             ${menuItemsHtml}
-            <p>- Gói dịch vụ đi kèm: ${esc(this.packageName || '-')}, giá ${esc(this.formatPrice(packageAmount))}.</p>
+            <p>- Gói dịch vụ đi kèm: ${esc(this.resolvedPackageName() || '-')}, giá ${esc(this.formatPrice(packageAmount))}.</p>
             <p>- Ghi chú bổ sung: ${esc(notes)}.</p>
 
             <p><strong>ĐIỀU II: GIÁ TRỊ HỢP ĐỒNG VÀ THANH TOÁN</strong></p>
