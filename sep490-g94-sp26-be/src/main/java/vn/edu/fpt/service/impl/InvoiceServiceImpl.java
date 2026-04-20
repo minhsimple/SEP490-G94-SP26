@@ -36,17 +36,6 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final PackageServiceRepository packageServiceRepository;
     private final ServiceItemRepository serviceItemRepository;
 
-    @Transactional
-    @Override
-    public Invoice.InvoiceData generateInvoice(Integer contractId) {
-        Invoice invoice  = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
-
-        invoice.setData(generateInvoiceData(contractId));
-
-        return invoice.getData();
-    }
-
     @Override
     public InvoiceResponse createInvoice(Integer contractId) {
         Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
