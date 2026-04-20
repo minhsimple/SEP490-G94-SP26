@@ -945,13 +945,39 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     private adaptInvoice(raw: Invoice): Invoice {
+        const invoiceData = raw.data;
+        const hallData = invoiceData?.hall_invoice;
+        const setMenuData = invoiceData?.set_menu_invoice;
+        const servicePackageData = invoiceData?.service_package_invoice;
+        const setMenuItems = setMenuData?.menu_items ?? [];
+
         const expectedTables = raw.expectedTables ?? raw.tableCount ?? 0;
-        const hallBasePrice = Number(raw.hall?.basePrice ?? raw.pricePerTable ?? 0);
+        const hallBasePrice = Number(hallData?.price ?? raw.hall?.basePrice ?? raw.pricePerTable ?? 0);
         const hallTotal = Number(raw.hallTotal ?? hallBasePrice);
 
-        const serviceTotal = Number(raw.serviceTotal ?? raw.servicesPackage?.basePrice ?? 0);
+        const servicesFromData = (servicePackageData?.services ?? []).map((service) => {
+            const unitPrice = Number(service?.price ?? 0);
+            return {
+                id: service?.id,
+                name: service?.name,
+                quantity: 1,
+                unitPrice,
+                totalPrice: unitPrice,
+            };
+        });
+
+        const serviceTotal = Number(
+            raw.serviceTotal
+            ?? servicePackageData?.price
+            ?? servicesFromData.reduce((sum, service) => sum + Number(service.totalPrice ?? 0), 0)
+            ?? raw.servicesPackage?.basePrice
+            ?? 0
+        );
+
         const directSetMenuUnit = Number(
-            raw.setMenu?.setPrice
+            setMenuData?.price
+            ?? raw.setMenu?.setPrice
+            ?? (raw.setMenu as any)?.price
             ?? (raw.setMenu as any)?.pricePerTable
             ?? (raw.setMenu as any)?.basePrice
             ?? (raw.setMenu as any)?.price
@@ -966,9 +992,34 @@ export class InvoiceDetailComponent implements OnInit {
                 : 0;
         const setMenuTotal = Number(raw.setMenuTotal ?? (setMenuUnit > 0 ? setMenuUnit * expectedTables : 0));
 
-        const normalizedSetMenus = (raw.setMenus?.length
+        const inlineMenuItemsByCategory = setMenuItems.reduce((acc, item) => {
+            const category = String(item?.category_name ?? 'Khác').trim() || 'Khác';
+            const quantity = Number(item?.quantity ?? 1);
+            const unitPrice = Number(item?.price ?? 0);
+            if (!acc[category]) {
+                acc[category] = [];
+            }
+            acc[category].push({
+                id: item?.id,
+                code: item?.code,
+                name: item?.name,
+                quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+                unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+                unit: item?.unit,
+            });
+            return acc;
+        }, {} as Record<string, Array<{ id?: number; code?: string; name?: string; quantity: number; unitPrice: number; unit?: string }>>);
+
+        const setMenuRows: Array<{
+            id?: number;
+            name?: string;
+            quantity?: number;
+            pricePerTable?: number;
+            tableCount?: number;
+            totalPrice?: number;
+        }> = raw.setMenus?.length
             ? raw.setMenus
-            : (raw.setMenu
+            : raw.setMenu
                 ? [{
                     id: raw.setMenu.id,
                     name: raw.setMenu.name,
@@ -977,8 +1028,18 @@ export class InvoiceDetailComponent implements OnInit {
                     tableCount: expectedTables,
                     totalPrice: setMenuTotal,
                 }]
-                : [])
-        ).map((menu) => {
+                : setMenuData
+                    ? [{
+                        id: setMenuData.id,
+                        name: setMenuData.name,
+                        quantity: 1,
+                        pricePerTable: setMenuUnit,
+                        tableCount: expectedTables,
+                        totalPrice: setMenuTotal,
+                    }]
+                    : [];
+
+        const normalizedSetMenus = setMenuRows.map((menu) => {
             const quantity = Number(menu.quantity ?? 1) || 1;
             const unitPrice = Number(menu.pricePerTable ?? setMenuUnit ?? 0);
             const tableCount = Number(menu.tableCount ?? expectedTables ?? 0);
@@ -1001,23 +1062,50 @@ export class InvoiceDetailComponent implements OnInit {
             bookingDate: raw.bookingDate ?? (raw as any).eventDate ?? (raw as any).booking_date,
             customerName: raw.customerName ?? (raw as any).customer?.fullName,
             customerPhone: raw.customerPhone ?? (raw as any).customer?.phone,
-            hallName: raw.hall?.name ?? raw.hallName,
+            hall: raw.hall ?? (hallData
+                ? {
+                    id: hallData.id,
+                    code: hallData.code,
+                    name: hallData.name,
+                    basePrice: Number(hallData.price ?? 0),
+                }
+                : undefined),
+            hallName: raw.hall?.name ?? hallData?.name ?? raw.hallName,
             tableCount: raw.tableCount ?? raw.expectedTables,
             expectedTables,
-            pricePerTable: raw.pricePerTable ?? raw.hall?.basePrice,
+            servicesPackage: raw.servicesPackage ?? (servicePackageData
+                ? {
+                    name: servicePackageData.name,
+                    basePrice: Number(servicePackageData.price ?? 0),
+                }
+                : undefined),
+            setMenu: raw.setMenu ?? (setMenuData
+                ? {
+                    id: setMenuData.id,
+                    code: setMenuData.code,
+                    name: setMenuData.name,
+                    setPrice: Number(setMenuData.price ?? 0),
+                    menuItemsByCategory: inlineMenuItemsByCategory,
+                }
+                : undefined),
+            pricePerTable: raw.pricePerTable ?? Number(hallData?.price ?? raw.hall?.basePrice ?? 0),
             hallTotal,
             serviceTotal,
             setMenuTotal,
             status: raw.status,
             invoiceState: raw.invoiceState ?? raw.status,
-            services: raw.services ?? (raw.servicesPackage
-                ? [{
-                    name: raw.servicesPackage.name,
-                    quantity: 1,
-                    unitPrice: raw.servicesPackage.basePrice,
-                    totalPrice: raw.servicesPackage.basePrice,
-                }]
-                : []),
+            services: raw.services?.length
+                ? raw.services
+                : servicesFromData.length
+                    ? servicesFromData
+                    : (raw.servicesPackage
+                        ? [{
+                            name: raw.servicesPackage.name,
+                            quantity: 1,
+                            unitPrice: raw.servicesPackage.basePrice,
+                            totalPrice: raw.servicesPackage.basePrice,
+                        }]
+                        : []),
             setMenus: normalizedSetMenus,
         };
     }

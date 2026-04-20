@@ -128,9 +128,18 @@ interface Column { field: string; header: string; }
                                 </ng-template>
                             </td>
 
-                            <td class="text-600 text-sm">{{ inv.hall?.name ?? '-' }}</td>
-                            <td class="text-600 text-sm">{{ inv.servicesPackage?.name ?? '-' }}</td>
-                            <td class="text-600 text-sm">{{ inv.setMenu?.name ?? '-' }}</td>
+                            <td>
+                                <div class="text-600 text-sm">{{ getHallName(inv) }}</div>
+                                <div class="text-500 text-xs">{{ formatPrice(getHallPrice(inv)) }}</div>
+                            </td>
+                            <td>
+                                <div class="text-600 text-sm">{{ getServicePackageName(inv) }}</div>
+                                <div class="text-500 text-xs">{{ formatPrice(getServicePackagePrice(inv)) }}</div>
+                            </td>
+                            <td>
+                                <div class="text-600 text-sm">{{ getSetMenuName(inv) }}</div>
+                                <div class="text-500 text-xs">SL món: {{ getSetMenuItemTotalQuantity(inv) }} | {{ formatPrice(getSetMenuPrice(inv)) }}/bàn</div>
+                            </td>
                             <td class="text-700 text-sm" style="text-align:right;">{{ inv.expectedTables ?? '-' }}</td>
 
                             <!-- Trạng thái -->
@@ -376,5 +385,45 @@ export class InvoicesComponent implements OnInit {
 
     getRecordStatusBg(s?: string): string {
         return { active: '#dcfce7', inactive: '#fee2e2' }[s ?? ''] ?? '#f1f5f9';
+    }
+
+    getHallName(inv: Invoice): string {
+        return inv.hall?.name ?? inv.data?.hall_invoice?.name ?? '-';
+    }
+
+    getHallPrice(inv: Invoice): number {
+        return Number(inv.hall?.basePrice ?? inv.data?.hall_invoice?.price ?? 0);
+    }
+
+    getServicePackageName(inv: Invoice): string {
+        return inv.servicesPackage?.name ?? inv.data?.service_package_invoice?.name ?? '-';
+    }
+
+    getServicePackagePrice(inv: Invoice): number {
+        return Number(inv.servicesPackage?.basePrice ?? inv.data?.service_package_invoice?.price ?? 0);
+    }
+
+    getSetMenuName(inv: Invoice): string {
+        return inv.setMenu?.name ?? inv.data?.set_menu_invoice?.name ?? '-';
+    }
+
+    getSetMenuPrice(inv: Invoice): number {
+        return Number(
+            inv.setMenu?.setPrice
+            ?? (inv.setMenu as any)?.price
+            ?? inv.data?.set_menu_invoice?.price
+            ?? 0
+        );
+    }
+
+    getSetMenuItemTotalQuantity(inv: Invoice): number {
+        const menuItems = inv.data?.set_menu_invoice?.menu_items ?? [];
+        if (!menuItems.length) {
+            return 0;
+        }
+        return menuItems.reduce((sum, item) => {
+            const quantity = Number(item?.quantity ?? 0);
+            return sum + (Number.isFinite(quantity) ? quantity : 0);
+        }, 0);
     }
 }
