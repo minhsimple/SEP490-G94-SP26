@@ -552,7 +552,7 @@ import { RoleService } from '../service/role.service';
                     <div class="card">
                         <h2 class="section-title">Hợp đồng</h2>
                         <div class="contract-shell">
-                            <div class="contract-summary">Xem hợp đồng đã điền thông tin đặt tiệc theo khổ giấy A4.</div>
+                            <div class="contract-summary">Xem hợp đồng đã điền thông tin hợp đồng theo khổ giấy A4.</div>
                             <div class="contract-actions">
                                 <p-button label="Xem hợp đồng" icon="pi pi-file" (onClick)="openContractDialog()" />
                                 <p-button label="In hợp đồng" icon="pi pi-print" severity="secondary" (onClick)="printContract()" />
