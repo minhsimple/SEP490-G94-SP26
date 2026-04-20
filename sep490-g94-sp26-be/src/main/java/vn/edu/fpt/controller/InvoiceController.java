@@ -29,6 +29,14 @@ import vn.edu.fpt.util.enums.Constants;
 public class InvoiceController {
     InvoiceService invoiceService;
 
+//    @GetMapping("/data/{contractId}")
+//    public ApiResponse<Invoice.InvoiceData> viewInvoiceData(@PathVariable Integer contractId) {
+//        Invoice.InvoiceData data = invoiceService.generateInvoice(contractId);
+//        return ApiResponse.<Invoice.InvoiceData>builder()
+//                .data(data)
+//                .build();
+//    }
+
     @Operation(summary = "Xem chi tiết thông tin hóa đơn")
     @GetMapping("/{id}")
     public ApiResponse<InvoiceResponse> viewDetailInvoice(@PathVariable Integer id) {

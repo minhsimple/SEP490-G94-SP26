@@ -31,6 +31,89 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final ServicePackageRepository servicePackageRepository;
     private final MenuItemRepository menuItemRepository;
     private final SetMenuItemRepository setMenuItemRepository;
+    private final CategoryMenuItemRepository categoryMenuItemRepository;
+    private final PackageServiceRepository packageServiceRepository;
+    private final ServiceItemRepository serviceItemRepository;
+
+//    @Transactional
+//    @Override
+//    public Invoice.InvoiceData generateInvoice(Integer contractId) {
+//        Invoice invoice  = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
+//                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+//
+//        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
+//                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+//
+//        SetMenu setMenu = setMenuRepository.findSetMenuByIdAndStatus(contract.getSetMenuId(), RecordStatus.active)
+//                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
+//
+//        Hall hall = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
+//                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED));
+//
+//        ServicePackage servicePackage = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
+//                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND));
+//        List<Integer> serviceIds = packageServiceRepository.findByPackageIdAndStatus(servicePackage.getId(), RecordStatus.active)
+//                .stream()
+//                .map(PackageService::getServiceId)
+//                .toList();
+//        List<Invoice.ServiceInvoice> services = serviceItemRepository.findAllByIdInAndStatus(serviceIds, RecordStatus.active).stream()
+//                .map(service -> new Invoice.ServiceInvoice(service.getId(), service.getCode(), service.getName(), service.getBasePrice(), service.getUnit()))
+//                .toList();
+//
+//        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
+//        Set<Integer> menuItemIds = setMenuItemList.stream()
+//                .map(SetMenuItem::getMenuItemId)
+//                .collect(Collectors.toSet());
+//        List<MenuItem> menuItemList = menuItemRepository.findAllByIdInAndStatus(menuItemIds, RecordStatus.active);
+//
+//        Set<Integer> categoryMenuItemIds = menuItemList.stream()
+//                .map(MenuItem::getCategoryMenuItemsId)
+//                .collect(Collectors.toSet());
+//        Map<Integer, String> categoryMenuItemNameMap = categoryMenuItemRepository.findAllByIdIn(categoryMenuItemIds).stream()
+//                .collect(Collectors.toMap(CategoryMenuItem::getId, CategoryMenuItem::getName));
+//
+//        Invoice.InvoiceData data = new Invoice.InvoiceData();
+//        data.setHallInvoice(new Invoice.HallInvoice(hall.getId(), hall.getCode(), hall.getName(), hall.getBasePrice()));
+//
+//        List<Invoice.MenuItemInvoice> menuItemInvoices = menuItemList.stream()
+//                .map(menuItem -> {
+//                    Invoice.MenuItemInvoice menuItemInvoice = new Invoice.MenuItemInvoice();
+//                    menuItemInvoice.setId(menuItem.getId());
+//                    menuItemInvoice.setCode(menuItem.getCode());
+//                    menuItemInvoice.setName(menuItem.getName());
+//                    menuItemInvoice.setPrice(menuItem.getUnitPrice());
+//                    menuItemInvoice.setUnit(menuItem.getUnit());
+//                    menuItemInvoice.setCategoryName(categoryMenuItemNameMap.getOrDefault(menuItem.getCategoryMenuItemsId(), null));
+//                    menuItemInvoice.setQuantity(setMenuItemList.stream()
+//                            .filter(setMenuItem -> Objects.equals(setMenuItem.getMenuItemId(), menuItem.getId()))
+//                            .findFirst()
+//                            .map(SetMenuItem::getQuantity)
+//                            .orElse(0));
+//                    return menuItemInvoice;
+//                }).toList();
+//
+//        Invoice.SetMenuInvoice setMenuInvoice = new Invoice.SetMenuInvoice();
+//        setMenuInvoice.setId(setMenu.getId());
+//        setMenuInvoice.setCode(setMenu.getCode());
+//        setMenuInvoice.setName(setMenu.getName());
+//        setMenuInvoice.setPrice(SetMenuServiceImpl.calculateSetPrice(setMenuItemList, menuItemList));
+//        setMenuInvoice.setMenuItems(menuItemInvoices);
+//
+//        data.setSetMenuInvoice(setMenuInvoice);
+//
+//        Invoice.ServicePackageInvoice servicePackageInvoice = new Invoice.ServicePackageInvoice();
+//        servicePackageInvoice.setId(servicePackage.getId());
+//        servicePackageInvoice.setCode(servicePackage.getCode());
+//        servicePackageInvoice.setName(servicePackage.getName());
+//        servicePackageInvoice.setPrice(servicePackage.getBasePrice());
+//        servicePackageInvoice.setServices(services);
+//
+//        data.setServicePackageInvoice(servicePackageInvoice);
+//
+//        invoice.setData(data);
+//
+//        return invoice.getData();
+//    }
 
     @Override
     public InvoiceResponse createInvoice(Integer contractId) {
