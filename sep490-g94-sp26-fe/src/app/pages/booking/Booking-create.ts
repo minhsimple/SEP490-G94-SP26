@@ -17,6 +17,7 @@ import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
 import { LocationService } from '../service/location.service';
 import { ServicePackageService } from '../service/service-package.service';
+import { ServiceService } from '../service/service.service';
 import { SetMenuService } from '../service/set-menu';
 import { UserService } from '../service/users.service';
 import { RoleService } from '../service/role.service';
@@ -55,6 +56,32 @@ interface ServicePackageOption {
 interface SalesOption {
     id: number;
     label: string;
+}
+
+interface SummarySetMenuItem {
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    unit?: string;
+}
+
+interface SummaryPackageServiceItem {
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    unit?: string;
+}
+
+interface BookingSummary {
+    hallName: string;
+    hallPrice: number;
+    setMenuName: string;
+    setMenuPrice: number;
+    setMenuItems: SummarySetMenuItem[];
+    packageName: string;
+    packagePrice: number;
+    packageServices: SummaryPackageServiceItem[];
+    estimatedTotal: number;
 }
 
 @Component({
@@ -216,9 +243,16 @@ interface SalesOption {
         .empty-state span {
             font-size: 0.82rem;
         }
-        .summary-card {
+        .summary-column {
             position: sticky;
             top: 1rem;
+            align-self: start;
+        }
+        .summary-card {
+            position: static;
+        }
+        .summary-detail-card {
+            margin-top: 1rem;
         }
         .summary-row {
             display: flex;
@@ -235,6 +269,30 @@ interface SalesOption {
         .summary-divider {
             border-top: 1px solid #e2e8f0;
             margin: 0.75rem 0;
+        }
+        .summary-detail-list {
+            margin: -0.2rem 0 0.7rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .summary-detail-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.6rem;
+            font-size: 0.76rem;
+            color: #64748b;
+        }
+        .summary-detail-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .summary-detail-price {
+            font-weight: 600;
+            color: #334155;
+            white-space: nowrap;
         }
         .state-chip {
             display: inline-flex;
@@ -261,6 +319,10 @@ interface SalesOption {
             .create-layout {
                 grid-template-columns: 1fr;
             }
+            .summary-column {
+                position: static;
+                top: auto;
+            }
             .two-col,
             .three-col,
             .menu-grid,
@@ -276,8 +338,8 @@ interface SalesOption {
             <div class="page-header-left">
                 <p-button icon="pi pi-arrow-left" [text]="true" severity="secondary" (onClick)="goBack()" />
                 <div>
-                    <h1>{{ isEditMode ? 'Chi tiết đặt tiệc' : 'Đặt tiệc mới' }}</h1>
-                    <p>{{ isEditMode ? 'Xem và cập nhật đơn đặt tiệc theo API mới' : 'Tạo đơn đặt tiệc theo đúng contract backend' }}</p>
+                    <h1>{{ isEditMode ? 'Chi tiết hợp đồng' : 'Hợp đồng mới' }}</h1>
+                    <p>{{ isEditMode ? 'Xem và cập nhật hợp đồng' : 'Tạo hợp đồng' }}</p>
                 </div>
             </div>
 
@@ -291,7 +353,7 @@ interface SalesOption {
                 />
                 <p-button
                     *ngIf="!isEditMode"
-                    label="Tạo đơn đặt tiệc"
+                    label="Tạo hợp đồng"
                     icon="pi pi-save"
                     [style]="{ 'background': '#10b981', 'border-color': '#10b981' }"
                     [loading]="submitting"
@@ -536,10 +598,10 @@ interface SalesOption {
                 </div>
 
                 <div class="section-card">
-                    <div class="section-title">Set menu</div>
+                    <div class="section-title">Thực đơn</div>
                     <div *ngIf="setMenuOptions.length === 0" class="empty-state">
                         <i class="pi pi-times-circle"></i>
-                        <span>Chọn chi nhánh để tải danh sách set menu</span>
+                        <span>Chọn chi nhánh để tải danh sách thực đơn</span>
                     </div>
 
                     <div *ngIf="setMenuOptions.length > 0" class="menu-grid">
@@ -586,16 +648,16 @@ interface SalesOption {
                     <textarea
                         pTextarea
                         [(ngModel)]="form.notes"
-                        placeholder="Nhập ghi chú cho đơn đặt tiệc..."
+                        placeholder="Nhập ghi chú cho hợp đồng..."
                         [rows]="4"
                         style="width:100%;resize:vertical"
                     ></textarea>
                 </div>
             </div>
 
-            <div>
+            <div class="summary-column">
                 <div class="summary-card">
-                    <div class="summary-title">Tóm tắt booking</div>
+                    <div class="summary-title">Tóm tắt hợp đồng</div>
 
                     <div class="summary-row" *ngIf="bookingCode">
                         <span>Mã đơn</span>
@@ -624,7 +686,7 @@ interface SalesOption {
                     </div>
                     <div class="summary-row" *ngIf="summary.hallPrice > 0">
                         <span>Giá sảnh</span>
-                        <strong>{{ formatPrice(summary.hallPrice) }}/bàn</strong>
+                        <strong>{{ formatPrice(summary.hallPrice) }}</strong>
                     </div>
                     <div class="summary-row" *ngIf="form.bookingDate">
                         <span>Ngày tổ chức</span>
@@ -644,12 +706,16 @@ interface SalesOption {
                     </div>
                     <div class="summary-divider"></div>
                     <div class="summary-row" *ngIf="summary.setMenuName">
-                        <span>Set menu</span>
+                        <span>Thực đơn</span>
                         <strong>{{ summary.setMenuName }}</strong>
                     </div>
                     <div class="summary-row" *ngIf="summary.packageName">
                         <span>Gói dịch vụ</span>
                         <strong>{{ summary.packageName }}</strong>
+                    </div>
+                    <div class="summary-row" *ngIf="summary.packagePrice > 0">
+                        <span>Giá gói dịch vụ</span>
+                        <strong>{{ formatPrice(summary.packagePrice) }}</strong>
                     </div>
                     <div class="summary-row" *ngIf="summary.estimatedTotal > 0">
                         <span>Tổng ước tính</span>
@@ -659,6 +725,34 @@ interface SalesOption {
                     <div class="summary-row" *ngIf="form.salesId">
                         <span>Sales phụ trách</span>
                         <strong>{{ getSalesLabel(form.salesId) }}</strong>
+                    </div>
+                </div>
+
+                <div class="section-card summary-detail-card" *ngIf="summary.setMenuItems.length > 0 || summary.packageServices.length > 0">
+                    <div class="section-title">Chi tiết thực đơn và gói dịch vụ</div>
+
+                    <div class="summary-row" *ngIf="summary.setMenuItems.length > 0">
+                        <span>Thực đơn</span>
+                        <strong>{{ summary.setMenuName }}</strong>
+                    </div>
+                    <div class="summary-detail-list" *ngIf="summary.setMenuItems.length > 0">
+                        <div class="summary-detail-row" *ngFor="let item of summary.setMenuItems">
+                            <span class="summary-detail-name">{{ item.name }} x{{ item.quantity }}{{ item.unit ? ' ' + item.unit : '' }}</span>
+                            <span class="summary-detail-price">{{ formatPrice(item.unitPrice) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="summary-divider" *ngIf="summary.setMenuItems.length > 0 && summary.packageServices.length > 0"></div>
+
+                    <div class="summary-row" *ngIf="summary.packageServices.length > 0">
+                        <span>Gói dịch vụ</span>
+                        <strong>{{ summary.packageName }}</strong>
+                    </div>
+                    <div class="summary-detail-list" *ngIf="summary.packageServices.length > 0">
+                        <div class="summary-detail-row" *ngFor="let item of summary.packageServices">
+                            <span class="summary-detail-name">{{ item.name }} x{{ item.quantity }}{{ item.unit ? ' ' + item.unit : '' }}</span>
+                            <span class="summary-detail-price">{{ formatPrice(item.unitPrice) }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -742,13 +836,15 @@ export class BookingCreateComponent implements OnInit {
         groomMotherName: '',
     };
 
-    summary = {
+    summary: BookingSummary = {
         hallName: '',
         hallPrice: 0,
         setMenuName: '',
         setMenuPrice: 0,
+        setMenuItems: [],
         packageName: '',
         packagePrice: 0,
+        packageServices: [],
         estimatedTotal: 0,
     };
 
@@ -771,6 +867,7 @@ export class BookingCreateComponent implements OnInit {
         private locationService: LocationService,
         private setMenuService: SetMenuService,
         private servicePackageService: ServicePackageService,
+        private serviceService: ServiceService,
         private userService: UserService,
         private roleService: RoleService,
         private messageService: MessageService,
@@ -1172,8 +1269,10 @@ export class BookingCreateComponent implements OnInit {
         this.summary.hallPrice = 0;
         this.summary.setMenuName = '';
         this.summary.setMenuPrice = 0;
+        this.summary.setMenuItems = [];
         this.summary.packageName = '';
         this.summary.packagePrice = 0;
+        this.summary.packageServices = [];
         this.hallOptions = [];
         this.setMenuOptions = [];
         this.packageOptions = [];
@@ -1434,6 +1533,14 @@ export class BookingCreateComponent implements OnInit {
         const selectedMenu = this.setMenuOptions.find((menu) => menu.id === this.form.setMenuId);
         this.summary.setMenuName = selectedMenu?.label ?? '';
         this.summary.setMenuPrice = selectedMenu?.price ?? 0;
+
+        if (!selectedMenu?.id) {
+            this.summary.setMenuItems = [];
+            this.recalcEstimatedTotal();
+            return;
+        }
+
+        this.loadSetMenuDetailForSummary(selectedMenu.id);
         this.recalcEstimatedTotal();
     }
 
@@ -1441,7 +1548,103 @@ export class BookingCreateComponent implements OnInit {
         const selectedPackage = this.packageOptions.find((item) => item.id === this.form.packageId);
         this.summary.packageName = selectedPackage?.label ?? '';
         this.summary.packagePrice = selectedPackage?.price ?? 0;
+
+        if (!selectedPackage?.id) {
+            this.summary.packageServices = [];
+            this.recalcEstimatedTotal();
+            return;
+        }
+
+        this.loadPackageDetailForSummary(selectedPackage.id);
         this.recalcEstimatedTotal();
+    }
+
+    private loadSetMenuDetailForSummary(setMenuId: number) {
+        this.setMenuService.getById(setMenuId).subscribe({
+            next: (res: any) => {
+                const groupedSource = res?.data?.menuItemsByCategory;
+                const groupedItems = Array.isArray(groupedSource)
+                    ? groupedSource.map((group: any) => Array.isArray(group?.menuItems) ? group.menuItems : [])
+                    : Object.values(groupedSource ?? {});
+
+                const mappedItems: SummarySetMenuItem[] = groupedItems.flatMap((group: any) => {
+                    const menuItems = Array.isArray(group) ? group : [];
+                    return menuItems.map((item: any) => ({
+                        name: String(item?.name ?? item?.menuItemName ?? '').trim(),
+                        quantity: Number(item?.quantity ?? 1) || 1,
+                        unitPrice: Number(item?.price ?? item?.unitPrice ?? 0) || 0,
+                        unit: String(item?.unit ?? '').trim() || undefined,
+                    }));
+                });
+
+                this.summary.setMenuItems = mappedItems.filter((item) => !!item.name);
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.summary.setMenuItems = [];
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    private loadPackageDetailForSummary(packageId: number) {
+        this.servicePackageService.getById(packageId).pipe(
+            switchMap((res: any) => {
+                const serviceRows = Array.isArray(res?.data?.serviceResponseList)
+                    ? res.data.serviceResponseList
+                    : [];
+
+                if (!serviceRows.length) {
+                    return of([] as SummaryPackageServiceItem[]);
+                }
+
+                const detailRequests = serviceRows.map((item: any) => {
+                    const quantity = Number(item?.quantity ?? item?.qty ?? 1) || 1;
+                    const fallbackName = String(item?.serviceName ?? item?.name ?? '').trim();
+                    const fallbackPrice = Number(item?.price ?? item?.unitPrice ?? item?.basePrice ?? 0) || 0;
+                    const fallbackUnit = String(item?.unit ?? '').trim() || undefined;
+
+                    const serviceId = Number(item?.serviceId ?? item?.id ?? 0);
+                    if (!serviceId) {
+                        return of({
+                            name: fallbackName || 'Dich vu',
+                            quantity,
+                            unitPrice: fallbackPrice,
+                            unit: fallbackUnit,
+                        } as SummaryPackageServiceItem);
+                    }
+
+                    return this.serviceService.getServiceById(serviceId).pipe(
+                        map((serviceRes: any) => {
+                            const serviceData = serviceRes?.data;
+                            return {
+                                name: String(serviceData?.name ?? fallbackName ?? `Dich vu #${serviceId}`),
+                                quantity,
+                                unitPrice: Number(item?.price ?? item?.unitPrice ?? item?.basePrice ?? serviceData?.basePrice ?? serviceData?.price ?? 0) || 0,
+                                unit: String(serviceData?.unit ?? fallbackUnit ?? '').trim() || undefined,
+                            } as SummaryPackageServiceItem;
+                        }),
+                        catchError(() => of({
+                            name: fallbackName || `Dich vu #${serviceId}`,
+                            quantity,
+                            unitPrice: fallbackPrice,
+                            unit: fallbackUnit,
+                        } as SummaryPackageServiceItem))
+                    );
+                });
+
+                return forkJoin(detailRequests) as Observable<SummaryPackageServiceItem[]>;
+            })
+        ).subscribe({
+            next: (services: SummaryPackageServiceItem[]) => {
+                this.summary.packageServices = services.filter((item) => !!item?.name);
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.summary.packageServices = [];
+                this.cdr.detectChanges();
+            },
+        });
     }
 
     onBookingDateChange() {
