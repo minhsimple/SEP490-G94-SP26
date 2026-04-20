@@ -47,6 +47,7 @@ public class ContractResponse {
     Integer assignCoordinatorId;
     String assignCoordinatorName;
     Integer paymentPercent;
+    LocalDateTime createdAt;
 }
 
 
