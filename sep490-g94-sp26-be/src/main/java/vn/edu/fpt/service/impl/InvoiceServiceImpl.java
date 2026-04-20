@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.invoice.InvoiceFilterRequest;
 import vn.edu.fpt.dto.response.invoice.InvoiceResponse;
@@ -35,85 +36,16 @@ public class InvoiceServiceImpl implements InvoiceService {
     private final PackageServiceRepository packageServiceRepository;
     private final ServiceItemRepository serviceItemRepository;
 
-//    @Transactional
-//    @Override
-//    public Invoice.InvoiceData generateInvoice(Integer contractId) {
-//        Invoice invoice  = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
-//                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
-//
-//        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
-//                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
-//
-//        SetMenu setMenu = setMenuRepository.findSetMenuByIdAndStatus(contract.getSetMenuId(), RecordStatus.active)
-//                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
-//
-//        Hall hall = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
-//                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED));
-//
-//        ServicePackage servicePackage = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
-//                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND));
-//        List<Integer> serviceIds = packageServiceRepository.findByPackageIdAndStatus(servicePackage.getId(), RecordStatus.active)
-//                .stream()
-//                .map(PackageService::getServiceId)
-//                .toList();
-//        List<Invoice.ServiceInvoice> services = serviceItemRepository.findAllByIdInAndStatus(serviceIds, RecordStatus.active).stream()
-//                .map(service -> new Invoice.ServiceInvoice(service.getId(), service.getCode(), service.getName(), service.getBasePrice(), service.getUnit()))
-//                .toList();
-//
-//        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
-//        Set<Integer> menuItemIds = setMenuItemList.stream()
-//                .map(SetMenuItem::getMenuItemId)
-//                .collect(Collectors.toSet());
-//        List<MenuItem> menuItemList = menuItemRepository.findAllByIdInAndStatus(menuItemIds, RecordStatus.active);
-//
-//        Set<Integer> categoryMenuItemIds = menuItemList.stream()
-//                .map(MenuItem::getCategoryMenuItemsId)
-//                .collect(Collectors.toSet());
-//        Map<Integer, String> categoryMenuItemNameMap = categoryMenuItemRepository.findAllByIdIn(categoryMenuItemIds).stream()
-//                .collect(Collectors.toMap(CategoryMenuItem::getId, CategoryMenuItem::getName));
-//
-//        Invoice.InvoiceData data = new Invoice.InvoiceData();
-//        data.setHallInvoice(new Invoice.HallInvoice(hall.getId(), hall.getCode(), hall.getName(), hall.getBasePrice()));
-//
-//        List<Invoice.MenuItemInvoice> menuItemInvoices = menuItemList.stream()
-//                .map(menuItem -> {
-//                    Invoice.MenuItemInvoice menuItemInvoice = new Invoice.MenuItemInvoice();
-//                    menuItemInvoice.setId(menuItem.getId());
-//                    menuItemInvoice.setCode(menuItem.getCode());
-//                    menuItemInvoice.setName(menuItem.getName());
-//                    menuItemInvoice.setPrice(menuItem.getUnitPrice());
-//                    menuItemInvoice.setUnit(menuItem.getUnit());
-//                    menuItemInvoice.setCategoryName(categoryMenuItemNameMap.getOrDefault(menuItem.getCategoryMenuItemsId(), null));
-//                    menuItemInvoice.setQuantity(setMenuItemList.stream()
-//                            .filter(setMenuItem -> Objects.equals(setMenuItem.getMenuItemId(), menuItem.getId()))
-//                            .findFirst()
-//                            .map(SetMenuItem::getQuantity)
-//                            .orElse(0));
-//                    return menuItemInvoice;
-//                }).toList();
-//
-//        Invoice.SetMenuInvoice setMenuInvoice = new Invoice.SetMenuInvoice();
-//        setMenuInvoice.setId(setMenu.getId());
-//        setMenuInvoice.setCode(setMenu.getCode());
-//        setMenuInvoice.setName(setMenu.getName());
-//        setMenuInvoice.setPrice(SetMenuServiceImpl.calculateSetPrice(setMenuItemList, menuItemList));
-//        setMenuInvoice.setMenuItems(menuItemInvoices);
-//
-//        data.setSetMenuInvoice(setMenuInvoice);
-//
-//        Invoice.ServicePackageInvoice servicePackageInvoice = new Invoice.ServicePackageInvoice();
-//        servicePackageInvoice.setId(servicePackage.getId());
-//        servicePackageInvoice.setCode(servicePackage.getCode());
-//        servicePackageInvoice.setName(servicePackage.getName());
-//        servicePackageInvoice.setPrice(servicePackage.getBasePrice());
-//        servicePackageInvoice.setServices(services);
-//
-//        data.setServicePackageInvoice(servicePackageInvoice);
-//
-//        invoice.setData(data);
-//
-//        return invoice.getData();
-//    }
+    @Transactional
+    @Override
+    public Invoice.InvoiceData generateInvoice(Integer contractId) {
+        Invoice invoice  = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+
+        invoice.setData(generateInvoiceData(contractId));
+
+        return invoice.getData();
+    }
 
     @Override
     public InvoiceResponse createInvoice(Integer contractId) {
@@ -146,7 +78,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setTotalAmount(totalAmount);
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-        return mapToInvoiceResponse(savedInvoice, contract, hall, servicePackage, setMenu);
+        return mapToInvoiceResponse(savedInvoice, contract, generateInvoiceData(contractId));
     }
 
     @Override
@@ -157,16 +89,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         Contract contract = contractRepository.findById(invoice.getContractId())
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        Hall hall = hallRepository.findById(contract.getHallId())
-                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED));
-
-        ServicePackage servicePackage = servicePackageRepository.findById(contract.getPackageId())
-                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND));
-
-        SetMenu setMenu = setMenuRepository.findById(contract.getSetMenuId())
-                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
-
-        return mapToInvoiceResponse(invoice, contract, hall, servicePackage, setMenu);
+        return mapToInvoiceResponse(invoice, contract, invoice.getData());
     }
 
     @Override
@@ -211,42 +134,10 @@ public class InvoiceServiceImpl implements InvoiceService {
         Map<Integer, Contract> mapContract = contractList.stream()
                 .collect(Collectors.toMap(Contract::getId, contract -> contract));
 
-        Set<Integer> hallIds = contractList.stream()
-                .map(Contract::getHallId)
-                .collect(Collectors.toSet());
-        List<Hall> hallList = hallRepository.findAllByIdIn(hallIds);
-        Map<Integer, Hall> mapContractIdWithHall = contractList.stream()
-                .collect(Collectors.toMap(Contract::getId, contract -> hallList.stream()
-                        .filter(hall -> Objects.equals(hall.getId(), contract.getHallId()))
-                        .findFirst()
-                        .orElse(new Hall())));
-
-        Set<Integer> servicePackageIds = contractList.stream()
-                .map(Contract::getPackageId)
-                .collect(Collectors.toSet());
-        List<ServicePackage> servicePackageList = servicePackageRepository.findAllByIdIn(servicePackageIds);
-        Map<Integer, ServicePackage> mapContractIdWithServicePackage = contractList.stream()
-                .collect(Collectors.toMap(Contract::getId, contract -> servicePackageList.stream()
-                        .filter(servicePackage -> Objects.equals(servicePackage.getId(), contract.getPackageId()))
-                        .findFirst()
-                        .orElse(new ServicePackage())));
-
-        Set<Integer> setMenuIds = contractList.stream()
-                .map(Contract::getSetMenuId)
-                .collect(Collectors.toSet());
-        List<SetMenu> setMenuList = setMenuRepository.findAllByIdIn(setMenuIds);
-        Map<Integer, SetMenu> mapContractIdWithSetMenu = contractList.stream()
-                .collect(Collectors.toMap(Contract::getId, contract -> setMenuList.stream()
-                        .filter(setMenu -> Objects.equals(setMenu.getId(), contract.getSetMenuId()))
-                        .findFirst()
-                        .orElse(new SetMenu())));
-
         List<InvoiceResponse> invoiceResponseList = invoiceList.stream()
                 .map(invoice -> mapToInvoiceResponse(invoice,
                         mapContract.getOrDefault(invoice.getContractId(), new Contract()),
-                        mapContractIdWithHall.getOrDefault(invoice.getContractId(), new Hall()),
-                        mapContractIdWithServicePackage.getOrDefault(invoice.getContractId(), new ServicePackage()),
-                        mapContractIdWithSetMenu.getOrDefault(invoice.getContractId(), new SetMenu())))
+                        invoice.getData()))
                 .toList();
 
         return new SimplePage<>(
@@ -256,7 +147,80 @@ public class InvoiceServiceImpl implements InvoiceService {
         );
     }
 
-    private InvoiceResponse mapToInvoiceResponse(Invoice invoice, Contract contract, Hall hall, ServicePackage servicePackage, SetMenu setMenu) {
+    private Invoice.InvoiceData generateInvoiceData(Integer contractId) {
+        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
+        SetMenu setMenu = setMenuRepository.findSetMenuByIdAndStatus(contract.getSetMenuId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SET_MENU_NOT_EXISTED));
+
+        Hall hall = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED));
+
+        ServicePackage servicePackage = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND));
+        List<Integer> serviceIds = packageServiceRepository.findByPackageIdAndStatus(servicePackage.getId(), RecordStatus.active)
+                .stream()
+                .map(PackageService::getServiceId)
+                .toList();
+        List<Invoice.ServiceInvoice> services = serviceItemRepository.findAllByIdInAndStatus(serviceIds, RecordStatus.active).stream()
+                .map(service -> new Invoice.ServiceInvoice(service.getId(), service.getCode(), service.getName(), service.getBasePrice(), service.getUnit()))
+                .toList();
+
+        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
+        Set<Integer> menuItemIds = setMenuItemList.stream()
+                .map(SetMenuItem::getMenuItemId)
+                .collect(Collectors.toSet());
+        List<MenuItem> menuItemList = menuItemRepository.findAllByIdInAndStatus(menuItemIds, RecordStatus.active);
+
+        Set<Integer> categoryMenuItemIds = menuItemList.stream()
+                .map(MenuItem::getCategoryMenuItemsId)
+                .collect(Collectors.toSet());
+        Map<Integer, String> categoryMenuItemNameMap = categoryMenuItemRepository.findAllByIdIn(categoryMenuItemIds).stream()
+                .collect(Collectors.toMap(CategoryMenuItem::getId, CategoryMenuItem::getName));
+
+        Invoice.InvoiceData data = new Invoice.InvoiceData();
+        data.setHallInvoice(new Invoice.HallInvoice(hall.getId(), hall.getCode(), hall.getName(), hall.getBasePrice()));
+
+        List<Invoice.MenuItemInvoice> menuItemInvoices = menuItemList.stream()
+                .map(menuItem -> {
+                    Invoice.MenuItemInvoice menuItemInvoice = new Invoice.MenuItemInvoice();
+                    menuItemInvoice.setId(menuItem.getId());
+                    menuItemInvoice.setCode(menuItem.getCode());
+                    menuItemInvoice.setName(menuItem.getName());
+                    menuItemInvoice.setPrice(menuItem.getUnitPrice());
+                    menuItemInvoice.setUnit(menuItem.getUnit());
+                    menuItemInvoice.setCategoryName(categoryMenuItemNameMap.getOrDefault(menuItem.getCategoryMenuItemsId(), null));
+                    menuItemInvoice.setQuantity(setMenuItemList.stream()
+                            .filter(setMenuItem -> Objects.equals(setMenuItem.getMenuItemId(), menuItem.getId()))
+                            .findFirst()
+                            .map(SetMenuItem::getQuantity)
+                            .orElse(0));
+                    return menuItemInvoice;
+                }).toList();
+
+        Invoice.SetMenuInvoice setMenuInvoice = new Invoice.SetMenuInvoice();
+        setMenuInvoice.setId(setMenu.getId());
+        setMenuInvoice.setCode(setMenu.getCode());
+        setMenuInvoice.setName(setMenu.getName());
+        setMenuInvoice.setPrice(SetMenuServiceImpl.calculateSetPrice(setMenuItemList, menuItemList));
+        setMenuInvoice.setMenuItems(menuItemInvoices);
+
+        data.setSetMenuInvoice(setMenuInvoice);
+
+        Invoice.ServicePackageInvoice servicePackageInvoice = new Invoice.ServicePackageInvoice();
+        servicePackageInvoice.setId(servicePackage.getId());
+        servicePackageInvoice.setCode(servicePackage.getCode());
+        servicePackageInvoice.setName(servicePackage.getName());
+        servicePackageInvoice.setPrice(servicePackage.getBasePrice());
+        servicePackageInvoice.setServices(services);
+
+        data.setServicePackageInvoice(servicePackageInvoice);
+
+        return data;
+    }
+
+    private InvoiceResponse mapToInvoiceResponse(Invoice invoice, Contract contract, Invoice.InvoiceData data) {
         InvoiceResponse invoiceResponse = new InvoiceResponse();
 
         invoiceResponse.setId(invoice.getId());
@@ -265,27 +229,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoiceResponse.setExpectedTables(contract.getExpectedTables());
         invoiceResponse.setInvoiceState(invoice.getInvoiceState());
         invoiceResponse.setTotalAmount(invoice.getTotalAmount());
-        invoiceResponse.setHall(InvoiceResponse.HallResponse.builder()
-                .name(hall.getName())
-                .basePrice(hall.getBasePrice())
-                .build());
-        invoiceResponse.setServicesPackage(InvoiceResponse.ServicesPackageResponse.builder()
-                .name(servicePackage.getName())
-                .basePrice(servicePackage.getBasePrice())
-                .build());
-
-        List<SetMenuItem> setMenuItemList = setMenuItemRepository.findAllBySetMenuIdAndStatus(setMenu.getId(), RecordStatus.active);
-        Set<Integer> menuItemIds = setMenuItemList.stream()
-                .map(SetMenuItem::getMenuItemId)
-                .collect(Collectors.toSet());
-        List<MenuItem> menuItemList = menuItemRepository.findAllByIdInAndStatus(menuItemIds, RecordStatus.active);
-
-        InvoiceResponse.SetMenuResponse setMenuResponse = InvoiceResponse.SetMenuResponse.builder()
-                .name(setMenu.getName())
-                .basePrice(SetMenuServiceImpl.calculateSetPrice(setMenuItemList, menuItemList))
-                .build();
-        invoiceResponse.setSetMenu(setMenuResponse);
-
+        invoiceResponse.setData(data);
         return invoiceResponse;
     }
 }
