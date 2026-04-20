@@ -557,9 +557,7 @@ export class Customers implements OnInit {
                     : this.customer.locationId
             }).subscribe({
                 next: (res) => {
-                    this.customers.update(list =>
-                        list.map(c => c.id === this.customer.id ? { ...c, ...res.data } : c)
-                    );
+                    this.loadCustomers(this.selectedLocationId);
                     this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật khách hàng', life: 3000 });
                     this.customerDialog = false;
                     this.saving = false;
@@ -583,7 +581,8 @@ export class Customers implements OnInit {
                     : this.customer.locationId
             }).subscribe({
                 next: (res) => {
-                    this.customers.update(list => [res.data, ...list]);
+                    this.currentPage = 0;
+                    this.loadCustomers(this.selectedLocationId);
                     this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã tạo khách hàng mới', life: 3000 });
                     this.customerDialog = false;
                     this.saving = false;

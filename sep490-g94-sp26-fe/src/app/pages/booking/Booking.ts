@@ -304,11 +304,15 @@ export class BookingsComponent implements OnInit {
     hallOptions: { label: string; value: number }[] = [];
     customerNameMap: Record<number, string> = {};
     customerPhoneMap: Record<number, string> = {};
+    hallLocationMap: Record<number, number> = {};
     hallPriceMap: Record<number, number> = {};
     setMenuPriceMap: Record<number, number> = {};
     packagePriceMap: Record<number, number> = {};
     readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
+    readonly currentLocationId = Number(localStorage.getItem('locationId')) || 0;
+    readonly isAdminAccount = this.codeRole.includes('ADMIN');
+    readonly shouldRestrictByLocation = !this.isAdminAccount && this.currentLocationId > 0;
     readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
 
     @ViewChild('dt') dt!: Table;
@@ -333,17 +337,39 @@ export class BookingsComponent implements OnInit {
                 life: 3000,
             });
         }
+
+        if (this.shouldRestrictByLocation && this.currentLocationId <= 0) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Thiếu thông tin chi nhánh',
+                detail: 'Không xác định được chi nhánh đăng nhập, dữ liệu hợp đồng có thể không đầy đủ.',
+                life: 3000,
+            });
+        }
+
         this.loadHallOptions();
-        this.loadBookings();
     }
 
     loadHallOptions() {
-        this.hallService.searchHalls({ page: 0, size: 200, sort: 'name,ASC' }).subscribe({
+        this.hallService.searchHalls({
+            page: 0,
+            size: 500,
+            sort: 'name,ASC',
+            locationId: this.shouldRestrictByLocation ? this.currentLocationId : undefined,
+        }).subscribe({
             next: (res) => {
                 this.hallOptions = (res.data?.content ?? []).map((hall) => ({
                     label: hall.name ?? `Sảnh #${hall.id}`,
                     value: Number(hall.id),
                 }));
+                this.hallLocationMap = (res.data?.content ?? []).reduce((acc: Record<number, number>, hall) => {
+                    const hallId = Number(hall.id);
+                    const locationId = Number((hall as any)?.locationId ?? (hall as any)?.location?.id);
+                    if (Number.isFinite(hallId) && hallId > 0 && Number.isFinite(locationId) && locationId > 0) {
+                        acc[hallId] = locationId;
+                    }
+                    return acc;
+                }, {});
                 this.hallPriceMap = (res.data?.content ?? []).reduce((acc: Record<number, number>, hall) => {
                     const id = Number(hall.id);
                     if (Number.isFinite(id) && id > 0) {
@@ -353,10 +379,13 @@ export class BookingsComponent implements OnInit {
                     return acc;
                 }, {});
                 this.cdr.markForCheck();
+                this.loadBookings();
             },
             error: () => {
                 this.hallOptions = [];
+                this.hallLocationMap = {};
                 this.hallPriceMap = {};
+                this.loadBookings();
             },
         });
     }
@@ -378,8 +407,9 @@ export class BookingsComponent implements OnInit {
             bookingDateTo   = `${year}-${m}-${String(lastDay).padStart(2, '0')}`;
         }
 
-        const queryPage = this.isCoordinatorAccount || shouldSearchByPhone ? 0 : page;
-        const querySize = this.isCoordinatorAccount || shouldSearchByPhone ? 500 : size;
+        const shouldClientPage = this.isCoordinatorAccount || shouldSearchByPhone || this.shouldRestrictByLocation;
+        const queryPage = shouldClientPage ? 0 : page;
+        const querySize = shouldClientPage ? 500 : size;
 
         this.bookingService.searchBookings({
             page: queryPage,
@@ -400,8 +430,10 @@ export class BookingsComponent implements OnInit {
                         rows = rows.filter((booking) => this.isBookingAssignedToCurrentCoordinator(booking));
                     }
 
+                    rows = this.filterRowsByCurrentLocation(rows);
+
                     if (!shouldSearchByPhone) {
-                        if (this.isCoordinatorAccount) {
+                        if (this.isCoordinatorAccount || this.shouldRestrictByLocation) {
                             this.setPagedRows(rows, page, size);
                         } else {
                             this.bookings.set(rows);
@@ -746,5 +778,40 @@ export class BookingsComponent implements OnInit {
             return false;
         }
         return Number(booking.assignCoordinatorId) === this.currentUserId;
+    }
+
+    private filterRowsByCurrentLocation(rows: Booking[]): Booking[] {
+        if (!this.shouldRestrictByLocation) {
+            return rows;
+        }
+
+        return rows.filter((booking) => this.isBookingInCurrentLocation(booking));
+    }
+
+    private isBookingInCurrentLocation(booking: Booking): boolean {
+        if (!this.shouldRestrictByLocation) {
+            return true;
+        }
+
+        const row = booking as any;
+        const locationCandidates = [
+            row?.locationId,
+            row?.branchId,
+            row?.location?.id,
+            row?.locationResponse?.id,
+        ]
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value > 0);
+
+        if (locationCandidates.length > 0) {
+            return locationCandidates.some((locationId) => locationId === this.currentLocationId);
+        }
+
+        const hallId = Number(booking.hallId);
+        if (Number.isFinite(hallId) && hallId > 0) {
+            return this.hallLocationMap[hallId] === this.currentLocationId;
+        }
+
+        return false;
     }
 }

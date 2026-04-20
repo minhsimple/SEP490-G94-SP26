@@ -7,7 +7,8 @@ import { AppConfigurator } from './app.configurator';
 import { LayoutService } from '../service/layout.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { AuthService } from '../../pages/service/auth.service';
+import { AuthService } from './../../pages/service/auth.service';
+import { LocationService } from '../../pages/service/location.service';
 
 @Component({
   selector: 'app-topbar',
@@ -79,6 +80,11 @@ import { AuthService } from '../../pages/service/auth.service';
           </button>
           <app-configurator />
         </div>
+
+        <div *ngIf="showLocationBadge" class="topbar-location-chip" title="Chi nhánh đăng nhập">
+          <i class="pi pi-map-marker"></i>
+          <span>{{ locationLabel() }}</span>
+        </div>
       </div>
 
       <button
@@ -147,6 +153,37 @@ import { AuthService } from '../../pages/service/auth.service';
       .profile-wrapper {
         position: relative;
         display: inline-block;
+      }
+
+      .topbar-location-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: 999px;
+        background: var(--surface-100, #f1f5f9);
+        border: 1px solid var(--surface-border, #e2e8f0);
+        color: var(--text-color-secondary, #475569);
+        font-size: 0.78rem;
+        font-weight: 600;
+        max-width: 260px;
+
+        i {
+          font-size: 0.78rem;
+          color: var(--primary-color, #3b82f6);
+        }
+
+        span {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+
+      @media (max-width: 991px) {
+        .topbar-location-chip {
+          display: none;
+        }
       }
 
       .profile-dropdown {
@@ -287,6 +324,8 @@ export class AppTopbar implements OnInit {
   userName = signal('Người dùng');
   userEmail = signal('');
   userRole = signal('');
+  locationLabel = signal('');
+  showLocationBadge = false;
 
   layoutService = inject(LayoutService);
 
@@ -294,13 +333,45 @@ export class AppTopbar implements OnInit {
     private http: HttpClient,
     private router: Router,
     private authService: AuthService,
+    private locationService: LocationService,
   ) {}
 
   ngOnInit() {
     // Đọc thẳng từ localStorage — không cần gọi API
     this.userName.set(localStorage.getItem('fullName') || 'Người dùng');
     this.userEmail.set(localStorage.getItem('email') || '');
-    this.userRole.set(localStorage.getItem('codeRole') || '');
+    const role = localStorage.getItem('codeRole') || '';
+    this.userRole.set(role);
+
+    const isAdmin = role.toUpperCase().includes('ADMIN');
+    this.showLocationBadge = !isAdmin;
+
+    if (this.showLocationBadge) {
+      this.loadLocationLabel();
+    }
+  }
+
+  private loadLocationLabel() {
+    const locationId = Number(localStorage.getItem('locationId'));
+    if (!Number.isFinite(locationId) || locationId <= 0) {
+      this.locationLabel.set('Chưa có chi nhánh');
+      return;
+    }
+
+    this.locationLabel.set(`Chi nhánh #${locationId}`);
+
+    this.locationService.searchLocations({ page: 0, size: 200, sort: 'name,ASC' }).subscribe({
+      next: (res) => {
+        const matchedLocation = (res.data?.content ?? []).find((item) => Number(item.id) === locationId);
+        const locationName = matchedLocation?.name?.trim();
+        if (locationName) {
+          this.locationLabel.set(locationName);
+        }
+      },
+      error: () => {
+        // Keep fallback label when location list cannot be loaded.
+      },
+    });
   }
 
   toggleDarkMode() {
