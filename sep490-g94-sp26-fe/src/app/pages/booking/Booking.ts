@@ -17,6 +17,7 @@ import { HallService } from '../service/hall.service';
 import { CustomerService } from '../service/customer.service';
 import { SetMenuService } from '../service/set-menu';
 import { ServicePackageService } from '../service/service-package.service';
+import { Invoice, InvoiceService } from '../service/invoice.service';
 
 @Component({
     selector: 'app-bookings',
@@ -173,7 +174,7 @@ import { ServicePackageService } from '../service/service-package.service';
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-calendar text-500 text-xs"></i>
                                     <div>
-                                        <div class="text-sm text-900">{{ formatDate(booking.bookingDate ?? booking.eventDate) }}</div>
+                                        <div class="text-sm text-900">{{ formatDate(resolveCreatedAt(booking)) }}</div>
                                     </div>
                                 </div>
                             </td>
@@ -265,7 +266,7 @@ import { ServicePackageService } from '../service/service-package.service';
             .p-datatable .p-datatable-tbody > tr:last-child > td { border-bottom: none; }
         }
     `],
-    providers: [MessageService, BookingService],
+    providers: [MessageService, BookingService, InvoiceService],
 })
 export class BookingsComponent implements OnInit {
 
@@ -308,6 +309,7 @@ export class BookingsComponent implements OnInit {
     hallPriceMap: Record<number, number> = {};
     setMenuPriceMap: Record<number, number> = {};
     packagePriceMap: Record<number, number> = {};
+    invoiceByContractId: Record<number, Invoice> = {};
     readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
     readonly currentLocationId = Number(localStorage.getItem('locationId')) || 0;
@@ -323,6 +325,7 @@ export class BookingsComponent implements OnInit {
         private customerService: CustomerService,
         private setMenuService: SetMenuService,
         private servicePackageService: ServicePackageService,
+        private invoiceService: InvoiceService,
         private messageService: MessageService,
         private router: Router,
         private cdr: ChangeDetectorRef,
@@ -439,6 +442,7 @@ export class BookingsComponent implements OnInit {
                             this.bookings.set(rows);
                             this.resolveMissingCustomerNames(rows);
                             this.resolveMissingPrices(rows);
+                            this.resolveInvoicesByContract(rows);
                             this.totalRecords = res.data.totalElements ?? 0;
                         }
                         this.loading = false;
@@ -519,7 +523,16 @@ export class BookingsComponent implements OnInit {
         return new Date(d).toLocaleDateString('vi-VN');
     }
 
+    resolveCreatedAt(booking: Booking): string | undefined {
+        const row = booking as any;
+        return row.createAt ?? row.createdAt ?? row.created_at ?? row.create_at ?? row.updatedAt;
+    }
+
     getHallLabel(booking: Booking): string {
+        const invoice = this.getInvoiceByContractId(Number(booking.id));
+        const hallNameFromInvoice = invoice?.data?.hall_invoice?.name;
+        if (hallNameFromInvoice) return hallNameFromInvoice;
+
         if (booking.hallName) return booking.hallName;
         const hall = this.hallOptions.find((item) => item.value === booking.hallId);
         return hall?.label ?? (booking.hallId ? `Sảnh #${booking.hallId}` : '-');
@@ -625,6 +638,12 @@ export class BookingsComponent implements OnInit {
     }
 
     getBookingTotalValue(booking: Booking): number | undefined {
+        const invoice = this.getInvoiceByContractId(Number(booking.id));
+        const invoiceTotal = Number(invoice?.totalAmount ?? 0);
+        if (Number.isFinite(invoiceTotal) && invoiceTotal > 0) {
+            return invoiceTotal;
+        }
+
         const row = booking as any;
         const direct = Number(row.totalAmount ?? row.totalPrice ?? row.finalAmount ?? row.amount);
         if (Number.isFinite(direct) && direct > 0) {
@@ -695,7 +714,40 @@ export class BookingsComponent implements OnInit {
         this.bookings.set(pagedRows);
         this.resolveMissingCustomerNames(pagedRows);
         this.resolveMissingPrices(pagedRows);
+        this.resolveInvoicesByContract(pagedRows);
         this.totalRecords = rows.length;
+    }
+
+    private getInvoiceByContractId(contractId: number): Invoice | undefined {
+        if (!Number.isFinite(contractId) || contractId <= 0) {
+            return undefined;
+        }
+        return this.invoiceByContractId[contractId];
+    }
+
+    private resolveInvoicesByContract(rows: Booking[]) {
+        const contractIds = Array.from(new Set(
+            rows
+                .map((booking) => Number(booking.id))
+                .filter((id) => Number.isFinite(id) && id > 0)
+        ));
+
+        contractIds
+            .filter((contractId) => !this.invoiceByContractId[contractId])
+            .forEach((contractId) => {
+                this.invoiceService.searchInvoices({ contractId, page: 0, size: 1, sort: 'id,DESC' }).subscribe({
+                    next: (res) => {
+                        const first = res.data?.content?.[0];
+                        if (first) {
+                            this.invoiceByContractId[contractId] = first;
+                            this.cdr.markForCheck();
+                        }
+                    },
+                    error: () => {
+                        // Keep list responsive even if invoice lookup fails for a row.
+                    },
+                });
+            });
     }
 
     private filterRowsByCustomerPhone(rows: Booking[], phoneKeyword: string, page: number, size: number): void {
