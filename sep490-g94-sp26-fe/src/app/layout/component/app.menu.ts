@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { AppMenuitem } from './app.menuitem';
 import { Subscription } from 'rxjs';
-import { AuthService } from '../../pages/service/auth.service';
+import { AuthService } from './../../pages/service/auth.service';
 
 
 @Component({
@@ -51,14 +51,14 @@ export class AppMenu implements OnInit, OnDestroy {
     ],
   },
   {
-    label: 'Thực đơn',
+    label: 'Quản lý Thực đơn',
     icon: 'pi pi-book',
     path: '/pages/menu',
     id: 'menu',
     items: [
       { label: 'Món ăn', icon: 'pi pi-receipt', routerLink: ['/pages/menu-item'] },
       { label: 'Danh mục món ăn', icon: 'pi pi-list', routerLink: ['/pages/category-menu-item'] },
-      { label: 'Set Menu', icon: 'pi pi-box', routerLink: ['/pages/set-menu'] },
+      { label: 'Thực đơn', icon: 'pi pi-box', routerLink: ['/pages/set-menu'] },
     ],
   },
 ];

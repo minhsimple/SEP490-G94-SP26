@@ -203,6 +203,21 @@ export interface TaskCategory {
                                         >
                                             {{ task.title }}
                                         </span>
+
+                                        <div class="flex items-center gap-2" style="min-width:120px;">
+                                            <span class="text-xs text-500" style="white-space:nowrap;">Ưu tiên</span>
+                                            <input
+                                                type="number"
+                                                pInputText
+                                                class="text-center"
+                                                style="width:70px;padding:0.35rem 0.5rem;font-size:0.78rem;"
+                                                [min]="1"
+                                                [disabled]="saving"
+                                                [value]="task.priority"
+                                                (change)="onTaskPriorityChange(task, $any($event.target).value)"
+                                            />
+                                        </div>
+
                                         <button
                                             type="button"
                                             class="cursor-pointer p-1"
@@ -393,7 +408,7 @@ export class BeoDetailComponent implements OnInit {
             title,
             description: '',
             state: 'NOT_COMPLETED',
-            priority: 0,
+            priority: this.getTasksForCat(catKey).length + 1,
             categoryKey: catKey,
         };
 
@@ -407,6 +422,35 @@ export class BeoDetailComponent implements OnInit {
         if (this.saving) return;
 
         this.tasks.set(this.tasks().filter((t) => t.id !== task.id));
+        this.hasUnsavedChanges = true;
+        this.cdr.markForCheck();
+    }
+
+    onTaskPriorityChange(task: TaskItem, rawValue: unknown) {
+        if (this.saving) return;
+
+        const parsed = Number(rawValue);
+        if (!Number.isFinite(parsed)) {
+            return;
+        }
+
+        const normalized = Math.max(1, Math.round(parsed));
+        if (Number(task.priority) === normalized) {
+            return;
+        }
+
+        this.tasks.set(
+            this.tasks().map((item) => {
+                if (item.id !== task.id) {
+                    return item;
+                }
+
+                return {
+                    ...item,
+                    priority: normalized,
+                };
+            })
+        );
         this.hasUnsavedChanges = true;
         this.cdr.markForCheck();
     }
@@ -449,7 +493,9 @@ export class BeoDetailComponent implements OnInit {
     trackById(_: number, item: TaskItem) { return item.id; }
 
     getTasksForCat(key: string): TaskItem[] {
-        return this.tasks().filter((t) => t.categoryKey === key);
+        return this.tasks()
+            .filter((t) => t.categoryKey === key)
+            .sort((a, b) => this.compareTaskPriority(a, b));
     }
 
     getDoneForCat(key: string): number {
@@ -563,7 +609,8 @@ export class BeoDetailComponent implements OnInit {
     private buildUpdatePayloadFromUi(): TaskListUpdatePayload {
         const groups: TaskListUpdateCategoryPayload[] = this.categories.map((cat) => ({
             title: cat.label,
-            tasks: this.getTasksForCat(cat.key).map((task) => ({
+            tasks: this.getTasksForCat(cat.key)
+                .map((task) => ({
                 title: task.title,
                 description: task.description ?? '',
                 priority: Number(task.priority ?? 0),
@@ -590,6 +637,17 @@ export class BeoDetailComponent implements OnInit {
             priority: Number(task.priority ?? 0),
             categoryKey,
         };
+    }
+
+    private compareTaskPriority(a: TaskItem, b: TaskItem): number {
+        const priorityA = Number.isFinite(Number(a.priority)) ? Number(a.priority) : Number.MAX_SAFE_INTEGER;
+        const priorityB = Number.isFinite(Number(b.priority)) ? Number(b.priority) : Number.MAX_SAFE_INTEGER;
+
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+
+        return a.id - b.id;
     }
 
     private buildCategoryKey(categoryId: number | undefined, index: number): string {
