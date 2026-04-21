@@ -55,7 +55,7 @@ interface Column {
                         class="mr-2"
                         (onClick)="openNew()"
                     />
-                    <p-select *ngIf="!isLocationRestricted"
+                    <p-select *ngIf="showLocationFilter"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -269,7 +269,7 @@ interface Column {
                                 [filter]="true"
                                 filterBy="label"
                                 emptyMessage="Không có dữ liệu"
-                                [disabled]="isLocationRestricted"
+                                [disabled]="isCustomerFormLocationLocked"
                             />
                         </div>
 
@@ -350,8 +350,10 @@ export class Customers implements OnInit {
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly isSale = this.roleCode.includes('SALE');
     readonly isAccountantAccount = this.roleCode.includes('ACCOUNT') || this.roleCode.includes('KETOAN') || this.roleCode.includes('KE_TOAN');
-    readonly isLocationRestricted = this.isSale || this.isAccountantAccount;
     readonly accountLocationId = this.toValidLocationId(localStorage.getItem('locationId'));
+    readonly showLocationFilter = !this.isSale && !this.isAccountantAccount;
+    readonly shouldForceLocationFilter = this.isAccountantAccount;
+    readonly isCustomerFormLocationLocked = (this.isSale || this.isAccountantAccount) && !!this.accountLocationId;
 
     cols!: Column[];
 
@@ -367,7 +369,7 @@ export class Customers implements OnInit {
     ) { }
 
     ngOnInit() {
-        if (this.isLocationRestricted) {
+        if (this.shouldForceLocationFilter) {
             this.selectedLocationId = this.accountLocationId;
         }
         this.cols = [
@@ -390,7 +392,7 @@ export class Customers implements OnInit {
                         value: l.id
                     }));
 
-                    if (this.isLocationRestricted && this.accountLocationId) {
+                    if (this.isCustomerFormLocationLocked && this.accountLocationId) {
                         this.locationOptions = allOptions.filter((opt) => opt.value === this.accountLocationId);
                     } else {
                         this.locationOptions = allOptions;
@@ -422,9 +424,9 @@ export class Customers implements OnInit {
         this.loading = true;
         const params: any = { page: this.currentPage, size: this.pageSize };
 
-        const effectiveLocationId = this.isLocationRestricted ? this.accountLocationId : locationId;
+        const effectiveLocationId = this.shouldForceLocationFilter ? this.accountLocationId : locationId;
 
-        if (this.isLocationRestricted && !effectiveLocationId) {
+        if (this.shouldForceLocationFilter && !effectiveLocationId) {
             this.customers.set([]);
             this.totalRecords = 0;
             this.loading = false;
@@ -466,7 +468,7 @@ export class Customers implements OnInit {
     }
 
     onLocationChange(event: any) {
-        if (this.isLocationRestricted) {
+        if (!this.showLocationFilter) {
             return;
         }
         this.selectedLocationId = event.value;
@@ -479,7 +481,7 @@ export class Customers implements OnInit {
 
     openNew() {
         this.customer = {
-            locationId: this.isLocationRestricted && this.accountLocationId ? this.accountLocationId : undefined
+            locationId: this.isCustomerFormLocationLocked && this.accountLocationId ? this.accountLocationId : undefined
         };
         this.newEmail = '';
         this.newPhone = '';
@@ -552,7 +554,7 @@ export class Customers implements OnInit {
                 email: this.customer.email,
                 address: this.customer.address,
                 notes: this.customer.notes,
-                locationId: this.isLocationRestricted && this.accountLocationId
+                locationId: this.isCustomerFormLocationLocked && this.accountLocationId
                     ? this.accountLocationId
                     : this.customer.locationId
             }).subscribe({
@@ -576,7 +578,7 @@ export class Customers implements OnInit {
                 email: this.newEmail || undefined,
                 address: this.customer.address,
                 notes: this.customer.notes,
-                locationId: this.isLocationRestricted && this.accountLocationId
+                locationId: this.isCustomerFormLocationLocked && this.accountLocationId
                     ? this.accountLocationId
                     : this.customer.locationId
             }).subscribe({

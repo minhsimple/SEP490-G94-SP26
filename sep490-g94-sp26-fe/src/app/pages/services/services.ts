@@ -66,7 +66,7 @@ interface Column {
                             class="w-full"
                         />
                     </p-iconfield>
-                    <p-select *ngIf="!isSale"
+                    <p-select *ngIf="!isSingleLocation"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -399,9 +399,9 @@ interface Column {
                         </div>
 
                         <div class="video-preview-grid">
-                            <div class="video-preview-card" *ngIf="editedService?.videoUrl">
+                            <div class="video-preview-card" *ngIf="editedService.videoUrl">
                                 <div class="video-preview-title">Video hiện tại</div>
-                                <video class="video-preview-player" [src]="editedService?.videoUrl" controls preload="metadata"></video>
+                                <video class="video-preview-player" [src]="editedService.videoUrl" controls preload="metadata"></video>
                             </div>
 
                             <div class="video-preview-card" *ngIf="selectedEditVideoPreviewUrl">
@@ -542,8 +542,15 @@ export class ServicesComponent implements OnInit {
     editedService: Partial<Service> = {};
     editedServiceActive = true;
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
-    readonly canEditService = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
-    isSale = localStorage.getItem('codeRole') === 'SALE';
+    readonly isAdmin = this.roleCode.includes('ADMIN');
+    readonly isManager = this.roleCode.includes('MANAGER');
+    readonly canEditService = this.isAdmin || this.isManager;
+    readonly isSingleLocation = !this.isAdmin && !this.isManager;
+    readonly myLocationId = this.isSingleLocation ? this.getPrimaryLocationIdFromStorage() : null;
+    readonly managerLocationIds: number[] = (() => {
+        if (!this.isManager) return [];
+        return this.getLocationIdsFromStorage();
+    })();
 
     // Options
     locationOptions: { label: string; value: number }[] = [];
@@ -572,9 +579,10 @@ export class ServicesComponent implements OnInit {
     ) {}
 
     ngOnInit() {
-        if (this.isSale) {
-            const locId = localStorage.getItem('locationId');
-            if (locId) this.selectedLocationId = Number(locId);
+        if (this.isSingleLocation && this.myLocationId) {
+            this.selectedLocationId = this.myLocationId;
+        } else if (this.isManager && this.managerLocationIds.length > 0) {
+            this.selectedLocationId = this.managerLocationIds[0];
         }
         this.cols = [
             { field: 'name',       header: 'Tên dịch vụ' },
@@ -592,10 +600,14 @@ export class ServicesComponent implements OnInit {
         this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
             next: (res) => {
                 if (res.code === 200) {
-                    this.locationOptions = res.data.content.map(l => ({
-                        label: l.name ?? '',
-                        value: l.id
-                    }));
+                    const allLocOpts = res.data.content.map(l => ({ label: l.name ?? '', value: l.id }));
+                    this.locationOptions = this.isManager
+                        ? allLocOpts.filter(l => this.managerLocationIds.includes(Number(l.value)))
+                        : allLocOpts;
+
+                    if (this.isManager && this.managerLocationIds.length > 0 && !this.selectedLocationId) {
+                        this.selectedLocationId = this.managerLocationIds[0];
+                    }
                     this.cdr.markForCheck();
                 }
             }
@@ -616,7 +628,12 @@ export class ServicesComponent implements OnInit {
     loadServices(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
         this.loading = true;
         const params: any = { page, size, name };
-        if (locationId) params.locationId = locationId;
+        const effectiveLocationId = this.isSingleLocation
+            ? this.myLocationId
+            : this.isManager
+                ? (locationId ?? this.managerLocationIds[0] ?? null)
+                : locationId;
+        if (effectiveLocationId) params.locationId = effectiveLocationId;
         this.serviceService.searchServices(params).subscribe({
             next: (res) => {
                 if (res.data) {
@@ -647,11 +664,42 @@ export class ServicesComponent implements OnInit {
     }
 
     onLocationChange(event: any) {
+        if (this.isSingleLocation) {
+            return;
+        }
         this.selectedLocationId = event.value;
+        if (this.isManager && !this.selectedLocationId) {
+            this.selectedLocationId = this.managerLocationIds[0] ?? null;
+        }
         this.loadServices(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
         if (this.dt) {
             this.dt.reset();
         }
+    }
+
+    private getLocationIdsFromStorage(): number[] {
+        const fromPrimary = Number(localStorage.getItem('locationId') ?? 0);
+        if (Number.isFinite(fromPrimary) && fromPrimary > 0) {
+            return [fromPrimary];
+        }
+
+        try {
+            const parsed = JSON.parse(localStorage.getItem('locationIds') ?? '[]');
+            if (!Array.isArray(parsed)) {
+                return [];
+            }
+            const normalized = parsed
+                .map((id) => Number(id))
+                .filter((id) => Number.isFinite(id) && id > 0);
+            return Array.from(new Set(normalized));
+        } catch {
+            return [];
+        }
+    }
+
+    private getPrimaryLocationIdFromStorage(): number | null {
+        const ids = this.getLocationIdsFromStorage();
+        return ids[0] ?? null;
     }
 
     // ── Create ─────────────────────────────────────────────────────────────────

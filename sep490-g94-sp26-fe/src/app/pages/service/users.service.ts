@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 export interface User {
     id?: any;
@@ -10,6 +10,8 @@ export interface User {
     role?: string;
     roleId?: number;
     locationId?: number;
+    locationIds?: number[];
+    roleCode?: string;
     status?: string;
     password?: string;
     createdDate?: string;
@@ -21,6 +23,7 @@ export interface UserSearchParams {
     phone?: string;
     roleId?: number;
     locationId?: number;
+    status?: string;
     page?: number;
     size?: number;
     sort?: string;
@@ -37,7 +40,8 @@ export interface PageResponse<T> {
     totalElements: number;
     totalPages: number;
     size: number;
-    number: number;
+    number?: number;
+    page?: number;
 }
 
 @Injectable({
@@ -56,6 +60,54 @@ export class UserService {
         });
     }
 
+    private normalizeLocationIds(locationIds: unknown, locationId?: unknown): number[] {
+        const idsFromArray = Array.isArray(locationIds)
+            ? locationIds
+                .map((id) => Number(id))
+                .filter((id) => Number.isFinite(id) && id > 0)
+            : [];
+
+        if (idsFromArray.length > 0) {
+            return Array.from(new Set(idsFromArray));
+        }
+
+        const singleId = Number(locationId);
+        return Number.isFinite(singleId) && singleId > 0 ? [singleId] : [];
+    }
+
+    private normalizeUser(raw: User | any): User {
+        const normalizedLocationIds = this.normalizeLocationIds(raw?.locationIds, raw?.locationId);
+
+        return {
+            ...raw,
+            roleId: Number(raw?.roleId ?? raw?.role_id) || undefined,
+            locationIds: normalizedLocationIds,
+            locationId: normalizedLocationIds[0],
+            status: typeof raw?.status === 'string' ? raw.status.toLowerCase() : raw?.status,
+        };
+    }
+
+    private toUserRequestPayload(user: {
+        email?: string;
+        fullName?: string;
+        phone?: string;
+        roleId?: number;
+        locationId?: number;
+        locationIds?: number[];
+        password?: string;
+    }) {
+        const locationIds = this.normalizeLocationIds(user.locationIds, user.locationId);
+
+        return {
+            email: user.email,
+            fullName: user.fullName,
+            phone: user.phone,
+            roleId: user.roleId,
+            locationIds,
+            password: user.password,
+        };
+    }
+
     searchUsers(params: UserSearchParams = {}): Observable<ApiResponse<PageResponse<User>>> {
         let httpParams = new HttpParams()
             .set('page', params.page ?? 0)
@@ -67,11 +119,21 @@ export class UserService {
         if (params.phone) httpParams = httpParams.set('phone', params.phone);
         if (params.roleId) httpParams = httpParams.set('roleId', params.roleId);
         if (params.locationId) httpParams = httpParams.set('locationId', params.locationId);
+        if (params.status) httpParams = httpParams.set('status', params.status);
 
         return this.http.get<ApiResponse<PageResponse<User>>>(`${this.baseUrl}/search`, {
             headers: this.getHeaders(),
             params: httpParams
-        });
+        }).pipe(
+            map((response) => ({
+                ...response,
+                data: {
+                    ...response.data,
+                    number: response.data?.number ?? response.data?.page,
+                    content: (response.data?.content ?? []).map((user) => this.normalizeUser(user)),
+                }
+            }))
+        );
     }
 
     createUser(user: {
@@ -80,11 +142,18 @@ export class UserService {
         phone?: string;
         roleId: number;
         locationId?: number;
+        locationIds?: number[];
         password: string;
     }): Observable<ApiResponse<User>> {
-        return this.http.post<ApiResponse<User>>(`${this.baseUrl}/create`, user, {
+        const payload = this.toUserRequestPayload(user);
+        return this.http.post<ApiResponse<User>>(`${this.baseUrl}/create`, payload, {
             headers: this.getHeaders()
-        });
+        }).pipe(
+            map((response) => ({
+                ...response,
+                data: this.normalizeUser(response.data),
+            }))
+        );
     }
 
     updateUser(id: any, user: {
@@ -93,22 +162,39 @@ export class UserService {
         phone?: string;
         roleId?: number;
         locationId?: number;
+        locationIds?: number[];
         password?: string;
     }): Observable<ApiResponse<User>> {
-        return this.http.put<ApiResponse<User>>(`${this.baseUrl}/${id}/update`, user, {
+        const payload = this.toUserRequestPayload(user);
+        return this.http.put<ApiResponse<User>>(`${this.baseUrl}/${id}/update`, payload, {
             headers: this.getHeaders()
-        });
+        }).pipe(
+            map((response) => ({
+                ...response,
+                data: this.normalizeUser(response.data),
+            }))
+        );
     }
 
     changeStatus(id: any): Observable<ApiResponse<User>> {
         return this.http.patch<ApiResponse<User>>(`${this.baseUrl}/${id}/change-status`, {}, {
             headers: this.getHeaders()
-        });
+        }).pipe(
+            map((response) => ({
+                ...response,
+                data: this.normalizeUser(response.data),
+            }))
+        );
     }
 
     getUser(id: any): Observable<ApiResponse<User>> {
         return this.http.get<ApiResponse<User>>(`${this.baseUrl}/${id}`, {
             headers: this.getHeaders()
-        });
+        }).pipe(
+            map((response) => ({
+                ...response,
+                data: this.normalizeUser(response.data),
+            }))
+        );
     }
 }

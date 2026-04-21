@@ -15,6 +15,7 @@ import { InputIconModule } from 'primeng/inputicon';
 import { IconFieldModule } from 'primeng/iconfield';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { PasswordModule } from 'primeng/password';
+import { MultiSelectModule } from 'primeng/multiselect';
 import { User, UserService } from '../service/users.service';
 import { RoleService } from '../service/role.service';
 import { LocationService } from '../service/location.service';
@@ -44,6 +45,7 @@ interface Column {
     IconFieldModule,
     ConfirmDialogModule,
     PasswordModule,
+    MultiSelectModule,
   ],
   template: `
     <div class="card">
@@ -59,6 +61,7 @@ interface Column {
             (onClick)="openNew()"
           />
           <p-select
+            *ngIf="!isSingleLocation"
             [options]="locationOptions"
             [(ngModel)]="selectedLocationId"
             optionLabel="label"
@@ -67,7 +70,6 @@ interface Column {
             (onChange)="onLocationChange($event)"
             class="ml-2"
             [showClear]="true"
-            [disabled]="isManager"
             style="width: 200px"
           />
           <!-- <p-button
@@ -185,8 +187,8 @@ interface Column {
                   tooltipPosition="top"
                 />
                 <p-button
-                  [icon]="user.status === 'ACTIVE' ? 'pi pi-ban' : 'pi pi-check-circle'"
-                  [severity]="user.status === 'ACTIVE' ? 'warn' : 'success'"
+                  [icon]="(user.status || '').toLowerCase() === 'active' ? 'pi pi-ban' : 'pi pi-check-circle'"
+                  [severity]="(user.status || '').toLowerCase() === 'active' ? 'warn' : 'success'"
                   [rounded]="true"
                   [outlined]="true"
                   (click)="toggleStatus(user)"
@@ -267,6 +269,21 @@ interface Column {
             </div>
 
             <div>
+              <label class="block font-bold mb-3">Chi nhánh</label>
+              <p-multiselect
+                [options]="locationOptions"
+                [(ngModel)]="user.locationIds"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="-- Chọn chi nhánh --"
+                [loading]="loadingLocations"
+                [showClear]="true"
+                [disabled]="isSingleLocation"
+                fluid
+              />
+            </div>
+
+            <div>
               <label class="block font-bold mb-3"
                 >Vai trò <span class="text-red-500">*</span></label
               >
@@ -284,20 +301,6 @@ interface Column {
               >
             </div>
 
-            <div>
-              <label class="block font-bold mb-3">Chi nhánh</label>
-              <p-select
-                [options]="locationOptions"
-                [(ngModel)]="user.locationId"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="-- Chọn chi nhánh --"
-                [loading]="loadingLocations"
-                [showClear]="true"
-                [disabled]="isManager"
-                fluid
-              />
-            </div>
 
             <div *ngIf="!user.id">
               <label class="block font-bold mb-3"
@@ -385,7 +388,12 @@ export class Users implements OnInit {
   readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
   readonly isAdmin = this.roleCode.includes('ADMIN');
   readonly isManager = this.roleCode.includes('MANAGER');
+  readonly isSingleLocation = !this.isAdmin && !this.isManager;
   readonly managerLocationId = Number(localStorage.getItem('locationId') ?? 0) || null;
+  readonly managerLocationIds: number[] = (() => {
+    if (!this.isManager) return [];
+    try { return JSON.parse(localStorage.getItem('locationIds') ?? '[]') as number[]; } catch { return []; }
+  })();
 
   @ViewChild('dt') dt!: Table;
 
@@ -408,7 +416,7 @@ export class Users implements OnInit {
       { field: 'role', header: 'Vai trò' },
       { field: 'status', header: 'Trạng thái' },
     ];
-    if (this.isManager && this.managerLocationId) {
+    if (this.isSingleLocation && this.managerLocationId) {
       this.selectedLocationId = this.managerLocationId;
     }
     this.loadRoleOptions();
@@ -450,12 +458,14 @@ export class Users implements OnInit {
             label: l.name ?? '',
             value: l.id,
           }));
-          this.locationOptions = this.isManager
-            ? allLocations.filter((item) => Number(item.value) === this.managerLocationId)
-            : allLocations;
-
-          if (this.isManager && this.locationOptions.length) {
-            this.selectedLocationId = Number(this.locationOptions[0].value);
+          if (this.isManager) {
+            this.locationOptions = this.managerLocationIds.length
+              ? allLocations.filter((item) => this.managerLocationIds.includes(Number(item.value)))
+              : allLocations.filter((item) => Number(item.value) === this.managerLocationId);
+          } else if (this.isSingleLocation) {
+            this.locationOptions = allLocations.filter((item) => Number(item.value) === this.managerLocationId);
+          } else {
+            this.locationOptions = allLocations;
           }
         }
         this.loadingLocations = false;
@@ -475,7 +485,7 @@ export class Users implements OnInit {
   loadUsers(page = 0, size = this.pageSize, locationId?: number | null) {
     this.loading = true;
     const params: any = { page, size };
-    const effectiveLocationId = this.isManager ? this.managerLocationId : locationId;
+    const effectiveLocationId = this.isSingleLocation ? this.managerLocationId : locationId;
     if (effectiveLocationId) params.locationId = effectiveLocationId;
     this.userService.searchUsers(params).subscribe({
       next: (res) => {
@@ -509,9 +519,6 @@ export class Users implements OnInit {
   }
 
   onLocationChange(event: any) {
-    if (this.isManager) {
-      return;
-    }
     this.selectedLocationId = event.value;
     // reload to first page with filter
     this.loadUsers(0, this.pageSize, this.selectedLocationId);
@@ -521,19 +528,22 @@ export class Users implements OnInit {
   }
 
   openNew() {
-    this.user = {
-      status: 'ACTIVE',
-      locationId: this.isManager ? (this.managerLocationId ?? undefined) : undefined,
-    };
+    const defaultLocationIds = this.isSingleLocation && this.managerLocationId
+      ? [this.managerLocationId]
+      : [];
+    this.user = { status: 'active', locationIds: defaultLocationIds };
     this.submitted = false;
     this.userDialog = true;
   }
 
   editUser(user: User) {
-    this.user = {
-      ...user,
-      locationId: this.isManager ? (this.managerLocationId ?? user.locationId) : user.locationId,
-    };
+    const existingLocationIds = user.locationIds?.length
+      ? user.locationIds
+      : user.locationId ? [user.locationId] : [];
+    const locationIds = this.isSingleLocation && this.managerLocationId
+      ? [this.managerLocationId]
+      : existingLocationIds;
+    this.user = { ...user, locationIds };
     this.userDialog = true;
   }
 
@@ -556,7 +566,9 @@ export class Users implements OnInit {
     }
 
     this.saving = true;
-    const payloadLocationId = this.isManager ? this.managerLocationId : this.user.locationId;
+    const payloadLocationIds = this.isSingleLocation && this.managerLocationId
+      ? [this.managerLocationId]
+      : (this.user.locationIds ?? []);
 
     if (this.user.id) {
       this.userService
@@ -565,7 +577,7 @@ export class Users implements OnInit {
           fullName: this.user.fullName,
           phone: this.user.phone,
           roleId: this.user.roleId,
-          locationId: payloadLocationId ?? undefined,
+          locationIds: payloadLocationIds,
           password: this.user.password,
         })
         .subscribe({
@@ -599,7 +611,7 @@ export class Users implements OnInit {
           fullName: this.user.fullName!,
           phone: this.user.phone,
           roleId: this.user.roleId!,
-          locationId: payloadLocationId ?? undefined,
+          locationIds: payloadLocationIds,
           password: this.user.password!,
         })
         .subscribe({
@@ -630,7 +642,7 @@ export class Users implements OnInit {
   }
 
   toggleStatus(user: User) {
-    const action = user.status === 'ACTIVE' ? 'vô hiệu hóa' : 'kích hoạt';
+    const action = String(user.status ?? '').toLowerCase() === 'active' ? 'vô hiệu hóa' : 'kích hoạt';
     this.confirmationService.confirm({
       message: `Bạn có chắc muốn ${action} người dùng ${user.fullName}?`,
       header: 'Xác nhận',

@@ -9,7 +9,8 @@ export interface UserProfile {
     fullName: string;
     phone: string;
     roleId: number;
-    locationId: number;
+    locationId?: number;
+    locationIds?: number[];
     status: string;
 }
 
@@ -26,7 +27,8 @@ export interface LoginData {
     userId: number;
     email: string;
     fullName: string;
-    locationId: number | null;
+    locationId?: number | null;
+    locationIds?: number[] | null;
 }
 
 export interface LoginResponse {
@@ -49,7 +51,8 @@ export class AuthService {
         userId: 'userId',
         email: 'email',
         fullName: 'fullName',
-        locationId: 'locationId'
+        locationId: 'locationId',
+        locationIds: 'locationIds'
     };
 
     private codeRoleSubject = new BehaviorSubject<string>(
@@ -99,6 +102,27 @@ export class AuthService {
         return this.http.post<LoginResponse>(`${this.baseUrl}/login`, payload);
     }
 
+    private normalizeLocationIds(data: LoginData): number[] {
+        const fromArray = Array.isArray(data.locationIds)
+            ? data.locationIds
+            : [];
+
+        const normalizedFromArray = fromArray
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0);
+
+        if (normalizedFromArray.length > 0) {
+            return Array.from(new Set(normalizedFromArray));
+        }
+
+        const singleLocationId = Number(data.locationId);
+        if (Number.isFinite(singleLocationId) && singleLocationId > 0) {
+            return [singleLocationId];
+        }
+
+        return [];
+    }
+
     saveSession(data: LoginData): void {
         localStorage.setItem(this.storageKeys.accessToken, data.accessToken ?? '');
         localStorage.setItem(this.storageKeys.refreshToken, data.refreshToken ?? '');
@@ -107,10 +131,13 @@ export class AuthService {
         localStorage.setItem(this.storageKeys.email, data.email ?? '');
         localStorage.setItem(this.storageKeys.fullName, data.fullName ?? '');
 
-        if (data.locationId === null || data.locationId === undefined) {
+        const normalizedLocationIds = this.normalizeLocationIds(data);
+        if (normalizedLocationIds.length === 0) {
             localStorage.removeItem(this.storageKeys.locationId);
+            localStorage.removeItem(this.storageKeys.locationIds);
         } else {
-            localStorage.setItem(this.storageKeys.locationId, String(data.locationId));
+            localStorage.setItem(this.storageKeys.locationId, String(normalizedLocationIds[0]));
+            localStorage.setItem(this.storageKeys.locationIds, JSON.stringify(normalizedLocationIds));
         }
 
         this.setCodeRole(data.codeRole ?? '');

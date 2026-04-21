@@ -73,7 +73,7 @@ interface Column {
                         />
                     </p-iconfield>
                     <p-select
-                        *ngIf="!isSale"
+                        *ngIf="!isSingleLocation"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -560,9 +560,15 @@ interface Column {
 })
 export class CombosComponent implements OnInit {
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
-    readonly isSale = this.roleCode.includes('SALE');
-    readonly saleLocationId = Number(localStorage.getItem('locationId') ?? 0) || null;
-    readonly canEditCombo = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+    readonly isAdmin = this.roleCode.includes('ADMIN');
+    readonly isManager = this.roleCode.includes('MANAGER');
+    readonly canEditCombo = this.isAdmin || this.isManager;
+    readonly isSingleLocation = !this.isAdmin && !this.isManager;
+    readonly myLocationId = this.isSingleLocation ? this.getPrimaryLocationIdFromStorage() : null;
+    readonly managerLocationIds: number[] = (() => {
+        if (!this.isManager) return [];
+        return this.getLocationIdsFromStorage();
+    })();
 
     combos = signal<ServicePackage[]>([]);
     loading = false;
@@ -612,8 +618,10 @@ export class CombosComponent implements OnInit {
     ) {}
 
     ngOnInit() {
-        if (this.isSale && this.saleLocationId) {
-            this.selectedLocationId = this.saleLocationId;
+        if (this.isSingleLocation && this.myLocationId) {
+            this.selectedLocationId = this.myLocationId;
+        } else if (this.isManager && this.managerLocationIds.length > 0) {
+            this.selectedLocationId = this.managerLocationIds[0];
         }
 
         this.cols = [
@@ -653,10 +661,13 @@ export class CombosComponent implements OnInit {
         this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
             next: (res) => {
                 if (res.code === 200) {
-                    this.locationOptions = res.data.content.map(l => ({
-                        label: l.name ?? '',
-                        value: l.id
-                    }));
+                    const allLocOpts = res.data.content.map(l => ({ label: l.name ?? '', value: l.id }));
+                    this.locationOptions = this.isManager
+                        ? allLocOpts.filter(l => this.managerLocationIds.includes(Number(l.value)))
+                        : allLocOpts;
+                    if (this.isManager && this.managerLocationIds.length > 0 && !this.selectedLocationId) {
+                        this.selectedLocationId = this.managerLocationIds[0];
+                    }
                     this.cdr.markForCheck();
                 }
             }
@@ -666,7 +677,11 @@ export class CombosComponent implements OnInit {
     // ── Combos ─────────────────────────────────────────────────────────────────
     loadCombos(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
         this.loading = true;
-        const effectiveLocationId = this.isSale ? this.saleLocationId : (locationId ?? undefined);
+        const effectiveLocationId = this.isSingleLocation
+            ? (this.myLocationId ?? undefined)
+            : this.isManager
+                ? (locationId ?? this.managerLocationIds[0] ?? undefined)
+                : (locationId ?? undefined);
         this.servicePackageService.searchServicePackages({ 
             page, 
             size, 
@@ -703,17 +718,30 @@ export class CombosComponent implements OnInit {
     }
 
     onLocationChange(event: any) {
-        if (this.isSale) {
+        if (this.isSingleLocation) {
             return;
         }
         this.selectedLocationId = event.value;
+        if (this.isManager && !this.selectedLocationId) {
+            this.selectedLocationId = this.managerLocationIds[0] ?? null;
+        }
         this.loadCombos(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
         if (this.dt) this.dt.reset();
     }
 
     // ── Services (picker) ──────────────────────────────────────────────────────
     loadAllServices() {
-        this.serviceService.searchServices({ page: 0, size: 200 }).subscribe({
+        const effectiveLocationId = this.isSingleLocation
+            ? this.myLocationId
+            : this.isManager
+                ? (this.selectedLocationId ?? this.managerLocationIds[0] ?? null)
+                : null;
+
+        this.serviceService.searchServices({
+            page: 0,
+            size: 200,
+            locationId: effectiveLocationId ?? undefined,
+        }).subscribe({
             next: (res) => {
                 if (res.data) {
                     this.allServices.set(res.data.content);
@@ -1055,6 +1083,31 @@ export class CombosComponent implements OnInit {
     formatPrice(price: number | undefined): string {
         if (!price && price !== 0) return '-';
         return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
+    }
+
+    private getLocationIdsFromStorage(): number[] {
+        const fromPrimary = Number(localStorage.getItem('locationId') ?? 0);
+        if (Number.isFinite(fromPrimary) && fromPrimary > 0) {
+            return [fromPrimary];
+        }
+
+        try {
+            const parsed = JSON.parse(localStorage.getItem('locationIds') ?? '[]');
+            if (!Array.isArray(parsed)) {
+                return [];
+            }
+            const normalized = parsed
+                .map((id) => Number(id))
+                .filter((id) => Number.isFinite(id) && id > 0);
+            return Array.from(new Set(normalized));
+        } catch {
+            return [];
+        }
+    }
+
+    private getPrimaryLocationIdFromStorage(): number | null {
+        const ids = this.getLocationIdsFromStorage();
+        return ids[0] ?? null;
     }
 
     getLocationName(locationId?: number): string {

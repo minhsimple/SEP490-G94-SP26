@@ -968,7 +968,12 @@ export class BookingCreateComponent implements OnInit {
                     return;
                 }
 
-                const locationId = Number(user.locationId);
+                const locationFromArray = Array.isArray((user as any).locationIds)
+                    ? Number((user as any).locationIds[0])
+                    : NaN;
+                const locationId = Number.isFinite(locationFromArray) && locationFromArray > 0
+                    ? locationFromArray
+                    : Number(user.locationId);
                 if (Number.isFinite(locationId) && locationId > 0) {
                     this.loggedInLocationId = locationId;
                 }

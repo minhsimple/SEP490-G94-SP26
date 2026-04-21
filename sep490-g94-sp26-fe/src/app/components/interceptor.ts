@@ -18,9 +18,35 @@ function isAdminRole(codeRole: string): boolean {
 	return String(codeRole ?? '').toUpperCase().includes('ADMIN');
 }
 
+function isManagerRole(codeRole: string): boolean {
+	return String(codeRole ?? '').toUpperCase().includes('MANAGER');
+}
+
 function getScopedLocationId(): number | null {
 	const parsed = Number(localStorage.getItem('locationId'));
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+	if (Number.isFinite(parsed) && parsed > 0) {
+		return parsed;
+	}
+
+	const locationIdsRaw = localStorage.getItem('locationIds');
+	if (!locationIdsRaw) {
+		return null;
+	}
+
+	try {
+		const locationIds = JSON.parse(locationIdsRaw);
+		if (!Array.isArray(locationIds)) {
+			return null;
+		}
+
+		const firstValid = locationIds
+			.map((id) => Number(id))
+			.find((id) => Number.isFinite(id) && id > 0);
+
+		return firstValid ?? null;
+	} catch {
+		return null;
+	}
 }
 
 function shouldForceBranchScope(url: string): boolean {
@@ -164,7 +190,7 @@ function applyBranchScope(req: Parameters<HttpInterceptorFn>[0]): Parameters<Htt
 	}
 
 	const codeRole = localStorage.getItem('codeRole') ?? '';
-	if (isAdminRole(codeRole)) {
+	if (isAdminRole(codeRole) || isManagerRole(codeRole)) {
 		return req;
 	}
 
