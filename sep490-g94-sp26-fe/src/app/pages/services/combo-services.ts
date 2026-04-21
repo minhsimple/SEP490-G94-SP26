@@ -1,5 +1,5 @@
 import {
-    Component, OnInit, signal, computed, ViewChild, ChangeDetectorRef
+    Component, OnInit, OnDestroy, signal, computed, ViewChild, ChangeDetectorRef, inject
 } from '@angular/core';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
@@ -24,6 +24,8 @@ import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { LocationService } from '../service/location.service';
 import { ServicePackage, ServicePackageService, ServiceResponse } from '../service/service-package.service';
 import { ServiceService, Service } from '../service/service.service';
+import { AuthService } from '../service/auth.service';
+import { Subscription } from 'rxjs';
 
 interface Column {
     field: string;
@@ -558,16 +560,17 @@ interface Column {
     `],
     providers: [MessageService, ServiceService, ConfirmationService, LocationService]
 })
-export class CombosComponent implements OnInit {
+export class CombosComponent implements OnInit, OnDestroy {
+    private readonly authService = inject(AuthService);
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly isAdmin = this.roleCode.includes('ADMIN');
     readonly isManager = this.roleCode.includes('MANAGER');
     readonly canEditCombo = this.isAdmin || this.isManager;
     readonly isSingleLocation = !this.isAdmin && !this.isManager;
-    readonly myLocationId = this.isSingleLocation ? this.getPrimaryLocationIdFromStorage() : null;
+    readonly myLocationId = this.isSingleLocation ? this.authService.getPrimaryLocationId() : null;
     readonly managerLocationIds: number[] = (() => {
         if (!this.isManager) return [];
-        return this.getLocationIdsFromStorage();
+        return this.authService.getLocationIds();
     })();
 
     combos = signal<ServicePackage[]>([]);
@@ -580,6 +583,7 @@ export class CombosComponent implements OnInit {
     searchTimeout: any;
     serviceSearchTimeout: any;
     selectedLocationId: number | null = null;
+    private locationSub?: Subscription;
 
     // Dialog states
     createDialog = false;
@@ -620,8 +624,15 @@ export class CombosComponent implements OnInit {
     ngOnInit() {
         if (this.isSingleLocation && this.myLocationId) {
             this.selectedLocationId = this.myLocationId;
-        } else if (this.isManager && this.managerLocationIds.length > 0) {
-            this.selectedLocationId = this.managerLocationIds[0];
+        }
+
+        if (this.isManager) {
+            this.locationSub = this.authService.activeLocationId$.subscribe((id) => {
+                this.selectedLocationId = id ?? this.managerLocationIds[0] ?? null;
+                this.loadCombos(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
+                this.loadAllServices();
+                this.cdr.markForCheck();
+            });
         }
 
         this.cols = [
@@ -632,8 +643,10 @@ export class CombosComponent implements OnInit {
             { field: 'status',       header: 'Trạng thái' },
         ];
         this.loadLocations();
-        this.loadCombos();
-        this.loadAllServices();
+        if (!this.isManager) {
+            this.loadCombos();
+            this.loadAllServices();
+        }
 
         // Check for edit query param (e.g., from detail page)
         this.route.queryParams.subscribe(params => {
@@ -654,6 +667,10 @@ export class CombosComponent implements OnInit {
                 }, 500);
             }
         });
+    }
+
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
     }
 
     // ── Locations ──────────────────────────────────────────────────────────────
@@ -1083,31 +1100,6 @@ export class CombosComponent implements OnInit {
     formatPrice(price: number | undefined): string {
         if (!price && price !== 0) return '-';
         return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
-    }
-
-    private getLocationIdsFromStorage(): number[] {
-        const fromPrimary = Number(localStorage.getItem('locationId') ?? 0);
-        if (Number.isFinite(fromPrimary) && fromPrimary > 0) {
-            return [fromPrimary];
-        }
-
-        try {
-            const parsed = JSON.parse(localStorage.getItem('locationIds') ?? '[]');
-            if (!Array.isArray(parsed)) {
-                return [];
-            }
-            const normalized = parsed
-                .map((id) => Number(id))
-                .filter((id) => Number.isFinite(id) && id > 0);
-            return Array.from(new Set(normalized));
-        } catch {
-            return [];
-        }
-    }
-
-    private getPrimaryLocationIdFromStorage(): number | null {
-        const ids = this.getLocationIdsFromStorage();
-        return ids[0] ?? null;
     }
 
     getLocationName(locationId?: number): string {

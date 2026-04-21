@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
 import { CommonModule } from '@angular/common';
@@ -21,6 +21,8 @@ import { TooltipModule } from 'primeng/tooltip';
 import { LocationService } from '../service/location.service';
 import { MenuItem, SetMenu, SetMenuService } from '../service/set-menu';
 import { Router } from '@angular/router';
+import { AuthService } from '../service/auth.service';
+import { Subscription } from 'rxjs';
 
 interface Column { field: string; header: string; }
 
@@ -268,16 +270,17 @@ interface Column { field: string; header: string; }
     `],
     providers: [MessageService, SetMenuService, ConfirmationService, LocationService]
 })
-export class SetMenuComponent implements OnInit {
+export class SetMenuComponent implements OnInit, OnDestroy {
+    private readonly authService = inject(AuthService);
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly isAdmin = this.roleCode.includes('ADMIN');
     readonly isManager = this.roleCode.includes('MANAGER');
     readonly canManageSetMenu = this.isAdmin || this.isManager;
     readonly isSingleLocation = !this.isAdmin && !this.isManager;
-    readonly myLocationId = this.isSingleLocation ? this.getPrimaryLocationIdFromStorage() : null;
+    readonly myLocationId = this.isSingleLocation ? this.authService.getPrimaryLocationId() : null;
     readonly managerLocationIds: number[] = (() => {
         if (!this.isManager) return [];
-        return this.getLocationIdsFromStorage();
+        return this.authService.getLocationIds();
     })();
 
     setMenus = signal<SetMenu[]>([]);
@@ -303,6 +306,7 @@ export class SetMenuComponent implements OnInit {
 
     @ViewChild('dt') dt!: Table;
     private setMenuService = inject(SetMenuService);
+    private locationSub?: Subscription;
 
     constructor(
         private locationService: LocationService,
@@ -316,8 +320,14 @@ export class SetMenuComponent implements OnInit {
     ngOnInit() {
         if (this.isSingleLocation && this.myLocationId) {
             this.selectedLocationId = this.myLocationId;
-        } else if (this.isManager && this.managerLocationIds.length > 0) {
-            this.selectedLocationId = this.managerLocationIds[0];
+        }
+
+        if (this.isManager) {
+            this.locationSub = this.authService.activeLocationId$.subscribe((id) => {
+                this.selectedLocationId = id ?? this.managerLocationIds[0] ?? null;
+                this.loadSetMenus(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
+                this.cdr.markForCheck();
+            });
         }
         this.cols = [
             { field: 'name', header: 'Tên set menu' },
@@ -344,16 +354,24 @@ export class SetMenuComponent implements OnInit {
                     }
                     this.cdr.markForCheck();
                 }
-                this.loadSetMenus();
+                if (!this.isManager) {
+                    this.loadSetMenus();
+                }
             },
             error: () => {
                 this.messageService.add({
                     severity: 'warn', summary: 'Cảnh báo',
                     detail: 'Không thể tải danh sách chi nhánh', life: 3000
                 });
-                this.loadSetMenus();
+                if (!this.isManager) {
+                    this.loadSetMenus();
+                }
             }
         });
+    }
+
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
     }
 
     loadSetMenus(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
@@ -405,31 +423,6 @@ export class SetMenuComponent implements OnInit {
         if (this.dt) {
             this.dt.reset();
         }
-    }
-
-    private getLocationIdsFromStorage(): number[] {
-        const fromPrimary = Number(localStorage.getItem('locationId') ?? 0);
-        if (Number.isFinite(fromPrimary) && fromPrimary > 0) {
-            return [fromPrimary];
-        }
-
-        try {
-            const parsed = JSON.parse(localStorage.getItem('locationIds') ?? '[]');
-            if (!Array.isArray(parsed)) {
-                return [];
-            }
-            const normalized = parsed
-                .map((id) => Number(id))
-                .filter((id) => Number.isFinite(id) && id > 0);
-            return Array.from(new Set(normalized));
-        } catch {
-            return [];
-        }
-    }
-
-    private getPrimaryLocationIdFromStorage(): number | null {
-        const ids = this.getLocationIdsFromStorage();
-        return ids[0] ?? null;
     }
 
     // ── Xem chi tiết ──────────────────────────────────────────────────────────

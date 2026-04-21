@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
 import { CommonModule } from '@angular/common';
@@ -20,7 +20,9 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { TooltipModule } from 'primeng/tooltip';
 import { LocationService } from '../service/location.service';
 import { MenuItem, SetMenu, SetMenuService } from '../service/set-menu';
+import { AuthService } from '../service/auth.service';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 interface Column { field: string; header: string; }
 
@@ -290,9 +292,15 @@ interface Column { field: string; header: string; }
     `],
     providers: [MessageService, SetMenuService, ConfirmationService, LocationService]
 })
-export class SetMenuComponent implements OnInit {
+export class SetMenuComponent implements OnInit, OnDestroy {
+    private readonly authService = inject(AuthService);
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
-    readonly canEditMenu = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+    readonly isAdmin = this.roleCode.includes('ADMIN');
+    readonly isManager = this.roleCode.includes('MANAGER');
+    readonly canEditMenu = this.isAdmin || this.isManager;
+    readonly isSingleLocation = !this.isAdmin && !this.isManager;
+    readonly myLocationId = this.isSingleLocation ? this.authService.getPrimaryLocationId() : null;
+    readonly managerLocationIds: number[] = this.isManager ? this.authService.getLocationIds() : [];
 
     setMenus = signal<SetMenu[]>([]);
     loading = false;
@@ -309,10 +317,12 @@ export class SetMenuComponent implements OnInit {
     editingMenu: any = { menuItems: [] };
 
     locationOptions: { label: string; value: number }[] = [];
+    selectedLocationId: number | null = null;
     cols: Column[] = [];
 
     @ViewChild('dt') dt!: Table;
-    private setMenuService = inject(SetMenuService)
+    private setMenuService = inject(SetMenuService);
+    private locationSub?: Subscription;
 
     constructor(
         private locationService: LocationService,
@@ -323,6 +333,19 @@ export class SetMenuComponent implements OnInit {
     ) { }
 
     ngOnInit() {
+        if (this.isSingleLocation && this.myLocationId) {
+            this.selectedLocationId = this.myLocationId;
+        }
+
+        // Manager: subscribe activeLocationId$ từ topbar
+        if (this.isManager) {
+            this.locationSub = this.authService.activeLocationId$.subscribe(id => {
+                this.selectedLocationId = id;
+                this.loadSetMenus(0, this.pageSize, this.searchKeyword || undefined);
+                this.cdr.markForCheck();
+            });
+        }
+
         this.cols = [
             { field: 'name', header: 'Tên set menu' },
             { field: 'locationId', header: 'Chi nhánh' },
@@ -330,7 +353,13 @@ export class SetMenuComponent implements OnInit {
             { field: 'status', header: 'Trạng thái' }
         ];
         this.loadLocations();
-        this.loadSetMenus();
+        if (!this.isManager) {
+            this.loadSetMenus();
+        }
+    }
+
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
     }
 
     // ── Locations ──────────────────────────────────────────────────────────────
@@ -338,10 +367,16 @@ export class SetMenuComponent implements OnInit {
         this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
             next: (res) => {
                 if (res.code === 200) {
-                    this.locationOptions = res.data.content.map(l => ({
+                    const allLocOpts = res.data.content.map(l => ({
                         label: l.name ?? '',
                         value: l.id
                     }));
+                    this.locationOptions = this.isManager
+                        ? allLocOpts.filter(l => this.managerLocationIds.includes(Number(l.value)))
+                        : allLocOpts;
+                    if (this.isManager && this.managerLocationIds.length > 0 && !this.selectedLocationId) {
+                        this.selectedLocationId = this.managerLocationIds[0];
+                    }
                     this.cdr.markForCheck();
                 }
             }
@@ -356,7 +391,16 @@ export class SetMenuComponent implements OnInit {
     // ── Set Menus ──────────────────────────────────────────────────────────────
     loadSetMenus(page = 0, size = this.pageSize, name?: string) {
         this.loading = true;
-        this.setMenuService.searchSetMenus({ page, size, name }).subscribe({
+        const params: any = { page, size, name };
+        // Filter theo locationId
+        const effectiveLocationId = this.isSingleLocation
+            ? this.myLocationId
+            : this.isManager
+                ? (this.selectedLocationId ?? this.managerLocationIds[0] ?? null)
+                : this.selectedLocationId;
+        if (effectiveLocationId) params.locationId = effectiveLocationId;
+
+        this.setMenuService.searchSetMenus(params).subscribe({
             next: (res) => {
                 if (res.data) {
                     this.setMenus.set(res.data.content);
@@ -403,7 +447,11 @@ export class SetMenuComponent implements OnInit {
     // ── CRUD ───────────────────────────────────────────────────────────────────
     openNew() {
         if (!this.canEditMenu) return;
-        this.editingMenu = { menuItems: [], code: this.generateUUID() };
+        this.editingMenu = {
+            menuItems: [],
+            code: this.generateUUID(),
+            locationId: this.isSingleLocation ? this.myLocationId : (this.isManager ? (this.managerLocationIds[0] ?? null) : null)
+        };
         this.isActive = true;
         this.submitted = false;
         this.menuDialog = true;

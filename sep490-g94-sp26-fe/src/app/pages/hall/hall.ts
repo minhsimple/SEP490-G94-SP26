@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -16,6 +16,8 @@ import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { Hall, HallService } from '../service/hall.service';
 import { LocationService } from '../service/location.service';
+import { AuthService } from '../service/auth.service';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-hall',
@@ -549,7 +551,7 @@ import { LocationService } from '../service/location.service';
         }
     `]
 })
-export class HallComponent implements OnInit {
+export class HallComponent implements OnInit, OnDestroy {
     halls = signal<Hall[]>([]);
     groupedHalls: { locationName: string; halls: Hall[] }[] = [];
     locationOptions: { label: string; value: number }[] = [];
@@ -564,19 +566,18 @@ export class HallComponent implements OnInit {
     searchName = '';
     selectedLocationId: number | null = null;
     isActive = true;
+    private readonly authService = inject(AuthService);
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly isAdmin = this.roleCode.includes('ADMIN');
     readonly isManager = this.roleCode.includes('MANAGER');
     readonly isSingleLocation = !this.isAdmin && !this.isManager;
-    readonly myLocationId = this.isSingleLocation ? this.getPrimaryLocationIdFromStorage() : null;
-    readonly managerLocationIds: number[] = (() => {
-        if (!this.isManager) return [];
-        return this.getLocationIdsFromStorage();
-    })();
+    readonly managerLocationIds: number[] = this.isManager ? this.authService.getLocationIds() : [];
+    readonly myLocationId = this.isSingleLocation ? this.authService.getPrimaryLocationId() : null;
 
     editingHall: any = {};
     selectedImages: File[] = [];
     selectedImageUrls: string[] = [];
+    private locationSub?: Subscription;
 
     constructor(
         private hallService: HallService,
@@ -590,11 +591,25 @@ export class HallComponent implements OnInit {
     ngOnInit() {
         if (this.isSingleLocation && this.myLocationId) {
             this.selectedLocationId = this.myLocationId;
-        } else if (this.isManager && this.managerLocationIds.length > 0) {
-            this.selectedLocationId = this.managerLocationIds[0];
         }
+
+        // Manager: subscribe activeLocationId$ từ topbar
+        if (this.isManager) {
+            this.locationSub = this.authService.activeLocationId$.subscribe(id => {
+                this.selectedLocationId = id;
+                this.loadHalls();
+                this.cdr.markForCheck();
+            });
+        }
+
         this.loadLocations();
-        this.loadHalls();
+        if (!this.isManager) {
+            this.loadHalls();
+        }
+    }
+
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
     }
 
     loadLocations() {
@@ -629,7 +644,9 @@ export class HallComponent implements OnInit {
             : this.isManager
                 ? (this.selectedLocationId ?? this.managerLocationIds[0] ?? null)
                 : this.selectedLocationId;
-        if (effectiveLocationId) params.locationId = effectiveLocationId;
+        if (effectiveLocationId && effectiveLocationId > 0) {
+            params.locationId = effectiveLocationId;
+        }
 
         this.hallService.searchHalls(params).subscribe({
             next: (res) => {
@@ -665,30 +682,6 @@ export class HallComponent implements OnInit {
         this.loadHalls();
     }
 
-    private getLocationIdsFromStorage(): number[] {
-        const fromPrimary = Number(localStorage.getItem('locationId') ?? 0);
-        if (Number.isFinite(fromPrimary) && fromPrimary > 0) {
-            return [fromPrimary];
-        }
-
-        try {
-            const parsed = JSON.parse(localStorage.getItem('locationIds') ?? '[]');
-            if (!Array.isArray(parsed)) {
-                return [];
-            }
-            const normalized = parsed
-                .map((id) => Number(id))
-                .filter((id) => Number.isFinite(id) && id > 0);
-            return Array.from(new Set(normalized));
-        } catch {
-            return [];
-        }
-    }
-
-    private getPrimaryLocationIdFromStorage(): number | null {
-        const ids = this.getLocationIdsFromStorage();
-        return ids[0] ?? null;
-    }
 
     openNew() {
         this.editingHall = {};

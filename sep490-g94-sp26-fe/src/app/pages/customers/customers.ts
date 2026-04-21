@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
 import { CommonModule } from '@angular/common';
@@ -17,6 +17,8 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { Customer, CustomerService } from '../service/customer.service';
 import { Location, LocationService } from '../service/location.service';
 import { Router } from '@angular/router';
+import { AuthService } from '../service/auth.service';
+import { Subscription } from 'rxjs';
 
 interface Column {
     field: string;
@@ -328,7 +330,8 @@ interface Column {
     `],
     providers: [MessageService, ConfirmationService]
 })
-export class Customers implements OnInit {
+export class Customers implements OnInit, OnDestroy {
+    private readonly authService = inject(AuthService);
     customerDialog = false;
     customers = signal<Customer[]>([]);
     customer!: Customer;
@@ -348,12 +351,18 @@ export class Customers implements OnInit {
     selectedLocationId: number | null = null;
     locationOptions: { label: string; value: number }[] = [];
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
-    readonly isSale = this.roleCode.includes('SALE');
-    readonly isAccountantAccount = this.roleCode.includes('ACCOUNT') || this.roleCode.includes('KETOAN') || this.roleCode.includes('KE_TOAN');
-    readonly accountLocationId = this.toValidLocationId(localStorage.getItem('locationId'));
-    readonly showLocationFilter = !this.isSale && !this.isAccountantAccount;
-    readonly shouldForceLocationFilter = this.isAccountantAccount;
-    readonly isCustomerFormLocationLocked = (this.isSale || this.isAccountantAccount) && !!this.accountLocationId;
+    readonly isAdmin = this.roleCode.includes('ADMIN');
+    // Chỉ admin được lọc theo chi nhánh.
+    readonly showLocationFilter = this.isAdmin;
+    private locationSub?: Subscription;
+
+    get accountLocationId(): number | null {
+        return this.getCurrentLocationIdFromStorage();
+    }
+
+    get isCustomerFormLocationLocked(): boolean {
+        return !this.isAdmin && !!this.accountLocationId;
+    }
 
     cols!: Column[];
 
@@ -369,9 +378,15 @@ export class Customers implements OnInit {
     ) { }
 
     ngOnInit() {
-        if (this.shouldForceLocationFilter) {
+        if (!this.isAdmin) {
             this.selectedLocationId = this.accountLocationId;
+            this.locationSub = this.authService.activeLocationId$.subscribe((id) => {
+                this.selectedLocationId = id;
+                this.currentPage = 0;
+                this.loadCustomers(id);
+            });
         }
+
         this.cols = [
             { field: 'fullName', header: 'Họ và tên' },
             { field: 'email', header: 'Email' },
@@ -380,10 +395,21 @@ export class Customers implements OnInit {
             { field: 'status', header: 'Trạng thái' }
         ];
         this.loadLocationOptions();
-        this.loadCustomers();
+        if (this.isAdmin) {
+            this.loadCustomers();
+        }
+    }
+
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
     }
 
     loadLocationOptions() {
+        if (!this.isAdmin && !this.accountLocationId) {
+            this.locationOptions = [];
+            return;
+        }
+
         this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
             next: (res) => {
                 if (res.code === 200) {
@@ -392,11 +418,21 @@ export class Customers implements OnInit {
                         value: l.id
                     }));
 
-                    if (this.isCustomerFormLocationLocked && this.accountLocationId) {
-                        this.locationOptions = allOptions.filter((opt) => opt.value === this.accountLocationId);
-                    } else {
+                    if (this.isAdmin) {
                         this.locationOptions = allOptions;
+                        return;
                     }
+
+                    const scopedId = this.accountLocationId;
+                    if (!scopedId) {
+                        this.locationOptions = [];
+                        return;
+                    }
+
+                    const scopedOptions = allOptions.filter((opt) => Number(opt.value) === scopedId);
+                    this.locationOptions = scopedOptions.length
+                        ? scopedOptions
+                        : [{ label: `Chi nhánh #${scopedId}`, value: scopedId }];
                 }
             },
             error: () => {
@@ -415,32 +451,22 @@ export class Customers implements OnInit {
         return this.locationOptions.find(l => l.value === locationId)?.label ?? '-';
     }
 
-    private toValidLocationId(raw: string | null): number | null {
-        const parsed = Number(raw ?? 0);
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    }
-
     loadCustomers(locationId?: number | null) {
         this.loading = true;
         const params: any = { page: this.currentPage, size: this.pageSize };
 
-        const effectiveLocationId = this.shouldForceLocationFilter ? this.accountLocationId : locationId;
-
-        if (this.shouldForceLocationFilter && !effectiveLocationId) {
+        const effectiveLocationId = this.isAdmin ? locationId : this.accountLocationId;
+        if (!this.isAdmin && !effectiveLocationId) {
             this.customers.set([]);
             this.totalRecords = 0;
             this.loading = false;
-            this.messageService.add({
-                severity: 'warn',
-                summary: 'Thiếu thông tin chi nhánh',
-                detail: 'Không xác định được cơ sở của tài khoản hiện tại.',
-                life: 3000
-            });
             this.cdr.markForCheck();
             return;
         }
 
-        if (effectiveLocationId) params.locationId = effectiveLocationId;
+        if (effectiveLocationId) {
+            params.locationId = effectiveLocationId;
+        }
 
         this.customerService.searchCustomers(params).subscribe({
             next: (res) => {
@@ -481,7 +507,9 @@ export class Customers implements OnInit {
 
     openNew() {
         this.customer = {
-            locationId: this.isCustomerFormLocationLocked && this.accountLocationId ? this.accountLocationId : undefined
+            locationId: this.isCustomerFormLocationLocked && this.accountLocationId
+                ? this.accountLocationId
+                : undefined
         };
         this.newEmail = '';
         this.newPhone = '';
@@ -493,14 +521,24 @@ export class Customers implements OnInit {
     editCustomer(customer: Customer) {
         this.customerService.getCustomerById(customer.id).subscribe({
             next: (res) => {
-                this.customer = { ...res.data };
+                this.customer = {
+                    ...res.data,
+                    locationId: this.isCustomerFormLocationLocked && this.accountLocationId
+                        ? this.accountLocationId
+                        : res.data.locationId
+                };
                 this.isEditing = true;
                 this.submitted = false;
                 this.customerDialog = true;
                 this.cdr.markForCheck();
             },
             error: () => {
-                this.customer = { ...customer };
+                this.customer = {
+                    ...customer,
+                    locationId: this.isCustomerFormLocationLocked && this.accountLocationId
+                        ? this.accountLocationId
+                        : customer.locationId
+                };
                 this.isEditing = true;
                 this.submitted = false;
                 this.customerDialog = true;
@@ -546,6 +584,9 @@ export class Customers implements OnInit {
         if (!this.customer.fullName?.trim()) return;
 
         this.saving = true;
+        const payloadLocationId = this.isCustomerFormLocationLocked && this.accountLocationId
+            ? this.accountLocationId
+            : this.customer.locationId;
 
         if (this.isEditing) {
             this.customerService.updateCustomer(this.customer.id, {
@@ -554,9 +595,7 @@ export class Customers implements OnInit {
                 email: this.customer.email,
                 address: this.customer.address,
                 notes: this.customer.notes,
-                locationId: this.isCustomerFormLocationLocked && this.accountLocationId
-                    ? this.accountLocationId
-                    : this.customer.locationId
+                locationId: payloadLocationId
             }).subscribe({
                 next: (res) => {
                     this.loadCustomers(this.selectedLocationId);
@@ -578,9 +617,7 @@ export class Customers implements OnInit {
                 email: this.newEmail || undefined,
                 address: this.customer.address,
                 notes: this.customer.notes,
-                locationId: this.isCustomerFormLocationLocked && this.accountLocationId
-                    ? this.accountLocationId
-                    : this.customer.locationId
+                locationId: payloadLocationId
             }).subscribe({
                 next: (res) => {
                     this.currentPage = 0;
@@ -621,5 +658,35 @@ export class Customers implements OnInit {
     viewDetail(customer: Customer) {
         if (!customer?.id) return;
         this.router.navigate(['/pages/customers', customer.id]);
+    }
+
+    private toValidLocationId(value: unknown): number | null {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    private getCurrentLocationIdFromStorage(): number | null {
+        const primary = this.toValidLocationId(localStorage.getItem('locationId'));
+        if (primary) {
+            return primary;
+        }
+
+        try {
+            const parsed = JSON.parse(localStorage.getItem('locationIds') ?? '[]');
+            if (!Array.isArray(parsed)) {
+                return null;
+            }
+
+            for (const id of parsed) {
+                const normalized = this.toValidLocationId(id);
+                if (normalized) {
+                    return normalized;
+                }
+            }
+        } catch {
+            return null;
+        }
+
+        return null;
     }
 }

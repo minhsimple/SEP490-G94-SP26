@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
@@ -17,6 +17,8 @@ import { TextareaModule } from 'primeng/textarea';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { MenuItemService } from '../service/menu-item.service';
+import { AuthService } from '../service/auth.service';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-menu-item',
@@ -315,17 +317,15 @@ import { MenuItemService } from '../service/menu-item.service';
     `],
     providers: [MessageService, MenuItemService, ConfirmationService]
 })
-export class MenuItemComponent implements OnInit {
+export class MenuItemComponent implements OnInit, OnDestroy {
+    private readonly authService = inject(AuthService);
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly isAdmin = this.roleCode.includes('ADMIN');
     readonly isManager = this.roleCode.includes('MANAGER');
     readonly canManageMenuItem = this.isAdmin || this.isManager;
     readonly isSingleLocation = !this.isAdmin && !this.isManager;
-    readonly myLocationId = this.isSingleLocation ? this.getPrimaryLocationIdFromStorage() : null;
-    readonly managerLocationIds: number[] = (() => {
-        if (!this.isManager) return [];
-        return this.getLocationIdsFromStorage();
-    })();
+    readonly myLocationId = this.isSingleLocation ? this.authService.getPrimaryLocationId() : null;
+    readonly managerLocationIds: number[] = this.isManager ? this.authService.getLocationIds() : [];
 
     menuItems = signal<any[]>([]);
     categories: any[] = [];
@@ -339,6 +339,7 @@ export class MenuItemComponent implements OnInit {
     searchTimeout: any;
     selectedLocationId: number | null = null;
     locationOptions: { label: string; value: number }[] = [];
+    private locationSub?: Subscription;
 
     itemDialog = false;
     submitted = false;
@@ -359,11 +360,24 @@ export class MenuItemComponent implements OnInit {
     ngOnInit() {
         if (this.isSingleLocation && this.myLocationId) {
             this.selectedLocationId = this.myLocationId;
-        } else if (this.isManager && this.managerLocationIds.length > 0) {
-            this.selectedLocationId = this.managerLocationIds[0];
         }
+
+        // Manager: subscribe activeLocationId$ từ topbar
+        if (this.isManager) {
+            this.locationSub = this.authService.activeLocationId$.subscribe(id => {
+                this.selectedLocationId = id;
+                this.loadItems(0, this.pageSize, this.searchKeyword || undefined, id);
+            });
+        }
+
         this.loadDropdowns();
-        this.loadItems();
+        if (!this.isManager) {
+            this.loadItems();
+        }
+    }
+
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
     }
 
     loadDropdowns() {
@@ -439,30 +453,6 @@ export class MenuItemComponent implements OnInit {
         }
     }
 
-    private getLocationIdsFromStorage(): number[] {
-        const fromPrimary = Number(localStorage.getItem('locationId') ?? 0);
-        if (Number.isFinite(fromPrimary) && fromPrimary > 0) {
-            return [fromPrimary];
-        }
-
-        try {
-            const parsed = JSON.parse(localStorage.getItem('locationIds') ?? '[]');
-            if (!Array.isArray(parsed)) {
-                return [];
-            }
-            const normalized = parsed
-                .map((id) => Number(id))
-                .filter((id) => Number.isFinite(id) && id > 0);
-            return Array.from(new Set(normalized));
-        } catch {
-            return [];
-        }
-    }
-
-    private getPrimaryLocationIdFromStorage(): number | null {
-        const ids = this.getLocationIdsFromStorage();
-        return ids[0] ?? null;
-    }
 
     openNew() {
         if (!this.canManageMenuItem) return;

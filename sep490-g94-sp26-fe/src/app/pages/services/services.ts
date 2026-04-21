@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
 import { CommonModule } from '@angular/common';
@@ -19,7 +19,9 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { Service, ServiceService } from '../service/service.service';
 import { LocationService } from '../service/location.service';
+import { AuthService } from '../service/auth.service';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 interface Column {
     field: string;
@@ -514,7 +516,7 @@ interface Column {
     `],
     providers: [MessageService, ServiceService, ConfirmationService, LocationService]
 })
-export class ServicesComponent implements OnInit {
+export class ServicesComponent implements OnInit, OnDestroy {
     services = signal<Service[]>([]);
     loading = false;
     saving = false;
@@ -541,16 +543,14 @@ export class ServicesComponent implements OnInit {
     selectedEditVideoPreviewUrl: string | null = null;
     editedService: Partial<Service> = {};
     editedServiceActive = true;
+    private readonly authService = inject(AuthService);
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly isAdmin = this.roleCode.includes('ADMIN');
     readonly isManager = this.roleCode.includes('MANAGER');
     readonly canEditService = this.isAdmin || this.isManager;
     readonly isSingleLocation = !this.isAdmin && !this.isManager;
-    readonly myLocationId = this.isSingleLocation ? this.getPrimaryLocationIdFromStorage() : null;
-    readonly managerLocationIds: number[] = (() => {
-        if (!this.isManager) return [];
-        return this.getLocationIdsFromStorage();
-    })();
+    readonly myLocationId = this.isSingleLocation ? this.authService.getPrimaryLocationId() : null;
+    readonly managerLocationIds: number[] = this.isManager ? this.authService.getLocationIds() : [];
 
     // Options
     locationOptions: { label: string; value: number }[] = [];
@@ -568,6 +568,7 @@ export class ServicesComponent implements OnInit {
     ];
 
     @ViewChild('dt') dt!: Table;
+    private locationSub?: Subscription;
 
     constructor(
         private serviceService: ServiceService,
@@ -581,9 +582,17 @@ export class ServicesComponent implements OnInit {
     ngOnInit() {
         if (this.isSingleLocation && this.myLocationId) {
             this.selectedLocationId = this.myLocationId;
-        } else if (this.isManager && this.managerLocationIds.length > 0) {
-            this.selectedLocationId = this.managerLocationIds[0];
         }
+
+        // Manager: subscribe activeLocationId$ từ topbar
+        if (this.isManager) {
+            this.locationSub = this.authService.activeLocationId$.subscribe(id => {
+                this.selectedLocationId = id;
+                this.loadServices(0, this.pageSize, this.searchKeyword || undefined, id ?? undefined);
+                this.cdr.markForCheck();
+            });
+        }
+
         this.cols = [
             { field: 'name',       header: 'Tên dịch vụ' },
             { field: 'locationId', header: 'Chi nhánh' },
@@ -592,7 +601,13 @@ export class ServicesComponent implements OnInit {
             { field: 'status',     header: 'Trạng thái' }
         ];
         this.loadLocations();
-        this.loadServices();
+        if (!this.isManager) {
+            this.loadServices();
+        }
+    }
+
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
     }
 
     // ── Locations ──────────────────────────────────────────────────────────────
@@ -633,7 +648,9 @@ export class ServicesComponent implements OnInit {
             : this.isManager
                 ? (locationId ?? this.managerLocationIds[0] ?? null)
                 : locationId;
-        if (effectiveLocationId) params.locationId = effectiveLocationId;
+        if (effectiveLocationId && effectiveLocationId > 0) {
+            params.locationId = effectiveLocationId;
+        }
         this.serviceService.searchServices(params).subscribe({
             next: (res) => {
                 if (res.data) {
@@ -677,30 +694,6 @@ export class ServicesComponent implements OnInit {
         }
     }
 
-    private getLocationIdsFromStorage(): number[] {
-        const fromPrimary = Number(localStorage.getItem('locationId') ?? 0);
-        if (Number.isFinite(fromPrimary) && fromPrimary > 0) {
-            return [fromPrimary];
-        }
-
-        try {
-            const parsed = JSON.parse(localStorage.getItem('locationIds') ?? '[]');
-            if (!Array.isArray(parsed)) {
-                return [];
-            }
-            const normalized = parsed
-                .map((id) => Number(id))
-                .filter((id) => Number.isFinite(id) && id > 0);
-            return Array.from(new Set(normalized));
-        } catch {
-            return [];
-        }
-    }
-
-    private getPrimaryLocationIdFromStorage(): number | null {
-        const ids = this.getLocationIdsFromStorage();
-        return ids[0] ?? null;
-    }
 
     // ── Create ─────────────────────────────────────────────────────────────────
     openNew() {
