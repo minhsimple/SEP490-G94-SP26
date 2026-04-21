@@ -12,6 +12,8 @@ import vn.edu.fpt.dto.request.user.UserFilterRequest;
 import vn.edu.fpt.dto.request.user.UserRequest;
 import vn.edu.fpt.dto.response.UserResponse;
 import vn.edu.fpt.entity.User;
+import vn.edu.fpt.entity.UserLocation;
+import vn.edu.fpt.respository.UserLocationRepository;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -19,6 +21,7 @@ import vn.edu.fpt.mapper.UserMapper;
 import vn.edu.fpt.respository.UserRepository;
 import vn.edu.fpt.service.UserService;
 
+import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,6 +33,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final UserLocationRepository userLocationRepository;
 
     @Override
     public UserResponse createUser(UserRequest request) {
@@ -39,15 +43,43 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.toEntity(request);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setIsActive(true);
+        user.setStatus(RecordStatus.active);
         User savedUser = userRepository.save(user);
-        return userMapper.toResponse(savedUser);
+
+        // Save locations
+        if (request.getLocationIds() != null && !request.getLocationIds().isEmpty()) {
+            for (Integer locationId : request.getLocationIds()) {
+                UserLocation userLocation = UserLocation.builder()
+                        .userId(savedUser.getId())
+                        .locationId(locationId)
+                        .build();
+                userLocationRepository.save(userLocation);
+            }
+        }
+
+        // Fetch saved location IDs
+        List<Integer> locationIds = userLocationRepository.findByUserId(savedUser.getId())
+                .stream()
+                .map(UserLocation::getLocationId)
+                .collect(Collectors.toList());
+
+        UserResponse response = userMapper.toResponse(savedUser);
+        response.setLocationIds(locationIds);
+        return response;
     }
 
     @Override
     public UserResponse getUserById(Integer id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
-        return userMapper.toResponse(user);
+        UserResponse response = userMapper.toResponse(user);
+        // Fetch location IDs
+        List<Integer> locationIds = userLocationRepository.findByUserId(id)
+                .stream()
+                .map(UserLocation::getLocationId)
+                .collect(Collectors.toList());
+        response.setLocationIds(locationIds);
+        return response;
     }
 
     @Override
@@ -64,11 +96,40 @@ public class UserServiceImpl implements UserService {
 
         User savedUser = userRepository.save(user);
 
-        return userMapper.toResponse(savedUser);
+        // Update locations
+        if (request.getLocationIds() != null && !request.getLocationIds().isEmpty()) {
+            Set<Integer> newLocationIds = new HashSet<>(request.getLocationIds());
+            userLocationRepository.deleteByUserIdAndLocationIdNotIn(id, newLocationIds);
+
+            Set<Integer> existingLocationIds = userLocationRepository.findByUserId(id)
+                    .stream()
+                    .map(UserLocation::getLocationId)
+                    .collect(Collectors.toSet());
+
+            for (Integer locationId : request.getLocationIds()) {
+                if (!existingLocationIds.contains(locationId)) {
+                    UserLocation userLocation = UserLocation.builder()
+                            .userId(id)
+                            .locationId(locationId)
+                            .build();
+                    userLocationRepository.save(userLocation);
+                }
+            }
+        }
+
+        // Fetch location IDs
+        List<Integer> locationIds = userLocationRepository.findByUserId(id)
+                .stream()
+                .map(UserLocation::getLocationId)
+                .collect(Collectors.toList());
+
+        UserResponse response = userMapper.toResponse(savedUser);
+        response.setLocationIds(locationIds);
+        return response;
     }
 
 
-        @Override
+    @Override
     public SimplePage<UserResponse> getAllUsers(Pageable pageable, UserFilterRequest filter) {
         Specification<User> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -106,7 +167,16 @@ public class UserServiceImpl implements UserService {
 
         List<UserResponse> responses = page.getContent()
                 .stream()
-                .map(userMapper::toResponse)
+                .map(user -> {
+                    UserResponse response = userMapper.toResponse(user);
+                    // Fetch location IDs for this user
+                    List<Integer> locationIds = userLocationRepository.findByUserId(user.getId())
+                            .stream()
+                            .map(UserLocation::getLocationId)
+                            .collect(Collectors.toList());
+                    response.setLocationIds(locationIds);
+                    return response;
+                })
                 .collect(Collectors.toList());
 
         return new SimplePage<>(
@@ -128,6 +198,13 @@ public class UserServiceImpl implements UserService {
         }
 
         User saved = userRepository.save(user);
-        return userMapper.toResponse(saved);
+        UserResponse response = userMapper.toResponse(saved);
+        // Fetch location IDs
+        List<Integer> locationIds = userLocationRepository.findByUserId(id)
+                .stream()
+                .map(UserLocation::getLocationId)
+                .collect(Collectors.toList());
+        response.setLocationIds(locationIds);
+        return response;
     }
 }

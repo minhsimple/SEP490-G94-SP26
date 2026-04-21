@@ -206,9 +206,9 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
 
         userRepository.findByEmailAndStatus(userDetails.getUsername(), RecordStatus.active)
                 .ifPresentOrElse(user -> {
-                    if (!Objects.equals(lead.getLocationId(), user.getLocationId())) {
-                        throw new AppException(ERROR_CODE.LEAD_NOT_MATCH_LOCATION);
-                    }
+//                    if (!Objects.equals(lead.getLocationId(), user.getLocationId())) {
+//                        throw new AppException(ERROR_CODE.LEAD_NOT_MATCH_LOCATION);
+//                    }
 
                     lead.setAssignedSalesId(user.getId());
                     lead.setLeadState(LeadState.CONTACTING);

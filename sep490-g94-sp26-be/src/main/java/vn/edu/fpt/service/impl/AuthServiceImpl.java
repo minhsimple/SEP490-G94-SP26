@@ -22,10 +22,13 @@ import vn.edu.fpt.mapper.UserMapper;
 import vn.edu.fpt.respository.RefreshTokenRepository;
 import vn.edu.fpt.respository.RoleRepository;
 import vn.edu.fpt.respository.UserRepository;
+import vn.edu.fpt.respository.UserLocationRepository;
 import vn.edu.fpt.util.security.JwtTokenUtil;
 import vn.edu.fpt.service.AuthService;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of AuthService for authentication operations.
@@ -38,6 +41,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UserLocationRepository userLocationRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
     private final AuthenticationManager authenticationManager;
@@ -145,8 +149,16 @@ public class AuthServiceImpl implements AuthService {
                 .findById(currentUser.getRole_id())
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
 
-        UserResponse user = userMapper.toResponse(findUserByEmail(email)) ;
+        UserResponse user = userMapper.toResponse(findUserByEmail(email));
         user.setRoleCode(role.getCode());
+
+        // Fetch location IDs
+        List<Integer> locationIds = userLocationRepository.findByUserId(currentUser.getId())
+                .stream()
+                .map(ul -> ul.getLocationId())
+                .collect(Collectors.toList());
+        user.setLocationIds(locationIds);
+
         return user;
     }
 
@@ -201,6 +213,12 @@ public class AuthServiceImpl implements AuthService {
                 .findById(user.getRole_id())
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
 
+        // Fetch location IDs
+        List<Integer> locationIds = userLocationRepository.findByUserId(user.getId())
+                .stream()
+                .map(ul -> ul.getLocationId())
+                .collect(Collectors.toList());
+
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshTokenStr)
@@ -208,7 +226,7 @@ public class AuthServiceImpl implements AuthService {
                 .userId(user.getId())
                 .email(user.getEmail())
                 .fullName(user.getFullName())
-                .locationId(user.getLocationId())
+                .locationIds(locationIds)
                 .codeRole(role.getCode())
                 .build();
     }

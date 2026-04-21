@@ -4,6 +4,8 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import vn.edu.fpt.util.enums.RecordStatus;
 
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,8 +17,8 @@ public class UserResponse {
     private String fullName;
     private String phone;
     private Integer roleId;
-    private Integer locationId;
     private RecordStatus status;
     private String roleCode;
+    private List<Integer> locationIds;
 
 }

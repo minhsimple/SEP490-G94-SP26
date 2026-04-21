@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class UserRequest {
 
@@ -23,7 +25,7 @@ public class UserRequest {
     private Integer roleId;
 
     @NotNull(message = "Địa điểm không được null")
-    private Integer locationId;
+    private List<Integer> locationIds;
 
     private String password;
 }
