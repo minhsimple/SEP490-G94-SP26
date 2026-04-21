@@ -18,7 +18,12 @@ import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.LeadMapper;
-import vn.edu.fpt.respository.*;
+import vn.edu.fpt.respository.LeadRepository;
+import vn.edu.fpt.respository.LocationRepository;
+import vn.edu.fpt.respository.LeadConversionRepository;
+import vn.edu.fpt.respository.UserRepository;
+import vn.edu.fpt.respository.CustomerRepository;
+import vn.edu.fpt.respository.UserLocationRepository;
 import vn.edu.fpt.service.LeadService;
 import org.springframework.data.jpa.domain.Specification;
 import jakarta.persistence.criteria.Predicate;
@@ -37,6 +42,7 @@ public class LeadServiceImpl implements LeadService {
     private final LeadConversionRepository leadConversionRepository;
     private final UserRepository userRepository;
     private final CustomerRepository customerRepository;
+    private final UserLocationRepository userLocationRepository;
 
     private final LeadMapper leadMapper;
 
@@ -206,9 +212,13 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
 
         userRepository.findByEmailAndStatus(userDetails.getUsername(), RecordStatus.active)
                 .ifPresentOrElse(user -> {
-//                    if (!Objects.equals(lead.getLocationId(), user.getLocationId())) {
-//                        throw new AppException(ERROR_CODE.LEAD_NOT_MATCH_LOCATION);
-//                    }
+                    boolean hasLocation = userLocationRepository.findByUserId(user.getId())
+                            .stream()
+                            .anyMatch(ul -> ul.getLocationId().equals(lead.getLocationId()));
+
+                    if (!hasLocation) {
+                        throw new AppException(ERROR_CODE.LEAD_NOT_MATCH_LOCATION);
+                    }
 
                     lead.setAssignedSalesId(user.getId());
                     lead.setLeadState(LeadState.CONTACTING);
