@@ -368,10 +368,7 @@ public class ContractServiceImpl implements ContractService {
     }
 
     public void createPaymentForContract(Contract contract, Integer paymentPercent) throws Exception {
-        Invoice invoice = invoiceRepository.findByContractIdAndStatus(contract.getId(), RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
-
-        BigDecimal totalAmount = invoice.getTotalAmount();
+        BigDecimal totalAmount = getTotalAmountForContract(contract);
 
         BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(paymentPercent)
                 .divide(BigDecimal.valueOf(100)));
@@ -388,17 +385,17 @@ public class ContractServiceImpl implements ContractService {
 
     }
 
-//    public BigDecimal getTotalAmountForContract(Contract contract) throws Exception {
-//        BigDecimal setMenuPrice = setMenuServiceImpl.getSetMenuById(contract.getSetMenuId()).getSetPrice();
-//        BigDecimal servicePrice = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
-//                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND))
-//                .getBasePrice();
-//        BigDecimal totalPrice = setMenuPrice.multiply(BigDecimal.valueOf(contract.getExpectedTables()));
-//        BigDecimal hallPrice = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
-//                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED))
-//                .getBasePrice();
-//        return totalPrice.add(servicePrice).add(hallPrice);
-//    }
+    public BigDecimal getTotalAmountForContract(Contract contract) throws Exception {
+        BigDecimal setMenuPrice = setMenuServiceImpl.getSetMenuById(contract.getSetMenuId()).getSetPrice();
+        BigDecimal servicePrice = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND))
+                .getBasePrice();
+        BigDecimal totalPrice = setMenuPrice.multiply(BigDecimal.valueOf(contract.getExpectedTables()));
+        BigDecimal hallPrice = hallRepository.findByIdAndStatus(contract.getHallId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED))
+                .getBasePrice();
+        return totalPrice.add(servicePrice).add(hallPrice);
+    }
 
     /**
      * Validate chuyển trạng thái contract:
