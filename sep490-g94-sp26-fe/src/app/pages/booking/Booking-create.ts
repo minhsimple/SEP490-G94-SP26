@@ -45,6 +45,7 @@ interface SetMenuOption {
     id: number;
     label: string;
     price: number;
+    imageUrl?: string;
 }
 
 interface ServicePackageOption {
@@ -209,6 +210,16 @@ interface BookingSummary {
             cursor: pointer;
             transition: all 0.15s;
         }
+        .menu-card-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.85rem;
+        }
+        .menu-card-text {
+            min-width: 0;
+            flex: 1;
+        }
         .menu-card:hover {
             border-color: #94a3b8;
         }
@@ -216,10 +227,35 @@ interface BookingSummary {
             border: 2px solid #10b981;
             background: #f0fdf4;
         }
+        .menu-card-thumb {
+            width: 72px;
+            height: 56px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .menu-card-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .menu-card-thumb i {
+            color: #94a3b8;
+            font-size: 1rem;
+        }
         .menu-name {
             font-weight: 600;
             color: #1e293b;
             font-size: 0.9rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .menu-price {
             color: #10b981;
@@ -611,8 +647,21 @@ interface BookingSummary {
                             [class.selected]="form.setMenuId === menu.id"
                             (click)="selectSetMenu(menu)"
                         >
-                            <div class="menu-name">{{ menu.label }}</div>
-                            <div class="menu-price">{{ formatPrice(menu.price) }}/bàn</div>
+                            <div class="menu-card-content">
+                                <div class="menu-card-text">
+                                    <div class="menu-name">{{ menu.label }}</div>
+                                    <div class="menu-price">{{ formatPrice(menu.price) }}/bàn</div>
+                                </div>
+                                <div class="menu-card-thumb">
+                                    <img
+                                        *ngIf="menu.imageUrl"
+                                        [src]="menu.imageUrl"
+                                        alt="Ảnh set menu"
+                                        (error)="onSetMenuImageError(menu)"
+                                    />
+                                    <i *ngIf="!menu.imageUrl" class="pi pi-image"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1321,6 +1370,7 @@ export class BookingCreateComponent implements OnInit {
                     id: Number(menu.id),
                     label: menu.name ?? `Set menu #${menu.id}`,
                     price: menu.setPrice ?? 0,
+                    imageUrl: this.extractSetMenuImageUrl(menu),
                 }));
 
                 // Keep branch-based behavior; fallback to hall endpoint if branch query is empty.
@@ -1335,6 +1385,7 @@ export class BookingCreateComponent implements OnInit {
                         id: Number(menu.id),
                         label: menu.name ?? `Set menu #${menu.id}`,
                         price: menu.pricePerTable ?? menu.setPrice ?? menu.price ?? 0,
+                        imageUrl: this.extractSetMenuImageUrl(menu),
                     })))
                 );
             }),
@@ -1496,6 +1547,55 @@ export class BookingCreateComponent implements OnInit {
         return String(phone ?? '').replace(/\D/g, '');
     }
 
+    private extractSetMenuImageUrl(menu: any): string | undefined {
+        const pickValid = (...candidates: any[]): string | undefined => {
+            for (const candidate of candidates) {
+                if (typeof candidate === 'string' && candidate.trim()) {
+                    return candidate.trim();
+                }
+            }
+            return undefined;
+        };
+
+        const imageUrls = menu?.imageUrls;
+        if (Array.isArray(imageUrls)) {
+            for (const image of imageUrls) {
+                const found = pickValid(
+                    image?.thumbnailUrl,
+                    image?.mediumUrl,
+                    image?.largeUrl,
+                    image?.originalUrl,
+                    image?.url,
+                    image?.imageUrl
+                );
+                if (found) {
+                    return found;
+                }
+            }
+        } else if (imageUrls && typeof imageUrls === 'object') {
+            const found = pickValid(
+                imageUrls.thumbnailUrl,
+                imageUrls.mediumUrl,
+                imageUrls.largeUrl,
+                imageUrls.originalUrl,
+                imageUrls.url,
+                imageUrls.imageUrl
+            );
+            if (found) {
+                return found;
+            }
+        }
+
+        return pickValid(
+            menu?.thumbnailUrl,
+            menu?.mediumUrl,
+            menu?.largeUrl,
+            menu?.originalUrl,
+            menu?.imageUrl,
+            menu?.image
+        );
+    }
+
     syncSelectedCustomerLabel() {
         if (this.selectedCustomer) {
             this.selectedCustomer = {
@@ -1522,6 +1622,10 @@ export class BookingCreateComponent implements OnInit {
     selectSetMenu(menu: SetMenuOption) {
         this.form.setMenuId = menu.id;
         this.syncSetMenuSummary();
+    }
+
+    onSetMenuImageError(menu: SetMenuOption) {
+        menu.imageUrl = undefined;
     }
 
     selectPackage(pkg: ServicePackageOption) {
