@@ -16,14 +16,14 @@ import lombok.experimental.SuperBuilder;
 public class UserLocation extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    Integer id;
 
     @Column(name = "user_id", nullable = false)
-    private Integer userId;
+    Integer userId;
 
     @Column(name = "location_id", nullable = false)
-    private Integer locationId;
+    Integer locationId;
 
     @Column(name = "role_code")
-    private String roleCode;
+    String roleCode;
 }
