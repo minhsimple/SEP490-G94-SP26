@@ -10,11 +10,13 @@ import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.location.LocationRequest;
 import vn.edu.fpt.dto.response.location.LocationResponse;
 import vn.edu.fpt.entity.Location;
+import vn.edu.fpt.entity.UserLocation;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.LocationMapper;
 import vn.edu.fpt.respository.LocationRepository;
+import vn.edu.fpt.respository.UserLocationRepository;
 import vn.edu.fpt.service.LocationService;
 
 import java.util.ArrayList;
@@ -26,6 +28,7 @@ import java.util.stream.Collectors;
 public class LocationServiceImpl implements LocationService {
     private final LocationRepository locationRepository;
     private final LocationMapper locationMapper;
+    private final UserLocationRepository userLocationRepository;
 
     @Override
     public LocationResponse createLocation(LocationRequest request) {
@@ -126,6 +129,13 @@ public class LocationServiceImpl implements LocationService {
         }
 
         Location saved = locationRepository.save(location);
+
+        List<UserLocation> userLocations = userLocationRepository.findByLocationId(id);
+        for (UserLocation userLocation : userLocations) {
+            userLocation.setStatus(saved.getStatus());
+            userLocationRepository.save(userLocation);
+        }
+
         return locationMapper.toResponse(saved);
     }
 }
