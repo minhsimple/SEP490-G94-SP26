@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.location.LocationRequest;
 import vn.edu.fpt.dto.response.location.LocationResponse;
@@ -117,6 +118,7 @@ public class LocationServiceImpl implements LocationService {
         );
     }
 
+    @Transactional
     @Override
     public LocationResponse changeLocationStatus(Integer id) {
         Location location = locationRepository.findById(id)
