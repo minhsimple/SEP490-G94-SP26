@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.user.UserFilterRequest;
 import vn.edu.fpt.dto.request.user.UserRequest;
@@ -82,6 +83,7 @@ public class UserServiceImpl implements UserService {
         return response;
     }
 
+    @Transactional
     @Override
     public UserResponse updateUser(Integer id, UserRequest request) {
 
