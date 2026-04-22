@@ -128,6 +128,7 @@ public enum ERROR_CODE {
     BOOKING_DATE_TOO_FAR(14007, "Ngày cưới phải đặt trước 3 tháng từ hôm nay", HttpStatus.BAD_REQUEST),
     BOOKING_UPDATE_INVALID(14008, "Hợp đồng đã được thanh lí hoặc bị hủy không thể thay đổi", HttpStatus.BAD_REQUEST),
     BOOKING_UPDATE_EXPIRED(14009, "Hợp đồng chỉ có thể thay đổi muộn nhất là trước ngày tổ chức 30 ngày", HttpStatus.BAD_REQUEST),
+    BOOKING_INVALID_NUMBER_OF_TABLE(14005, "Số lượng bàn quá lớn", HttpStatus.BAD_REQUEST),
     /**
      * Payment Error
      */
