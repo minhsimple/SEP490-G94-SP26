@@ -18,6 +18,10 @@ import {
     TaskListUpdatePayload,
     TaskListUpdateCategoryPayload,
 } from '../service/beo.service';
+import {
+    InvoiceIncidentPayload,
+    InvoiceService,
+} from '../service/invoice.service';
 
 export interface TaskItem {
     id: number;
@@ -32,6 +36,13 @@ export interface TaskCategory {
     key: string;
     label: string;
     icon: string;
+}
+
+export interface IncidentItem {
+    id: number;
+    title: string;
+    description: string;
+    price: number;
 }
 
 @Component({
@@ -105,6 +116,16 @@ export interface TaskCategory {
                     <i class="pi pi-spin pi-spinner"></i>
                 </div>
             </ng-template>
+
+            <div class="mb-4">
+                <p-button
+                    label="Ghi nhận phát sinh"
+                    icon="pi pi-file-edit"
+                    severity="secondary"
+                    [outlined]="true"
+                    (onClick)="openIncidentDialog()"
+                />
+            </div>
 
             <div class="surface-card border-round-xl overflow-hidden" style="border:1px solid #d1d5db;">
 
@@ -300,32 +321,173 @@ export interface TaskCategory {
                 </div>
             </ng-template>
         </p-dialog>
+
+        <p-dialog
+            header="Ghi nhận phát sinh"
+            [(visible)]="showIncidentDialog"
+            [modal]="true"
+            [closable]="true"
+            [draggable]="false"
+            [resizable]="false"
+            [style]="{ width: '56rem', maxWidth: '95vw' }"
+        >
+            <div class="text-xs text-500 mb-3">
+                Lưu danh sách phát sinh theo hợp đồng {{ taskList()?.contractNo ?? ('#' + (taskList()?.contractId ?? '-')) }}.
+            </div>
+
+            <ng-container *ngIf="taskList()?.contractId; else missingContractTpl">
+                <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.6rem;align-items:end;">
+                    <div>
+                        <label class="text-xs text-500 block mb-1">Tiêu đề</label>
+                        <input
+                            pInputText
+                            type="text"
+                            [(ngModel)]="newIncident.title"
+                            [disabled]="incidentSaving"
+                            placeholder="Ví dụ: Vỡ ly, phát sinh giờ"
+                            style="width:100%;"
+                            (keydown.enter)="addIncident()"
+                        />
+                    </div>
+                    <div>
+                        <label class="text-xs text-500 block mb-1">Mô tả</label>
+                        <input
+                            pInputText
+                            type="text"
+                            [(ngModel)]="newIncident.description"
+                            [disabled]="incidentSaving"
+                            placeholder="Chi tiết phát sinh"
+                            style="width:100%;"
+                            (keydown.enter)="addIncident()"
+                        />
+                    </div>
+                    <p-button
+                        icon="pi pi-plus"
+                        label="Thêm"
+                        [disabled]="incidentSaving"
+                        (onClick)="addIncident()"
+                    />
+                </div>
+
+                <div class="mt-4" style="max-height:50vh;overflow:auto;">
+                    <div *ngIf="incidentLoading" class="text-center py-5 text-500">
+                        <i class="pi pi-spin pi-spinner"></i>
+                    </div>
+
+                    <ng-container *ngIf="!incidentLoading">
+                        <ng-container *ngIf="incidents().length; else emptyIncidentTpl">
+                            <div class="border-round" style="border:1px solid #e2e8f0;overflow:hidden;">
+                                <div
+                                    class="grid px-3 py-2"
+                                    style="grid-template-columns:60px 2fr 3fr 56px;gap:0.75rem;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:0.78rem;font-weight:600;color:#64748b;"
+                                >
+                                    <div>STT</div>
+                                    <div>Tiêu đề</div>
+                                    <div>Mô tả</div>
+                                    <div class="text-center">Xóa</div>
+                                </div>
+
+                                <div
+                                    *ngFor="let incident of incidents(); let i = index; trackBy: trackById"
+                                    class="grid px-3 py-3"
+                                    style="grid-template-columns:60px 2fr 3fr 56px;gap:0.75rem;align-items:center;border-bottom:1px solid #e2e8f0;"
+                                >
+                                    <div class="text-sm text-700">{{ i + 1 }}</div>
+                                    <div class="text-sm font-semibold text-900">{{ incident.title }}</div>
+                                    <div class="text-sm text-600">{{ incident.description || '-' }}</div>
+                                    <div class="text-center">
+                                        <button
+                                            type="button"
+                                            class="cursor-pointer p-1"
+                                            style="color:#dc2626;background:#fff1f2;border:1px solid #fecdd3;border-radius:7px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;"
+                                            [style.opacity]="incidentSaving ? '0.6' : '1'"
+                                            [disabled]="incidentSaving"
+                                            (click)="removeIncident(incident)"
+                                            pTooltip="Xóa" tooltipPosition="top"
+                                        >
+                                            <i class="pi pi-trash" style="font-size:0.85rem;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </ng-container>
+                    </ng-container>
+                </div>
+            </ng-container>
+
+            <ng-template #missingContractTpl>
+                <div class="text-sm text-500">Không tìm thấy hợp đồng để ghi nhận phát sinh.</div>
+            </ng-template>
+
+            <ng-template #emptyIncidentTpl>
+                <div class="text-center py-6 text-500">
+                    <i class="pi pi-receipt text-3xl mb-2 block text-300"></i>
+                    <div class="text-sm">Chưa có phát sinh nào.</div>
+                </div>
+            </ng-template>
+
+            <ng-template pTemplate="footer">
+                <div class="flex items-center justify-between gap-2 flex-wrap" style="width:100%;">
+                    <span class="text-xs" [style.color]="hasIncidentUnsavedChanges ? '#f59e0b' : '#94a3b8'">
+                        {{ hasIncidentUnsavedChanges ? 'Có thay đổi phát sinh chưa lưu' : 'Danh sách phát sinh đã đồng bộ' }}
+                    </span>
+                    <div class="flex gap-2">
+                        <p-button
+                            label="Đóng"
+                            severity="secondary"
+                            [text]="true"
+                            [disabled]="incidentSaving"
+                            (onClick)="showIncidentDialog = false"
+                        />
+                        <p-button
+                            label="Lưu phát sinh"
+                            icon="pi pi-save"
+                            [loading]="incidentSaving"
+                            [disabled]="incidentSaving || !hasIncidentUnsavedChanges || !taskList()?.contractId"
+                            (onClick)="saveIncidents()"
+                        />
+                    </div>
+                </div>
+            </ng-template>
+        </p-dialog>
     `,
-    providers: [MessageService],
+    providers: [MessageService, InvoiceService],
 })
 export class BeoDetailComponent implements OnInit {
 
     taskList = signal<TaskList | null>(null);
     tasks = signal<TaskItem[]>([]);
+    incidents = signal<IncidentItem[]>([]);
     saving = false;
+    incidentLoading = false;
+    incidentSaving = false;
     hasUnsavedChanges = false;
+    hasIncidentUnsavedChanges = false;
 
     activeTabKey = '';
     newTaskNameMap: Record<string, string> = {};
     categories: TaskCategory[] = [];
+    showIncidentDialog = false;
 
     showAddCategoryDialog = false;
     newCategoryLabel = '';
     newCategoryIcon = 'pi-bookmark';
+    newIncident: { title: string; description: string } = {
+        title: '',
+        description: '',
+    };
 
     private taskListId!: number;
     private localTaskIdSeed = -1;
+    private localIncidentIdSeed = -1;
+    private incidentLoadedContractId: number | null = null;
 
     constructor(
         private route: ActivatedRoute,
         private router: Router,
         private location: Location,
         private taskListService: TaskListService,
+        private invoiceService: InvoiceService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef,
     ) {}
@@ -345,6 +507,7 @@ export class BeoDetailComponent implements OnInit {
                 const detail = res.data;
                 this.taskList.set(detail);
                 this.syncUiFromTaskList(detail);
+                this.resetIncidentsWhenContractChanged();
                 this.cdr.markForCheck();
             },
             error: (err) => {
@@ -490,7 +653,99 @@ export class BeoDetailComponent implements OnInit {
         );
     }
 
-    trackById(_: number, item: TaskItem) { return item.id; }
+    openIncidentDialog() {
+        this.showIncidentDialog = true;
+        this.ensureIncidentsLoaded();
+        this.cdr.markForCheck();
+    }
+
+    addIncident() {
+        if (this.incidentSaving) return;
+
+        const title = this.newIncident.title.trim();
+        if (!title) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Thiếu tiêu đề',
+                detail: 'Vui lòng nhập tiêu đề phát sinh.',
+                life: 2500,
+            });
+            return;
+        }
+
+        const item: IncidentItem = {
+            id: this.generateLocalIncidentId(),
+            title,
+            description: this.newIncident.description.trim(),
+            price: 0,
+        };
+
+        this.incidents.set([...this.incidents(), item]);
+        this.newIncident = { title: '', description: '' };
+        this.hasIncidentUnsavedChanges = true;
+        this.cdr.markForCheck();
+    }
+
+    removeIncident(incident: IncidentItem) {
+        if (this.incidentSaving) return;
+
+        this.incidents.set(this.incidents().filter((item) => item.id !== incident.id));
+        this.hasIncidentUnsavedChanges = true;
+        this.cdr.markForCheck();
+    }
+
+    saveIncidents() {
+        const contractId = this.resolveContractId();
+        if (!contractId || this.incidentSaving || !this.hasIncidentUnsavedChanges) {
+            return;
+        }
+
+        const hasInvalidTitle = this.incidents().some((item) => !item.title.trim());
+        if (hasInvalidTitle) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Dữ liệu chưa hợp lệ',
+                detail: 'Mỗi phát sinh cần có tiêu đề.',
+                life: 2800,
+            });
+            return;
+        }
+
+        const payload: InvoiceIncidentPayload[] = this.incidents().map((item) => ({
+            title: item.title.trim(),
+            description: item.description.trim(),
+            price: 0,
+        }));
+
+        this.incidentSaving = true;
+        this.invoiceService.updateIncidentsByContractId(contractId, payload).subscribe({
+            next: (res) => {
+                this.incidentSaving = false;
+                const nextIncidents = this.mapIncidentsFromApi(res.data ?? []);
+                this.incidents.set(nextIncidents);
+                this.hasIncidentUnsavedChanges = false;
+                this.messageService.add({
+                    severity: 'success',
+                    summary: 'Đã lưu',
+                    detail: 'Đã cập nhật danh sách phát sinh cho hợp đồng.',
+                    life: 2500,
+                });
+                this.cdr.markForCheck();
+            },
+            error: (err) => {
+                this.incidentSaving = false;
+                this.messageService.add({
+                    severity: 'error',
+                    summary: 'Lỗi',
+                    detail: this.resolveApiErrorDetail(err, 'Không thể lưu danh sách phát sinh.'),
+                    life: 3200,
+                });
+                this.cdr.markForCheck();
+            },
+        });
+    }
+
+    trackById(_: number, item: { id: number }) { return item.id; }
 
     getTasksForCat(key: string): TaskItem[] {
         return this.tasks()
@@ -533,6 +788,91 @@ export class BeoDetailComponent implements OnInit {
 
     isTaskDone(task: TaskItem): boolean {
         return String(task.state ?? '').toUpperCase() === 'COMPLETED';
+    }
+
+    private ensureIncidentsLoaded() {
+        const contractId = this.resolveContractId();
+        if (!contractId) {
+            this.incidents.set([]);
+            this.hasIncidentUnsavedChanges = false;
+            return;
+        }
+
+        if (this.incidentLoadedContractId === contractId) {
+            return;
+        }
+
+        this.loadIncidents(contractId);
+    }
+
+    private resetIncidentsWhenContractChanged() {
+        const contractId = this.resolveContractId();
+        if (!contractId) {
+            this.incidentLoadedContractId = null;
+            this.incidents.set([]);
+            this.hasIncidentUnsavedChanges = false;
+            return;
+        }
+
+        if (this.incidentLoadedContractId !== contractId) {
+            this.incidents.set([]);
+            this.hasIncidentUnsavedChanges = false;
+            this.incidentLoadedContractId = null;
+            if (this.showIncidentDialog) {
+                this.loadIncidents(contractId);
+            }
+        }
+    }
+
+    private loadIncidents(contractId: number) {
+        this.incidentLoading = true;
+        this.invoiceService.getIncidentsByContractId(contractId).subscribe({
+            next: (res) => {
+                this.incidentLoading = false;
+                this.incidents.set(this.mapIncidentsFromApi(res.data ?? []));
+                this.hasIncidentUnsavedChanges = false;
+                this.incidentLoadedContractId = contractId;
+                this.cdr.markForCheck();
+            },
+            error: (err) => {
+                this.incidentLoading = false;
+                this.incidents.set([]);
+                this.hasIncidentUnsavedChanges = false;
+                this.incidentLoadedContractId = null;
+                this.messageService.add({
+                    severity: 'warn',
+                    summary: 'Không tải được phát sinh',
+                    detail: this.resolveApiErrorDetail(err, 'Không thể tải danh sách phát sinh của hợp đồng.'),
+                    life: 3200,
+                });
+                this.cdr.markForCheck();
+            },
+        });
+    }
+
+    private mapIncidentsFromApi(incidents: InvoiceIncidentPayload[]): IncidentItem[] {
+        return incidents.map((incident) => ({
+            id: this.generateLocalIncidentId(),
+            title: String(incident?.title ?? '').trim(),
+            description: String(incident?.description ?? '').trim(),
+            price: this.normalizeIncidentPrice(incident?.price),
+        }));
+    }
+
+    private normalizeIncidentPrice(rawPrice: unknown): number {
+        const numeric = Number(rawPrice ?? 0);
+        if (!Number.isFinite(numeric)) {
+            return 0;
+        }
+        return Math.max(0, numeric);
+    }
+
+    private resolveContractId(): number | null {
+        const contractId = Number(this.taskList()?.contractId ?? 0);
+        if (!Number.isFinite(contractId) || contractId <= 0) {
+            return null;
+        }
+        return contractId;
     }
 
     private syncUiFromTaskList(detail: TaskList) {
@@ -666,6 +1006,11 @@ export class BeoDetailComponent implements OnInit {
     private generateLocalTaskId(): number {
         this.localTaskIdSeed -= 1;
         return this.localTaskIdSeed;
+    }
+
+    private generateLocalIncidentId(): number {
+        this.localIncidentIdSeed -= 1;
+        return this.localIncidentIdSeed;
     }
 
     private resolveApiErrorDetail(err: any, fallback: string): string {
