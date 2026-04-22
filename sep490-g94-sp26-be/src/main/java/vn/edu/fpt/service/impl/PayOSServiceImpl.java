@@ -198,9 +198,12 @@ public class PayOSServiceImpl implements PayOSService {
         }
         Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+        Invoice invoice = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
 
         if (contract.getContractState() == ContractState.DRAFT) {
             contract.setContractState(ContractState.ACTIVE);
+            invoice.setInvoiceState(InvoiceState.PARTIALLY_PAID);
             if (!taskListRepository.existsByContractId(contract.getId())) {
                 String title = (contract.getBrideName() != null ? contract.getBrideName() : "") +
                         " & " +
@@ -216,14 +219,12 @@ public class PayOSServiceImpl implements PayOSService {
             }
             contractRepository.save(contract);
         }
-        Invoice invoice = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
 
-        List<Payment> payments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(contractId, PaymentState.SUCCESS, RecordStatus.active);
-        if(payments.size() > 1){
+        List<Payment> successPayments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(contractId, PaymentState.SUCCESS, RecordStatus.active);
+        if(successPayments.size() > 1){
             invoice.setInvoiceState(InvoiceState.PAID);
             contract.setContractState(ContractState.LIQUIDATED);
-        } else if (payments.size() == 1){
+        } else if (successPayments.size() == 1){
             invoice.setInvoiceState(InvoiceState.PARTIALLY_PAID);
         }
         invoiceRepository.save(invoice);

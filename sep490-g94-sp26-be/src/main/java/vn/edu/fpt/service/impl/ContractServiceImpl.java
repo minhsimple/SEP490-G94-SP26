@@ -91,7 +91,7 @@ public class ContractServiceImpl implements ContractService {
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setCustomerResponse(customerResponse);
 
-        createPaymentForContract(saved, request.getPaymentPercent());
+        createInitialPaymentForContract(saved);
         InvoiceResponse invoiceResponse = invoiceService.createInvoice(saved.getId());
 
         contractResponse.setInvoiceData(invoiceResponse.getData());
@@ -106,6 +106,14 @@ public class ContractServiceImpl implements ContractService {
 
         Contract booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
+        if (booking.getContractState().equals(ContractState.LIQUIDATED) ||
+                booking.getContractState().equals(ContractState.CANCELLED)) {
+            throw new AppException(ERROR_CODE.BOOKING_UPDATE_INVALID);
+        } else if(LocalDateTime.now().isAfter(booking.getStartTime().minusDays(30))) {
+            throw new AppException(ERROR_CODE.BOOKING_UPDATE_EXPIRED);
+        }
+
         validateUpdateContract(request, id);
         // Nếu hallId hoặc expectedGuests có thay đổi thì validate số lượng khách với sức chứa của hội trường
         if (request.getHallId() != null && request.getExpectedGuests() != null) {
@@ -131,6 +139,7 @@ public class ContractServiceImpl implements ContractService {
         } else {
             customerResponse = customerService.createCustomer(request.getCustomerRequest());
         }
+        Invoice.InvoiceData invoiceData = invoiceService.updateInvoiceWhenUpdatingContract(booking, request);
 
         contractMapper.updateEntity(booking, request);
 
@@ -140,6 +149,7 @@ public class ContractServiceImpl implements ContractService {
         Contract saved = bookingRepository.save(booking);
         ContractResponse contractResponse = contractMapper.toResponse(saved);
         contractResponse.setCustomerResponse(customerResponse);
+        contractResponse.setInvoiceData(invoiceData);
 
         return contractResponse;
     }
@@ -367,10 +377,10 @@ public class ContractServiceImpl implements ContractService {
                 request.getStartTime(), request.getEndTime(), request.getLocationId());
     }
 
-    public void createPaymentForContract(Contract contract, Integer paymentPercent) throws Exception {
-        BigDecimal totalAmount = getTotalAmountForContract(contract);
+    public void createInitialPaymentForContract(Contract contract) throws Exception {
+        BigDecimal totalAmount = getInitialTotalAmountForContract(contract);
 
-        BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(paymentPercent)
+        BigDecimal firstAmount = totalAmount.multiply(BigDecimal.valueOf(contract.getPaymentPercent())
                 .divide(BigDecimal.valueOf(100)));
 
         PaymentRequest request1 = PaymentRequest.builder()
@@ -378,14 +388,14 @@ public class ContractServiceImpl implements ContractService {
                 .amount(firstAmount)
                 .method(PaymentMethod.BANK_TRANSFER)
                 .paymentState(PaymentState.PENDING)
-                .note("Thanh toán đợt 1 - " + paymentPercent + "% tổng giá trị hợp đồng")
+                .note("Thanh toán đợt 1 - " + contract.getPaymentPercent() + "% tổng giá trị hợp đồng")
                 .build();
 
         paymentServiceImpl.createPayment(request1);
 
     }
 
-    public BigDecimal getTotalAmountForContract(Contract contract) throws Exception {
+    public BigDecimal getInitialTotalAmountForContract(Contract contract) throws Exception {
         BigDecimal setMenuPrice = setMenuServiceImpl.getSetMenuById(contract.getSetMenuId()).getSetPrice();
         BigDecimal servicePrice = servicePackageRepository.findByIdAndStatus(contract.getPackageId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.SERVICE_PACKAGE_NOT_FOUND))

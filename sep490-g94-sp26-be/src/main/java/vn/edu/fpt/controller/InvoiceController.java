@@ -10,16 +10,16 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.invoice.InvoiceFilterRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.invoice.InvoiceResponse;
+import vn.edu.fpt.entity.Invoice;
 import vn.edu.fpt.service.InvoiceService;
 import vn.edu.fpt.util.enums.Constants;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/invoice")
@@ -48,6 +48,32 @@ public class InvoiceController {
             Pageable pageable) {
         return ApiResponse.<SimplePage<InvoiceResponse>>builder()
                 .data(invoiceService.getAllInvoices(pageable, filterRequest))
+                .build();
+    }
+
+    @Operation(summary = "Thanh lí hóa đơn")
+    @PostMapping("/liquidate/{id}")
+    public ApiResponse<InvoiceResponse> liquidateInvoice(@PathVariable Integer id) {
+        return ApiResponse.<InvoiceResponse>builder()
+                .data(invoiceService.liquidateInvoice(id))
+                .build();
+    }
+
+    @Operation(summary = "Xem danh sách phát sinh trong hóa đơn")
+    @GetMapping("/incidents/{contractId}")
+    public ApiResponse<List<Invoice.IncidentInvoice>> getAllIncidents(@PathVariable Integer contractId) {
+        return ApiResponse.<List<Invoice.IncidentInvoice>>builder()
+                .data(invoiceService.getIncidentInvoices(contractId))
+                .build();
+    }
+
+    @Operation(summary = "Chỉnh sửa danh sách phát sinh cho hóa đơn")
+    @PutMapping("/incidents/{contractId}")
+    public ApiResponse<List<Invoice.IncidentInvoice>> updateIncidents(
+            @PathVariable Integer contractId,
+            @RequestBody List<Invoice.IncidentInvoice> incidentInvoices) {
+        return ApiResponse.<List<Invoice.IncidentInvoice>>builder()
+                .data(invoiceService.updateIncidentInvoices(contractId, incidentInvoices))
                 .build();
     }
 }
