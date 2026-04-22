@@ -36,7 +36,7 @@ export class AppMenu implements OnInit, OnDestroy {
   { label: 'Quản lý vai trò', icon: 'pi pi-shield', routerLink: ['/pages/role'], id: 'role' },
   { label: 'Quản lý chi nhánh', icon: 'pi pi-sitemap', routerLink: ['/pages/location'], id: 'location' },
   { label: 'Quản lý người dùng', icon: 'pi pi-users', routerLink: ['/pages/users'], id: 'users' },
-  { label: 'Quản lý leads', icon: 'pi pi-user-plus', routerLink: ['/pages/leads'], id: 'leads' },
+  { label: 'Quản lý khách vãng lai', icon: 'pi pi-user-plus', routerLink: ['/pages/leads'], id: 'leads' },
   { label: 'Quản lý danh sách khách hàng', icon: 'pi pi-id-card', routerLink: ['/pages/customers'], id: 'customers' },
   { label: 'Quản lý sảnh hội trường', icon: 'pi pi-building', routerLink: ['/pages/hall'], id: 'hall' },
 
@@ -72,7 +72,7 @@ export class AppMenu implements OnInit, OnDestroy {
     ACCOUNTING:   ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
     KETOAN:       ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
     KE_TOAN:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    MANAGER:      ['dashboard', 'calender', 'booking', 'beo', 'payment', 'invoice', 'leads', 'customers', 'hall', 'service', 'menu', 'users'],
+    MANAGER:      ['dashboard', 'calender', 'booking', 'payment', 'invoice', 'customers', 'hall', 'service', 'menu', 'users'],
     ADMIN:        'all',
     COORDINATOR:  ['dashboard', 'calender', 'booking', 'beo'],
   };
