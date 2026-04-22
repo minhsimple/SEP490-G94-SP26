@@ -146,13 +146,24 @@ import { forkJoin, of } from 'rxjs';
                         </div>
                     </div>
                 </div>
-                <span
-                    class="status-chip"
-                    [style.background]="getStatusBg(invoice.invoiceState)"
-                    [style.color]="getStatusColor(invoice.invoiceState)"
-                >
-                    {{ getStatusLabel(invoice.invoiceState) }}
-                </span>
+                <div class="flex items-center gap-2">
+                    <p-button
+                        *ngIf="canLiquidate"
+                        label="Tất toán"
+                        icon="pi pi-check-circle"
+                        severity="warn"
+                        [loading]="liquidatingContract"
+                        [disabled]="liquidatingContract"
+                        (onClick)="liquidateContract()"
+                    />
+                    <span
+                        class="status-chip"
+                        [style.background]="getStatusBg(invoice.invoiceState)"
+                        [style.color]="getStatusColor(invoice.invoiceState)"
+                    >
+                        {{ getStatusLabel(invoice.invoiceState) }}
+                    </span>
+                </div>
             </div>
 
             <div class="layout">
@@ -666,6 +677,8 @@ export class InvoiceDetailComponent implements OnInit {
     };
     loading = false;
     returnUrl = '';
+    contractState = '';
+    liquidatingContract = false;
     paymentDialog = false;
     paymentSubmitted = false;
     savingPayment = false;
@@ -684,15 +697,15 @@ export class InvoiceDetailComponent implements OnInit {
     ];
 
     methodOptions = [
-        { label: 'Tiền mặt',      value: 'CASH'          },
-        { label: 'Chuyển khoản',  value: 'BANK_TRANSFER'  },
-        { label: 'Thẻ tín dụng',  value: 'CREDIT_CARD'    },
-        { label: 'Ví điện tử',    value: 'E_WALLET'       },
+        { label: 'Tiền mặt', value: 'CASH' },
+        { label: 'Chuyển khoản', value: 'BANK_TRANSFER' },
+        { label: 'Thẻ tín dụng', value: 'CREDIT_CARD' },
+        { label: 'Ví điện tử', value: 'E_WALLET' },
     ];
 
     get remainingAmount(): number {
         const total = Number(this.invoice?.totalAmount ?? 0);
-        const paid  = this.paidAmountValue;
+        const paid = this.paidAmountValue;
         return Math.max(total - paid, 0);
     }
 
@@ -715,6 +728,14 @@ export class InvoiceDetailComponent implements OnInit {
         }, 0);
     }
 
+    get canLiquidate(): boolean {
+        const paymentCount = this.invoice?.payments?.length ?? 0;
+        if (paymentCount > 1) return false;
+        const state = this.contractState.toUpperCase();
+        if (state === 'DRAFT' || state === 'CANCELLED') return false;
+        return true;
+    }
+
     constructor(
         private route: ActivatedRoute,
         private router: Router,
@@ -729,7 +750,7 @@ export class InvoiceDetailComponent implements OnInit {
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private cdr: ChangeDetectorRef,
-    ) {}
+    ) { }
 
     ngOnInit() {
         const navState = this.router.getCurrentNavigation()?.extras?.state as { returnUrl?: string } | undefined;
@@ -1225,6 +1246,45 @@ export class InvoiceDetailComponent implements OnInit {
         });
     }
 
+    liquidateContract() {
+        const invoiceId = this.invoice?.id;
+        if (!invoiceId) return;
+
+        this.confirmationService.confirm({
+            message: 'Bạn có chắc chắn muốn tất toán hóa đơn này?',
+            header: 'Xác nhận thanh toán',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Thanh toán',
+            rejectLabel: 'Hủy',
+            acceptButtonStyleClass: 'p-button-warning',
+            accept: () => {
+                this.liquidatingContract = true;
+                this.invoiceService.liquidateInvoice(invoiceId).subscribe({
+                    next: () => {
+                        this.liquidatingContract = false;
+                        this.messageService.add({
+                            severity: 'success',
+                            summary: 'Thành công',
+                            detail: 'Đã xác nhận thành công.',
+                            life: 3000,
+                        });
+                        this.loadDetail(invoiceId);
+                    },
+                    error: (err) => {
+                        this.liquidatingContract = false;
+                        const detail = err?.error?.message ?? 'Không thể tất toán.';
+                        this.messageService.add({
+                            severity: 'error',
+                            summary: 'Lỗi',
+                            detail,
+                            life: 3000,
+                        });
+                    }
+                });
+            }
+        });
+    }
+
     goBack() {
         if (this.returnUrl && !this.isPaymentDetailUrl(this.returnUrl)) {
             this.router.navigateByUrl(this.returnUrl);
@@ -1273,6 +1333,8 @@ export class InvoiceDetailComponent implements OnInit {
                 const setMenuWithId = currentSetMenu
                     ? { ...currentSetMenu, id: currentSetMenu.id ?? safeBookingSetMenuId ?? undefined }
                     : (safeBookingSetMenuId ? { id: safeBookingSetMenuId } : undefined);
+
+                this.contractState = String(booking?.contractState ?? booking?.bookingState ?? '').toUpperCase();
 
                 this.invoice = {
                     ...this.invoice,
@@ -1390,26 +1452,26 @@ export class InvoiceDetailComponent implements OnInit {
             tableCount?: number;
             totalPrice?: number;
         }> = raw.setMenus?.length
-            ? raw.setMenus
-            : raw.setMenu
-                ? [{
-                    id: raw.setMenu.id,
-                    name: raw.setMenu.name,
-                    quantity: 1,
-                    pricePerTable: raw.setMenu.setPrice,
-                    tableCount: expectedTables,
-                    totalPrice: setMenuTotal,
-                }]
-                : setMenuData
+                ? raw.setMenus
+                : raw.setMenu
                     ? [{
-                        id: setMenuData.id,
-                        name: setMenuData.name,
+                        id: raw.setMenu.id,
+                        name: raw.setMenu.name,
                         quantity: 1,
-                        pricePerTable: setMenuUnit,
+                        pricePerTable: raw.setMenu.setPrice,
                         tableCount: expectedTables,
                         totalPrice: setMenuTotal,
                     }]
-                    : [];
+                    : setMenuData
+                        ? [{
+                            id: setMenuData.id,
+                            name: setMenuData.name,
+                            quantity: 1,
+                            pricePerTable: setMenuUnit,
+                            tableCount: expectedTables,
+                            totalPrice: setMenuTotal,
+                        }]
+                        : [];
 
         const normalizedSetMenus = setMenuRows.map((menu) => {
             const quantity = Number(menu.quantity ?? 1) || 1;
