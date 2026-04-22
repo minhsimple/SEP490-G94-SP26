@@ -173,11 +173,16 @@ public class InvoiceServiceImpl implements InvoiceService {
     public List<Invoice.IncidentInvoice> updateIncidentInvoices(Integer contractId, List<Invoice.IncidentInvoice> incidents) {
         Invoice invoice = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
-        invoice.getData().setIncidents(incidents);
-        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        invoice.setTotalAmount(calculateTotalAmountForInvoice(invoice.getData(), contract.getExpectedTables()));
+        BigDecimal oldIncidentsAmount = invoice.getData().getIncidents().stream()
+                .map(Invoice.IncidentInvoice::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal newIncidentsAmount = incidents.stream()
+                        .map(Invoice.IncidentInvoice::getPrice)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal varianceAmount = oldIncidentsAmount.subtract(newIncidentsAmount);
+        invoice.getData().setIncidents(incidents);
+        invoice.setTotalAmount(invoice.getTotalAmount().subtract(varianceAmount));
 
         return invoice.getData().getIncidents();
     }
