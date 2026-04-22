@@ -77,6 +77,7 @@ public class ContractServiceImpl implements ContractService {
         }
 
         validateNumberOfGuests(request.getHallId(), request.getExpectedGuests());
+        validateNumberOfTable(request.getExpectedTables(), request.getExpectedGuests());
 
         Contract booking = contractMapper.toEntity(request);
         booking.setContractNo(generateContractNo());
@@ -118,12 +119,13 @@ public class ContractServiceImpl implements ContractService {
         // Nếu hallId hoặc expectedGuests có thay đổi thì validate số lượng khách với sức chứa của hội trường
         if (request.getHallId() != null && request.getExpectedGuests() != null) {
             validateNumberOfGuests(request.getHallId(), request.getExpectedGuests());
+            validateNumberOfTable(request.getExpectedTables(), request.getExpectedGuests());
         } else if (request.getHallId() != null) {
             validateNumberOfGuests(request.getHallId(), booking.getExpectedGuests());
         } else if (request.getExpectedGuests() != null) {
+            validateNumberOfTable(request.getExpectedTables(), request.getExpectedGuests());
             validateNumberOfGuests(booking.getHallId(), request.getExpectedGuests());
         }
-
         if (request.getCustomerId() != null) {
             CustomerUpdateRequest customerUpdateRequest = CustomerUpdateRequest.builder()
                     .fullName(request.getCustomerRequest().getFullName())
@@ -216,6 +218,15 @@ public class ContractServiceImpl implements ContractService {
                 .getCapacity();
         if (numberOfGuests > (hallCapacity - hallCapacity / 10) || numberOfGuests <= 0) {
             throw new AppException(ERROR_CODE.BOOKING_INVALID_NUMBER_OF_GUESTS);
+        }
+    }
+    public void validateNumberOfTable(Integer expectedTables, Integer numberOfGuests) {
+        if (expectedTables == null || expectedTables <= 0) {
+            throw new AppException(ERROR_CODE.BOOKING_INVALID_NUMBER_OF_TABLE);
+        }
+        int requiredTables = (int) Math.ceil(numberOfGuests * 1.1 / 10);
+        if (expectedTables < requiredTables) {
+            throw new AppException(ERROR_CODE.BOOKING_INVALID_NUMBER_OF_TABLE);
         }
     }
 
