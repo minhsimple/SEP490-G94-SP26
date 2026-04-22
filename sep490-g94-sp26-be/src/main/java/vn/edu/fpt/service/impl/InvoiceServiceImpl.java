@@ -61,7 +61,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         Invoice.InvoiceData invoiceData = generateInitialInvoiceData(setMenu, hall, servicePackage);
 
-        BigDecimal totalAmount = calculateTotalAmountForInvoice(invoiceData);
+        BigDecimal totalAmount = calculateTotalAmountForInvoice(invoiceData, contract.getExpectedTables());
 
         invoice.setTotalAmount(totalAmount);
         invoice.setData(invoiceData);
@@ -156,7 +156,7 @@ public class InvoiceServiceImpl implements InvoiceService {
             invoiceData.setServicePackageInvoice(servicePackageInvoice);
         }
         invoice.setData(invoiceData);
-        invoice.setTotalAmount(calculateTotalAmountForInvoice(invoiceData));
+        invoice.setTotalAmount(calculateTotalAmountForInvoice(invoiceData, contractRequest.getExpectedTables()));
 
         return invoiceData;
     }
@@ -174,6 +174,11 @@ public class InvoiceServiceImpl implements InvoiceService {
         Invoice invoice = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
         invoice.getData().setIncidents(incidents);
+        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
+        invoice.setTotalAmount(calculateTotalAmountForInvoice(invoice.getData(), contract.getExpectedTables()));
+
         return invoice.getData().getIncidents();
     }
 
@@ -325,13 +330,13 @@ public class InvoiceServiceImpl implements InvoiceService {
         return data;
     }
 
-    private BigDecimal calculateTotalAmountForInvoice(Invoice.InvoiceData invoiceData) {
+    private BigDecimal calculateTotalAmountForInvoice(Invoice.InvoiceData invoiceData, Integer expectedTables) {
         BigDecimal totalAmount = BigDecimal.ZERO;
         if (invoiceData.getHallInvoice() != null) {
             totalAmount = totalAmount.add(invoiceData.getHallInvoice().getPrice());
         }
         if (invoiceData.getSetMenuInvoice() != null) {
-            totalAmount = totalAmount.add(invoiceData.getSetMenuInvoice().getPrice());
+            totalAmount = totalAmount.add(invoiceData.getSetMenuInvoice().getPrice().multiply(BigDecimal.valueOf(expectedTables)));
         }
         if (invoiceData.getServicePackageInvoice() != null) {
             totalAmount = totalAmount.add(invoiceData.getServicePackageInvoice().getPrice());
