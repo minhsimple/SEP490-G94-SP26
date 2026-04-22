@@ -1263,6 +1263,7 @@ export class BookingDetailComponent implements OnInit {
     private recalculatePaymentSummary() {
         if (!this.booking) {
             this.totalAmount = 0;
+            this.paidAmount = 0;
             this.remainingAmount = 0;
             this.progressPercent = 0;
             return;
@@ -1276,7 +1277,23 @@ export class BookingDetailComponent implements OnInit {
             ? (resolvedSetMenuPrice * tables) + resolvedHallPrice + resolvedPackagePrice
             : 0;
 
-        this.totalAmount = computedTotal > 0 ? computedTotal : this.apiTotalAmount;
+        const invoiceTotal = Number(this.invoicePreview?.totalAmount ?? Number.NaN);
+        const hasInvoiceTotal = Number.isFinite(invoiceTotal) && invoiceTotal > 0;
+        const invoicePaidAmount = Number(this.invoicePreview?.paidAmount ?? Number.NaN);
+        const hasInvoicePaidAmount = Number.isFinite(invoicePaidAmount) && invoicePaidAmount >= 0;
+
+        const resolvedPaidAmount = hasInvoicePaidAmount
+            ? invoicePaidAmount
+            : Number.isFinite(this.paidAmount) && this.paidAmount >= 0
+                ? this.paidAmount
+                : 0;
+
+        this.totalAmount = hasInvoiceTotal
+            ? invoiceTotal
+            : computedTotal > 0
+                ? computedTotal
+                : this.apiTotalAmount;
+        this.paidAmount = resolvedPaidAmount;
         this.remainingAmount = Math.max(this.totalAmount - this.paidAmount, 0);
         this.progressPercent = this.totalAmount > 0
             ? Math.min(100, Math.max(0, Math.round((this.paidAmount / this.totalAmount) * 100)))
