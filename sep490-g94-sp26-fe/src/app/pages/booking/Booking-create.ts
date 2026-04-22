@@ -403,7 +403,7 @@ interface BookingSummary {
             <div>
                 <div class="section-card">
                     <div class="section-title">Khách hàng và điều phối</div>
-                    <div class="two-col">
+                    <div [class.two-col]="!shouldHideSalesAssigneeField">
                         <div class="field-wrap">
                             <label class="field-label">Số điện thoại khách hàng <span class="req">*</span></label>
                             <input
@@ -424,28 +424,29 @@ interface BookingSummary {
                             </div>
                         </div>
 
-                        <div class="field-wrap">
-                            <label class="field-label">Sales phụ trách</label>
-                            <ng-container *ngIf="isSaleCreateMode; else salesSelectTpl">
-                                <input
-                                    pInputText
-                                    [ngModel]="getSalesLabel(form.salesId || loggedInUserId)"
-                                    readonly
-                                    style="width:100%; background:#f8fafc; color:#334155"
-                                />
-                            </ng-container>
-                            <ng-template #salesSelectTpl>
-                                <p-select
-                                    [options]="salesOptions"
-                                    [(ngModel)]="form.salesId"
-                                    optionLabel="label"
-                                    optionValue="id"
-                                    placeholder="Chọn sales phụ trách"
-                                    [showClear]="true"
-                                    styleClass="w-full"
-                                />
-                            </ng-template>
-                        </div>
+                        @if (!shouldHideSalesAssigneeField) {
+                            <div class="field-wrap">
+                                <label class="field-label">Sales phụ trách</label>
+                                @if (isSaleCreateMode) {
+                                    <input
+                                        pInputText
+                                        [ngModel]="getSalesLabel(form.salesId || loggedInUserId)"
+                                        readonly
+                                        style="width:100%; background:#f8fafc; color:#334155"
+                                    />
+                                } @else {
+                                    <p-select
+                                        [options]="salesOptions"
+                                        [(ngModel)]="form.salesId"
+                                        optionLabel="label"
+                                        optionValue="id"
+                                        placeholder="Chọn sales phụ trách"
+                                        [showClear]="true"
+                                        styleClass="w-full"
+                                    />
+                                }
+                            </div>
+                        }
                     </div>
 
                     <div class="two-col" style="margin-top:1rem">
@@ -771,10 +772,12 @@ interface BookingSummary {
                         <strong>{{ formatPrice(summary.estimatedTotal) }}</strong>
                     </div>
                     <div class="summary-divider"></div>
-                    <div class="summary-row" *ngIf="form.salesId">
-                        <span>Sales phụ trách</span>
-                        <strong>{{ getSalesLabel(form.salesId) }}</strong>
-                    </div>
+                    @if (form.salesId && !shouldHideSalesAssigneeField) {
+                        <div class="summary-row">
+                            <span>Sales phụ trách</span>
+                            <strong>{{ getSalesLabel(form.salesId) }}</strong>
+                        </div>
+                    }
                 </div>
 
                 <div class="section-card summary-detail-card" *ngIf="summary.setMenuItems.length > 0 || summary.packageServices.length > 0">
@@ -903,6 +906,18 @@ export class BookingCreateComponent implements OnInit {
 
     get isSaleCreateMode(): boolean {
         return this.isSaleAccount && !this.isEditMode;
+    }
+
+    get shouldHideSalesAssigneeField(): boolean {
+        if (this.isSaleAccount) {
+            return true;
+        }
+
+        if (!this.isEditMode || this.loggedInUserId <= 0) {
+            return false;
+        }
+
+        return Number(this.form.salesId) === this.loggedInUserId;
     }
 
     constructor(
@@ -1476,11 +1491,26 @@ export class BookingCreateComponent implements OnInit {
         this.syncSelectedCustomerLabel();
 
         const normalizedPhone = this.normalizePhoneNumber(this.customerDraft.phone);
+        const normalizedMatchedPhone = this.normalizePhoneNumber(this.matchedExistingCustomer?.phone ?? '');
+        if (this.matchedExistingCustomer && normalizedMatchedPhone && normalizedPhone !== normalizedMatchedPhone) {
+            this.form.customerId = null;
+            this.matchedExistingCustomer = null;
+            this.selectedCustomer = null;
+            this.customerDraft.fullName = '';
+            this.customerDraft.citizenIdNumber = '';
+            this.customerDraft.email = '';
+            this.customerDraft.address = '';
+        }
+
         if (!normalizedPhone) {
             this.form.customerId = null;
             this.matchedExistingCustomer = null;
             this.selectedCustomer = null;
             this.isCustomerLookupLoading = false;
+            this.customerDraft.fullName = '';
+            this.customerDraft.citizenIdNumber = '';
+            this.customerDraft.email = '';
+            this.customerDraft.address = '';
             return;
         }
 
