@@ -174,6 +174,11 @@ public class InvoiceServiceImpl implements InvoiceService {
         Invoice invoice = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
         invoice.getData().setIncidents(incidents);
+        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
+        invoice.setTotalAmount(calculateTotalAmountForInvoice(invoice.getData(), contract.getExpectedTables()));
+
         return invoice.getData().getIncidents();
     }
 
