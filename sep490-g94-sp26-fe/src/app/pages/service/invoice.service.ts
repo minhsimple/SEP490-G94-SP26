@@ -60,6 +60,12 @@ export interface InvoiceDataPayload {
     };
 }
 
+export interface InvoiceIncidentPayload {
+    title: string;
+    description: string;
+    price: number;
+}
+
 export interface Payment {
     id?: number;
     code?: string;
@@ -231,6 +237,24 @@ export class InvoiceService {
     deletePayment(invoiceId: number, paymentId: number): Observable<SingleResponse<any>> {
         return this.http.delete<SingleResponse<any>>(
             `${BASE}/invoices/${invoiceId}/payments/${paymentId}`, { headers: this.headers }
+        );
+    }
+
+    getIncidentsByContractId(contractId: number): Observable<SingleResponse<InvoiceIncidentPayload[]>> {
+        return this.http.get<SingleResponse<InvoiceIncidentPayload[]>>(
+            `${BASE}/invoice/incidents/${contractId}`,
+            { headers: this.headers }
+        );
+    }
+
+    updateIncidentsByContractId(
+        contractId: number,
+        incidents: InvoiceIncidentPayload[]
+    ): Observable<SingleResponse<InvoiceIncidentPayload[]>> {
+        return this.http.put<SingleResponse<InvoiceIncidentPayload[]>>(
+            `${BASE}/invoice/incidents/${contractId}`,
+            incidents,
+            { headers: this.headers }
         );
     }
 }
