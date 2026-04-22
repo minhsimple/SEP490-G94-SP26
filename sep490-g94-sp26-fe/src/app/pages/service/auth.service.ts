@@ -9,7 +9,8 @@ export interface UserProfile {
     fullName: string;
     phone: string;
     roleId: number;
-    locationId: number;
+    locationId?: number;
+    locationIds?: number[];
     status: string;
 }
 
@@ -26,7 +27,8 @@ export interface LoginData {
     userId: number;
     email: string;
     fullName: string;
-    locationId: number | null;
+    locationId?: number | null;
+    locationIds?: number[] | null;
 }
 
 export interface LoginResponse {
@@ -49,7 +51,8 @@ export class AuthService {
         userId: 'userId',
         email: 'email',
         fullName: 'fullName',
-        locationId: 'locationId'
+        locationId: 'locationId',
+        locationIds: 'locationIds'
     };
 
     private codeRoleSubject = new BehaviorSubject<string>(
@@ -57,7 +60,41 @@ export class AuthService {
     );
     codeRole$ = this.codeRoleSubject.asObservable();
 
-    constructor(private http: HttpClient) {}
+    /**
+     * Chi nhánh đang được chọn (active) trên toàn app.
+     * Khởi tạo từ localStorage['locationId'].
+     * Manager thay đổi qua topbar → emit → tất cả components reload.
+     */
+    private activeLocationIdSubject = new BehaviorSubject<number | null>(
+        (() => {
+            const v = Number(localStorage.getItem('locationId') ?? 0);
+            return Number.isFinite(v) && v > 0 ? v : null;
+        })()
+    );
+    activeLocationId$ = this.activeLocationIdSubject.asObservable();
+
+    get activeLocationId(): number | null {
+        return this.activeLocationIdSubject.getValue();
+    }
+
+    setActiveLocationId(id: number | null): void {
+        const normalized = Number(id);
+        if (!Number.isFinite(normalized) || normalized <= 0) {
+            localStorage.removeItem(this.storageKeys.locationId);
+            this.activeLocationIdSubject.next(null);
+            return;
+        }
+
+        const allowedLocationIds = this.getLocationIds();
+        if (allowedLocationIds.length > 0 && !allowedLocationIds.includes(normalized)) {
+            return;
+        }
+
+        localStorage.setItem(this.storageKeys.locationId, String(normalized));
+        this.activeLocationIdSubject.next(normalized);
+    }
+
+    constructor(private http: HttpClient) { }
 
     private isPlaceholderToken(token: string): boolean {
         const normalized = token.trim().toLowerCase();
@@ -99,6 +136,27 @@ export class AuthService {
         return this.http.post<LoginResponse>(`${this.baseUrl}/login`, payload);
     }
 
+    private normalizeLocationIds(data: LoginData): number[] {
+        const fromArray = Array.isArray(data.locationIds)
+            ? data.locationIds
+            : [];
+
+        const normalizedFromArray = fromArray
+            .map((id) => Number(id))
+            .filter((id) => Number.isFinite(id) && id > 0);
+
+        if (normalizedFromArray.length > 0) {
+            return Array.from(new Set(normalizedFromArray));
+        }
+
+        const singleLocationId = Number(data.locationId);
+        if (Number.isFinite(singleLocationId) && singleLocationId > 0) {
+            return [singleLocationId];
+        }
+
+        return [];
+    }
+
     saveSession(data: LoginData): void {
         localStorage.setItem(this.storageKeys.accessToken, data.accessToken ?? '');
         localStorage.setItem(this.storageKeys.refreshToken, data.refreshToken ?? '');
@@ -107,10 +165,15 @@ export class AuthService {
         localStorage.setItem(this.storageKeys.email, data.email ?? '');
         localStorage.setItem(this.storageKeys.fullName, data.fullName ?? '');
 
-        if (data.locationId === null || data.locationId === undefined) {
+        const normalizedLocationIds = this.normalizeLocationIds(data);
+        if (normalizedLocationIds.length === 0) {
             localStorage.removeItem(this.storageKeys.locationId);
+            localStorage.removeItem(this.storageKeys.locationIds);
+            this.activeLocationIdSubject.next(null);
         } else {
-            localStorage.setItem(this.storageKeys.locationId, String(data.locationId));
+            localStorage.setItem(this.storageKeys.locationId, String(normalizedLocationIds[0]));
+            localStorage.setItem(this.storageKeys.locationIds, JSON.stringify(normalizedLocationIds));
+            this.activeLocationIdSubject.next(normalizedLocationIds[0]);
         }
 
         this.setCodeRole(data.codeRole ?? '');
@@ -119,6 +182,47 @@ export class AuthService {
     setCodeRole(codeRole: string): void {
         localStorage.setItem(this.storageKeys.codeRole, codeRole);
         this.codeRoleSubject.next(codeRole);
+    }
+
+    /**
+     * Trả về toàn bộ danh sách locationId của user hiện tại từ localStorage.
+     * Ưu tiên đọc `locationIds` (JSON array đầy đủ) trước,
+     * fallback sang `locationId` (đơn lẻ) nếu array rỗng.
+     */
+    getLocationIds(): number[] {
+        // Ưu tiên đọc array đầy đủ trước
+        try {
+            const raw = localStorage.getItem(this.storageKeys.locationIds);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed)) {
+                    const normalized = parsed
+                        .map((id) => Number(id))
+                        .filter((id) => Number.isFinite(id) && id > 0);
+                    if (normalized.length > 0) {
+                        return Array.from(new Set(normalized));
+                    }
+                }
+            }
+        } catch {
+            // ignore parse error
+        }
+
+        // Fallback: locationId đơn lẻ
+        const single = Number(localStorage.getItem(this.storageKeys.locationId) ?? 0);
+        if (Number.isFinite(single) && single > 0) {
+            return [single];
+        }
+
+        return [];
+    }
+
+    /**
+     * Trả về locationId đầu tiên (primary) của user, hoặc null nếu không có.
+     */
+    getPrimaryLocationId(): number | null {
+        const ids = this.getLocationIds();
+        return ids[0] ?? null;
     }
 
     getAccessToken(): string {
@@ -147,6 +251,7 @@ export class AuthService {
     clearAuth(): void {
         Object.values(this.storageKeys).forEach((key) => localStorage.removeItem(key));
         this.codeRoleSubject.next('');
+        this.activeLocationIdSubject.next(null);
     }
 
     private getHeaders(): HttpHeaders {

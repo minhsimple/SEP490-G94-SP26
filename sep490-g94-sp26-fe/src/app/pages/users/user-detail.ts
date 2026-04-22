@@ -454,8 +454,9 @@ export class UserDetailComponent implements OnInit {
       next: ({ userRes, rolesRes, locationsRes }) => {
         const detailUser = userRes.data;
         this.user.set(detailUser);
+        const userLocationIds = this.getUserLocationIds(detailUser);
 
-        if (this.isManager && this.managerLocationId && Number(detailUser.locationId) !== this.managerLocationId) {
+        if (this.isManager && this.managerLocationId && !userLocationIds.includes(this.managerLocationId)) {
           this.errorMessage.set('MANAGER chỉ có thể xem người dùng thuộc chi nhánh của mình.');
           this.loading.set(false);
           return;
@@ -463,10 +464,22 @@ export class UserDetailComponent implements OnInit {
 
         const role = (rolesRes.data?.content ?? []).find((item) => Number(item.id) === Number(detailUser.roleId));
         this.roleName.set(role?.name ?? 'Không xác định');
-        this.roleCodeOfUser.set((role?.code ?? '').toUpperCase());
+        this.roleCodeOfUser.set((role?.code ?? detailUser.roleCode ?? '').toUpperCase());
 
-        const location = (locationsRes.data?.content ?? []).find((item) => Number(item.id) === Number(detailUser.locationId));
-        this.locationName.set(location?.name ?? '-');
+        const locationMap = new Map<number, string>();
+        (locationsRes.data?.content ?? []).forEach((item) => {
+          const id = this.toNumber(item.id);
+          if (id > 0) {
+            locationMap.set(id, String(item.name ?? '').trim());
+          }
+        });
+
+        const locationNames = userLocationIds
+          .map((id) => locationMap.get(id) ?? '')
+          .map((name) => name.trim())
+          .filter((name) => !!name);
+
+        this.locationName.set(locationNames.length ? locationNames.join(', ') : '-');
 
         this.loading.set(false);
         this.reloadMetrics();
@@ -476,6 +489,25 @@ export class UserDetailComponent implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  private getUserLocationIds(user: User | null | undefined): number[] {
+    if (!user) {
+      return [];
+    }
+
+    const normalized = Array.isArray(user.locationIds)
+      ? user.locationIds
+          .map((id) => this.toNumber(id))
+          .filter((id) => id > 0)
+      : [];
+
+    if (normalized.length > 0) {
+      return Array.from(new Set(normalized));
+    }
+
+    const single = this.toNumber(user.locationId);
+    return single > 0 ? [single] : [];
   }
 
   private loadSalesMetrics(): void {

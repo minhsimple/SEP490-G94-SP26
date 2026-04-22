@@ -1,5 +1,5 @@
 import {
-    Component, OnInit, signal, computed, ViewChild, ChangeDetectorRef
+    Component, OnInit, OnDestroy, signal, computed, ViewChild, ChangeDetectorRef, inject
 } from '@angular/core';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
@@ -24,6 +24,8 @@ import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { LocationService } from '../service/location.service';
 import { ServicePackage, ServicePackageService, ServiceResponse } from '../service/service-package.service';
 import { ServiceService, Service } from '../service/service.service';
+import { AuthService } from '../service/auth.service';
+import { Subscription } from 'rxjs';
 
 interface Column {
     field: string;
@@ -73,7 +75,7 @@ interface Column {
                         />
                     </p-iconfield>
                     <p-select
-                        *ngIf="!isSale"
+                        *ngIf="!isSingleLocation"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -558,11 +560,18 @@ interface Column {
     `],
     providers: [MessageService, ServiceService, ConfirmationService, LocationService]
 })
-export class CombosComponent implements OnInit {
+export class CombosComponent implements OnInit, OnDestroy {
+    private readonly authService = inject(AuthService);
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
-    readonly isSale = this.roleCode.includes('SALE');
-    readonly saleLocationId = Number(localStorage.getItem('locationId') ?? 0) || null;
-    readonly canEditCombo = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+    readonly isAdmin = this.roleCode.includes('ADMIN');
+    readonly isManager = this.roleCode.includes('MANAGER');
+    readonly canEditCombo = this.isAdmin || this.isManager;
+    readonly isSingleLocation = !this.isAdmin && !this.isManager;
+    readonly myLocationId = this.isSingleLocation ? this.authService.getPrimaryLocationId() : null;
+    readonly managerLocationIds: number[] = (() => {
+        if (!this.isManager) return [];
+        return this.authService.getLocationIds();
+    })();
 
     combos = signal<ServicePackage[]>([]);
     loading = false;
@@ -574,6 +583,7 @@ export class CombosComponent implements OnInit {
     searchTimeout: any;
     serviceSearchTimeout: any;
     selectedLocationId: number | null = null;
+    private locationSub?: Subscription;
 
     // Dialog states
     createDialog = false;
@@ -612,8 +622,17 @@ export class CombosComponent implements OnInit {
     ) {}
 
     ngOnInit() {
-        if (this.isSale && this.saleLocationId) {
-            this.selectedLocationId = this.saleLocationId;
+        if (this.isSingleLocation && this.myLocationId) {
+            this.selectedLocationId = this.myLocationId;
+        }
+
+        if (this.isManager) {
+            this.locationSub = this.authService.activeLocationId$.subscribe((id) => {
+                this.selectedLocationId = id ?? this.managerLocationIds[0] ?? null;
+                this.loadCombos(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
+                this.loadAllServices();
+                this.cdr.markForCheck();
+            });
         }
 
         this.cols = [
@@ -624,8 +643,10 @@ export class CombosComponent implements OnInit {
             { field: 'status',       header: 'Trạng thái' },
         ];
         this.loadLocations();
-        this.loadCombos();
-        this.loadAllServices();
+        if (!this.isManager) {
+            this.loadCombos();
+            this.loadAllServices();
+        }
 
         // Check for edit query param (e.g., from detail page)
         this.route.queryParams.subscribe(params => {
@@ -648,15 +669,22 @@ export class CombosComponent implements OnInit {
         });
     }
 
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
+    }
+
     // ── Locations ──────────────────────────────────────────────────────────────
     loadLocations() {
         this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
             next: (res) => {
                 if (res.code === 200) {
-                    this.locationOptions = res.data.content.map(l => ({
-                        label: l.name ?? '',
-                        value: l.id
-                    }));
+                    const allLocOpts = res.data.content.map(l => ({ label: l.name ?? '', value: l.id }));
+                    this.locationOptions = this.isManager
+                        ? allLocOpts.filter(l => this.managerLocationIds.includes(Number(l.value)))
+                        : allLocOpts;
+                    if (this.isManager && this.managerLocationIds.length > 0 && !this.selectedLocationId) {
+                        this.selectedLocationId = this.managerLocationIds[0];
+                    }
                     this.cdr.markForCheck();
                 }
             }
@@ -666,7 +694,11 @@ export class CombosComponent implements OnInit {
     // ── Combos ─────────────────────────────────────────────────────────────────
     loadCombos(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
         this.loading = true;
-        const effectiveLocationId = this.isSale ? this.saleLocationId : (locationId ?? undefined);
+        const effectiveLocationId = this.isSingleLocation
+            ? (this.myLocationId ?? undefined)
+            : this.isManager
+                ? (locationId ?? this.managerLocationIds[0] ?? undefined)
+                : (locationId ?? undefined);
         this.servicePackageService.searchServicePackages({ 
             page, 
             size, 
@@ -703,17 +735,30 @@ export class CombosComponent implements OnInit {
     }
 
     onLocationChange(event: any) {
-        if (this.isSale) {
+        if (this.isSingleLocation) {
             return;
         }
         this.selectedLocationId = event.value;
+        if (this.isManager && !this.selectedLocationId) {
+            this.selectedLocationId = this.managerLocationIds[0] ?? null;
+        }
         this.loadCombos(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
         if (this.dt) this.dt.reset();
     }
 
     // ── Services (picker) ──────────────────────────────────────────────────────
     loadAllServices() {
-        this.serviceService.searchServices({ page: 0, size: 200 }).subscribe({
+        const effectiveLocationId = this.isSingleLocation
+            ? this.myLocationId
+            : this.isManager
+                ? (this.selectedLocationId ?? this.managerLocationIds[0] ?? null)
+                : null;
+
+        this.serviceService.searchServices({
+            page: 0,
+            size: 200,
+            locationId: effectiveLocationId ?? undefined,
+        }).subscribe({
             next: (res) => {
                 if (res.data) {
                     this.allServices.set(res.data.content);

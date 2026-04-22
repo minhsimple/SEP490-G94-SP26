@@ -1,19 +1,22 @@
-import { Component, HostListener, inject, signal, OnInit } from '@angular/core';
+import { Component, HostListener, inject, signal, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { StyleClassModule } from 'primeng/styleclass';
+import { SelectModule } from 'primeng/select';
 import { AppConfigurator } from './app.configurator';
 import { LayoutService } from '../service/layout.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from './../../pages/service/auth.service';
 import { LocationService } from '../../pages/service/location.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [RouterModule, CommonModule, StyleClassModule, AppConfigurator],
+  imports: [RouterModule, CommonModule, StyleClassModule, FormsModule, SelectModule, AppConfigurator],
   template: ` <div class="layout-topbar">
     <div class="layout-topbar-logo-container">
       <button
@@ -81,7 +84,31 @@ import { LocationService } from '../../pages/service/location.service';
           <app-configurator />
         </div>
 
-        <div *ngIf="showLocationBadge" class="topbar-location-chip" title="Chi nhánh đăng nhập">
+        <!-- Manager: dropdown chọn chi nhánh -->
+        <div *ngIf="isManager && locationOptions.length > 1" class="topbar-location-select">
+          <i class="pi pi-map-marker" style="color: var(--primary-color); font-size: 0.8rem;"></i>
+          <p-select
+            [options]="locationOptions"
+            [(ngModel)]="selectedLocationId"
+            optionLabel="label"
+            optionValue="value"
+            (onChange)="onLocationSelect($event)"
+            [style]="{ 'min-width': '170px', 'font-size': '0.82rem' }"
+            appendTo="body"
+          />
+          <button
+            type="button"
+            class="topbar-location-apply"
+            (click)="applySelectedLocationAndRefresh()"
+            [disabled]="!selectedLocationId"
+            title="Áp dụng chi nhánh"
+          >
+            <i class="pi pi-check"></i>
+          </button>
+        </div>
+
+        <!-- Non-manager / single location: badge tĩnh -->
+        <div *ngIf="showLocationBadge && !isManager" class="topbar-location-chip" title="Chi nhánh đăng nhập">
           <i class="pi pi-map-marker"></i>
           <span>{{ locationLabel() }}</span>
         </div>
@@ -180,8 +207,38 @@ import { LocationService } from '../../pages/service/location.service';
         }
       }
 
+      .topbar-location-select {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .topbar-location-apply {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 999px;
+        border: 1px solid var(--surface-border, #d1d5db);
+        background: var(--surface-card, #ffffff);
+        color: var(--primary-color, #3b82f6);
+        cursor: pointer;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+
+        &:hover:not(:disabled) {
+          background: var(--surface-100, #f1f5f9);
+          border-color: var(--primary-color, #3b82f6);
+        }
+
+        &:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+      }
+
       @media (max-width: 991px) {
-        .topbar-location-chip {
+        .topbar-location-select {
           display: none;
         }
       }
@@ -317,7 +374,7 @@ import { LocationService } from '../../pages/service/location.service';
     `,
   ],
 })
-export class AppTopbar implements OnInit {
+export class AppTopbar implements OnInit, OnDestroy {
   items!: MenuItem[];
   profileMenuOpen = signal(false);
 
@@ -326,6 +383,10 @@ export class AppTopbar implements OnInit {
   userRole = signal('');
   locationLabel = signal('');
   showLocationBadge = false;
+  isManager = false;
+  locationOptions: { label: string; value: number }[] = [];
+  selectedLocationId: number | null = null;
+  private activeLocationSub?: Subscription;
 
   layoutService = inject(LayoutService);
 
@@ -334,21 +395,83 @@ export class AppTopbar implements OnInit {
     private router: Router,
     private authService: AuthService,
     private locationService: LocationService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
-    // Đọc thẳng từ localStorage — không cần gọi API
     this.userName.set(localStorage.getItem('fullName') || 'Người dùng');
     this.userEmail.set(localStorage.getItem('email') || '');
     const role = localStorage.getItem('codeRole') || '';
     this.userRole.set(role);
 
-    const isAdmin = role.toUpperCase().includes('ADMIN');
+    const roleUpper = role.toUpperCase();
+    const isAdmin = roleUpper.includes('ADMIN');
+    this.isManager = roleUpper.includes('MANAGER');
     this.showLocationBadge = !isAdmin;
 
-    if (this.showLocationBadge) {
+    if (this.isManager) {
+      this.activeLocationSub = this.authService.activeLocationId$.subscribe((id) => {
+        this.selectedLocationId = id;
+        this.cdr.markForCheck();
+      });
+      this.loadManagerLocations();
+    } else if (this.showLocationBadge) {
       this.loadLocationLabel();
     }
+
+    this.cdr.markForCheck();
+  }
+
+  ngOnDestroy() {
+    this.activeLocationSub?.unsubscribe();
+  }
+
+  private loadManagerLocations() {
+    const managerLocationIds = this.authService.getLocationIds();
+    if (managerLocationIds.length === 0) {
+      this.loadLocationLabel();
+      return;
+    }
+
+    this.locationService.searchLocations({ page: 0, size: 200, sort: 'name,ASC' }).subscribe({
+      next: (res) => {
+        const all = res.data?.content ?? [];
+        this.locationOptions = all
+          .filter(l => managerLocationIds.includes(Number(l.id)))
+          .map(l => ({ label: l.name ?? `Chi nhánh #${l.id}`, value: Number(l.id) }));
+
+        // Set active location
+        const currentActive = this.authService.activeLocationId;
+        if (currentActive && managerLocationIds.includes(currentActive)) {
+          this.selectedLocationId = currentActive;
+        } else if (this.locationOptions.length > 0) {
+          this.selectedLocationId = this.locationOptions[0].value;
+          this.authService.setActiveLocationId(this.selectedLocationId);
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.loadLocationLabel();
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  onLocationSelect(event: any) {
+    const id = event.value as number | null;
+    this.selectedLocationId = id;
+    this.authService.setActiveLocationId(id);
+
+    this.cdr.markForCheck();
+  }
+
+  applySelectedLocationAndRefresh() {
+    if (!this.selectedLocationId) {
+      return;
+    }
+
+    this.authService.setActiveLocationId(this.selectedLocationId);
+    window.location.reload();
   }
 
   private loadLocationLabel() {
@@ -367,9 +490,11 @@ export class AppTopbar implements OnInit {
         if (locationName) {
           this.locationLabel.set(locationName);
         }
+        this.cdr.markForCheck();
       },
       error: () => {
         // Keep fallback label when location list cannot be loaded.
+        this.cdr.markForCheck();
       },
     });
   }

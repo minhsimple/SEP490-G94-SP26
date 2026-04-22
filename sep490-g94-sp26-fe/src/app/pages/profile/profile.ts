@@ -253,7 +253,8 @@ export class ProfileComponent implements OnInit {
             next: (res) => {
                 this.user.set(res.data);
                 this.loading.set(false);
-                this.loadRoleAndLocation(res.data.roleId, res.data.locationId);
+                const locationId = res.data.locationId ?? res.data.locationIds?.[0];
+                this.loadRoleAndLocation(res.data.roleId, locationId);
             },
             error: (err) => {
                 this.errorMessage.set('Không thể tải thông tin cá nhân. Vui lòng thử lại sau.');
@@ -263,7 +264,7 @@ export class ProfileComponent implements OnInit {
         });
     }
 
-    private loadRoleAndLocation(roleId: number, locationId: number) {
+    private loadRoleAndLocation(roleId: number, locationId: number | undefined) {
         forkJoin({
             roles: this.roleService.searchRoles({ size: 100 }),
             locations: this.locationService.searchLocations({ size: 100 })
@@ -272,14 +273,18 @@ export class ProfileComponent implements OnInit {
                 const role = roles.data.content.find(r => r.id === roleId);
                 this.roleName.set(role?.name || `Vai trò #${roleId}`);
 
-                const location = locations.data.content.find(l => l.id === locationId);
-                this.locationName.set(location?.name || `Chi nhánh #${locationId}`);
+                if (locationId) {
+                    const location = locations.data.content.find(l => l.id === locationId);
+                    this.locationName.set(location?.name || `Chi nhánh #${locationId}`);
+                } else {
+                    this.locationName.set('-');
+                }
 
                 this.cdr.markForCheck();
             },
             error: () => {
                 this.roleName.set(`Vai trò #${roleId}`);
-                this.locationName.set(`Chi nhánh #${locationId}`);
+                this.locationName.set(locationId ? `Chi nhánh #${locationId}` : '-');
                 this.cdr.markForCheck();
             }
         });

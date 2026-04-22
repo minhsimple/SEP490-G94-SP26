@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ViewChild, ChangeDetectorRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { Table, TableModule } from 'primeng/table';
@@ -17,6 +17,8 @@ import { TextareaModule } from 'primeng/textarea';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { MenuItemService } from '../service/menu-item.service';
+import { AuthService } from '../service/auth.service';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-menu-item',
@@ -45,7 +47,7 @@ import { MenuItemService } from '../service/menu-item.service';
                             class="w-full"
                         />
                     </p-iconfield>
-                    <p-select *ngIf="!isSale"
+                    <p-select *ngIf="!isSingleLocation"
                         [options]="locationOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -315,9 +317,15 @@ import { MenuItemService } from '../service/menu-item.service';
     `],
     providers: [MessageService, MenuItemService, ConfirmationService]
 })
-export class MenuItemComponent implements OnInit {
+export class MenuItemComponent implements OnInit, OnDestroy {
+    private readonly authService = inject(AuthService);
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
-    readonly canManageMenuItem = this.roleCode.includes('ADMIN') || this.roleCode.includes('MANAGER');
+    readonly isAdmin = this.roleCode.includes('ADMIN');
+    readonly isManager = this.roleCode.includes('MANAGER');
+    readonly canManageMenuItem = this.isAdmin || this.isManager;
+    readonly isSingleLocation = !this.isAdmin && !this.isManager;
+    readonly myLocationId = this.isSingleLocation ? this.authService.getPrimaryLocationId() : null;
+    readonly managerLocationIds: number[] = this.isManager ? this.authService.getLocationIds() : [];
 
     menuItems = signal<any[]>([]);
     categories: any[] = [];
@@ -331,7 +339,7 @@ export class MenuItemComponent implements OnInit {
     searchTimeout: any;
     selectedLocationId: number | null = null;
     locationOptions: { label: string; value: number }[] = [];
-    isSale = localStorage.getItem('codeRole') === 'SALE';
+    private locationSub?: Subscription;
 
     itemDialog = false;
     submitted = false;
@@ -350,12 +358,26 @@ export class MenuItemComponent implements OnInit {
     ) { }
 
     ngOnInit() {
-        if (this.isSale) {
-            const locId = localStorage.getItem('locationId');
-            if (locId) this.selectedLocationId = Number(locId);
+        if (this.isSingleLocation && this.myLocationId) {
+            this.selectedLocationId = this.myLocationId;
         }
+
+        // Manager: subscribe activeLocationId$ từ topbar
+        if (this.isManager) {
+            this.locationSub = this.authService.activeLocationId$.subscribe(id => {
+                this.selectedLocationId = id;
+                this.loadItems(0, this.pageSize, this.searchKeyword || undefined, id);
+            });
+        }
+
         this.loadDropdowns();
-        this.loadItems();
+        if (!this.isManager) {
+            this.loadItems();
+        }
+    }
+
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
     }
 
     loadDropdowns() {
@@ -365,11 +387,16 @@ export class MenuItemComponent implements OnInit {
         this.menuItemService.getLocations().subscribe({
             next: (res: any) => {
                 if (res?.data?.content) {
-                    this.locations = res.data.content;
-                    this.locationOptions = res.data.content.map((l: any) => ({
-                        label: l.name ?? '',
-                        value: l.id
-                    }));
+                    this.locations = this.isManager
+                        ? res.data.content.filter((l: any) => this.managerLocationIds.includes(Number(l.id)))
+                        : res.data.content;
+                    const allLocOpts = res.data.content.map((l: any) => ({ label: l.name ?? '', value: l.id }));
+                    this.locationOptions = this.isManager
+                        ? allLocOpts.filter((l: any) => this.managerLocationIds.includes(Number(l.value)))
+                        : allLocOpts;
+                    if (this.isManager && this.managerLocationIds.length > 0 && !this.selectedLocationId) {
+                        this.selectedLocationId = this.managerLocationIds[0];
+                    }
                 }
             }
         });
@@ -378,7 +405,12 @@ export class MenuItemComponent implements OnInit {
     loadItems(page = 0, size = this.pageSize, name?: string, locationId?: number | null) {
         this.loading = true;
         const params: any = { page, size, name };
-        if (locationId) params.locationId = locationId;
+        const effectiveLocationId = this.isSingleLocation
+            ? this.myLocationId
+            : this.isManager
+                ? (locationId ?? this.managerLocationIds[0] ?? null)
+                : locationId;
+        if (effectiveLocationId) params.locationId = effectiveLocationId;
         this.menuItemService.search(params).subscribe({
             next: (res: any) => {
                 if (res?.data) {
@@ -408,12 +440,19 @@ export class MenuItemComponent implements OnInit {
     }
 
     onLocationChange(event: any) {
+        if (this.isSingleLocation) {
+            return;
+        }
         this.selectedLocationId = event.value;
+        if (this.isManager && !this.selectedLocationId) {
+            this.selectedLocationId = this.managerLocationIds[0] ?? null;
+        }
         this.loadItems(0, this.pageSize, this.searchKeyword || undefined, this.selectedLocationId);
         if (this.dt) {
             this.dt.reset();
         }
     }
+
 
     openNew() {
         if (!this.canManageMenuItem) return;

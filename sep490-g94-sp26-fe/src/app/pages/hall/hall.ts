@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -16,6 +16,8 @@ import { TextareaModule } from 'primeng/textarea';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { Hall, HallService } from '../service/hall.service';
 import { LocationService } from '../service/location.service';
+import { AuthService } from '../service/auth.service';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-hall',
@@ -41,7 +43,7 @@ import { LocationService } from '../service/location.service';
                             (input)="onSearch()" placeholder="Tìm kiếm sảnh..." />
                     </p-iconfield>
 
-                    <p-select *ngIf="!isSale"
+                    <p-select *ngIf="!isSingleLocation"
                         [options]="locationFilterOptions"
                         [(ngModel)]="selectedLocationId"
                         optionLabel="label"
@@ -66,7 +68,7 @@ import { LocationService } from '../service/location.service';
                     </div>
                 </div>
 
-                <p-button *ngIf="!isSale" label="Thêm sảnh" icon="pi pi-plus" (onClick)="openNew()" />
+                <p-button *ngIf="!isSingleLocation" label="Thêm sảnh" icon="pi pi-plus" (onClick)="openNew()" />
             </div>
 
             <!-- Loading -->
@@ -112,7 +114,7 @@ import { LocationService } from '../service/location.service';
                                         <button class="btn-detail" (click)="viewDetail(hall)">
                                             <i class="pi pi-eye"></i> Chi tiết
                                         </button>
-                                        <button *ngIf="!isSale" class="btn-edit" (click)="editHall(hall)" pTooltip="Chỉnh sửa">
+                                        <button *ngIf="!isSingleLocation" class="btn-edit" (click)="editHall(hall)" pTooltip="Chỉnh sửa">
                                             <i class="pi pi-pencil"></i>
                                         </button>
                                     </div>
@@ -142,9 +144,9 @@ import { LocationService } from '../service/location.service';
                                 <div class="row-actions">
                                     <p-button icon="pi pi-eye" [rounded]="true" [outlined]="true" severity="info"
                                         (click)="viewDetail(hall)" pTooltip="Chi tiết" tooltipPosition="top" />
-                                    <p-button *ngIf="!isSale" icon="pi pi-pencil" [rounded]="true" [outlined]="true" severity="secondary"
+                                    <p-button *ngIf="!isSingleLocation" icon="pi pi-pencil" [rounded]="true" [outlined]="true" severity="secondary"
                                         (click)="editHall(hall)" pTooltip="Chỉnh sửa" tooltipPosition="top" />
-                                    <p-button *ngIf="!isSale"
+                                    <p-button *ngIf="!isSingleLocation"
                                         [icon]="isHallActive(hall.status) ? 'pi pi-ban' : 'pi pi-check-circle'"
                                         [severity]="isHallActive(hall.status) ? 'warn' : 'success'"
                                         [rounded]="true" [outlined]="true"
@@ -549,7 +551,7 @@ import { LocationService } from '../service/location.service';
         }
     `]
 })
-export class HallComponent implements OnInit {
+export class HallComponent implements OnInit, OnDestroy {
     halls = signal<Hall[]>([]);
     groupedHalls: { locationName: string; halls: Hall[] }[] = [];
     locationOptions: { label: string; value: number }[] = [];
@@ -564,11 +566,18 @@ export class HallComponent implements OnInit {
     searchName = '';
     selectedLocationId: number | null = null;
     isActive = true;
-    isSale = localStorage.getItem('codeRole') === 'SALE';
+    private readonly authService = inject(AuthService);
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly isAdmin = this.roleCode.includes('ADMIN');
+    readonly isManager = this.roleCode.includes('MANAGER');
+    readonly isSingleLocation = !this.isAdmin && !this.isManager;
+    readonly managerLocationIds: number[] = this.isManager ? this.authService.getLocationIds() : [];
+    readonly myLocationId = this.isSingleLocation ? this.authService.getPrimaryLocationId() : null;
 
     editingHall: any = {};
     selectedImages: File[] = [];
     selectedImageUrls: string[] = [];
+    private locationSub?: Subscription;
 
     constructor(
         private hallService: HallService,
@@ -580,20 +589,46 @@ export class HallComponent implements OnInit {
     ) { }
 
     ngOnInit() {
-        if (this.isSale) {
-            const locId = localStorage.getItem('locationId');
-            if (locId) this.selectedLocationId = Number(locId);
+        if (this.isSingleLocation && this.myLocationId) {
+            this.selectedLocationId = this.myLocationId;
         }
+
+        // Manager: subscribe activeLocationId$ từ topbar
+        if (this.isManager) {
+            this.locationSub = this.authService.activeLocationId$.subscribe(id => {
+                this.selectedLocationId = id;
+                this.loadHalls();
+                this.cdr.markForCheck();
+            });
+        }
+
         this.loadLocations();
-        this.loadHalls();
+        if (!this.isManager) {
+            this.loadHalls();
+        }
+    }
+
+    ngOnDestroy() {
+        this.locationSub?.unsubscribe();
     }
 
     loadLocations() {
         this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
             next: (res) => {
                 if (res.code === 200) {
-                    this.locationOptions = res.data.content.map(l => ({ label: l.name ?? '', value: l.id }));
-                    this.locationFilterOptions = [{ label: 'Tất cả chi nhánh', value: null as any }, ...this.locationOptions];
+                    const allLocOpts = res.data.content.map(l => ({ label: l.name ?? '', value: l.id }));
+                    this.locationOptions = this.isManager
+                        ? allLocOpts.filter(l => this.managerLocationIds.includes(Number(l.value)))
+                        : allLocOpts;
+                    const filteredForFilter = this.isManager
+                        ? allLocOpts.filter(l => this.managerLocationIds.includes(Number(l.value)))
+                        : allLocOpts;
+                    this.locationFilterOptions = this.isAdmin
+                        ? [{ label: 'Tất cả chi nhánh', value: null as any }, ...filteredForFilter]
+                        : filteredForFilter;
+                    if (this.isManager && this.managerLocationIds.length > 0 && !this.selectedLocationId) {
+                        this.selectedLocationId = this.managerLocationIds[0];
+                    }
                     this.cdr.markForCheck();
                 }
             }
@@ -604,7 +639,14 @@ export class HallComponent implements OnInit {
         this.loading = true;
         const params: any = { page: 0, size: 100 };
         if (this.searchName) params.name = this.searchName;
-        if (this.selectedLocationId) params.locationId = this.selectedLocationId;
+        const effectiveLocationId = this.isSingleLocation
+            ? this.myLocationId
+            : this.isManager
+                ? (this.selectedLocationId ?? this.managerLocationIds[0] ?? null)
+                : this.selectedLocationId;
+        if (effectiveLocationId && effectiveLocationId > 0) {
+            params.locationId = effectiveLocationId;
+        }
 
         this.hallService.searchHalls(params).subscribe({
             next: (res) => {
@@ -633,7 +675,13 @@ export class HallComponent implements OnInit {
     }
 
     onSearch() { this.loadHalls(); }
-    onLocationFilter() { this.loadHalls(); }
+    onLocationFilter() {
+        if (this.isManager && !this.selectedLocationId) {
+            this.selectedLocationId = this.managerLocationIds[0] ?? null;
+        }
+        this.loadHalls();
+    }
+
 
     openNew() {
         this.editingHall = {};
