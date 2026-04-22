@@ -126,7 +126,8 @@ public enum ERROR_CODE {
     BOOKING_INVALID_NUMBER_OF_GUESTS(14005, "Số lượng khách quá lớn", HttpStatus.BAD_REQUEST),
     BOOKING_DATE_MUST_BE_IN_FUTURE(14006, "Ngày cưới phải là ngày trong tương lai", HttpStatus.BAD_REQUEST),
     BOOKING_DATE_TOO_FAR(14007, "Ngày cưới phải đặt trước 3 tháng từ hôm nay", HttpStatus.BAD_REQUEST),
-
+    BOOKING_UPDATE_INVALID(14008, "Hợp đồng đã được thanh lí hoặc bị hủy không thể thay đổi", HttpStatus.BAD_REQUEST),
+    BOOKING_UPDATE_EXPIRED(14009, "Hợp đồng chỉ có thể thay đổi muộn nhất là trước ngày tổ chức 30 ngày", HttpStatus.BAD_REQUEST),
     /**
      * Payment Error
      */
@@ -141,6 +142,7 @@ public enum ERROR_CODE {
      * Invoice Error
      */
     INVOICE_NOT_FOUND(17001, "Hóa đơn không tồn tại", HttpStatus.NOT_FOUND),
+    INVOICE_LIQUIDATE_INVALID(17002, "Hóa đơn thanh lí không hợp lệ", HttpStatus.BAD_REQUEST),
 
     /**
      * Table Layout Error

@@ -68,8 +68,9 @@ public class PaymentServiceImpl implements PaymentService {
 
             Invoice invoice = invoiceRepository.findByContractIdAndStatus(payment.getContractId(), RecordStatus.active)
                     .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+            invoice.setInvoiceState(InvoiceState.PARTIALLY_PAID);
 
-            List<Payment> payments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(payment.getContractId(),
+            List<Payment> successPayments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(payment.getContractId(),
                     PaymentState.SUCCESS, RecordStatus.active);
             if (!taskListRepository.existsByContractId(contract.getId())) {
                 String title = (contract.getBrideName() != null ? contract.getBrideName() : "") +
@@ -84,7 +85,7 @@ public class PaymentServiceImpl implements PaymentService {
 
                 taskListService.createNewTaskList(taskListRequest);
             }
-            if (payments.size() > 1) {
+            if (successPayments.size() > 1) {
                 invoice.setInvoiceState(InvoiceState.PAID);
                 contract.setContractState(ContractState.LIQUIDATED);
             } else {

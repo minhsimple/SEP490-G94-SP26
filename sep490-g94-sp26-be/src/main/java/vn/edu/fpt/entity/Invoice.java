@@ -10,6 +10,7 @@ import org.hibernate.type.SqlTypes;
 import vn.edu.fpt.util.enums.InvoiceState;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -38,7 +39,7 @@ public class Invoice extends BaseEntity {
     BigDecimal totalAmount = BigDecimal.ZERO;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "jsonb", nullable = false)
     InvoiceData data;
 
     @Data
@@ -53,6 +54,8 @@ public class Invoice extends BaseEntity {
 
         @JsonProperty("service_package_invoice")
         private ServicePackageInvoice servicePackageInvoice;
+
+        private List<IncidentInvoice> incidents = new ArrayList<>();
     }
 
     @Data
@@ -114,6 +117,15 @@ public class Invoice extends BaseEntity {
         private String name;
         private BigDecimal price;
         private String unit;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class IncidentInvoice {
+        private String title;
+        private String description;
+        private BigDecimal price = BigDecimal.ZERO;
     }
 }
 
