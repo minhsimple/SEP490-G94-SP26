@@ -1559,10 +1559,8 @@ export class BookingDetailComponent implements OnInit {
             this.router.navigateByUrl(this.returnUrl);
             return;
         }
-        if (window.history.length > 1) {
-            this.location.back();
-            return;
-        }
+
+        // Always fallback to booking list to avoid back-loop to invoice detail.
         this.router.navigate(['/pages/booking']);
     }
 

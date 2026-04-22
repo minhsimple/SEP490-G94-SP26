@@ -331,7 +331,7 @@ import { forkJoin, of } from 'rxjs';
                                     icon="pi pi-pencil"
                                     severity="secondary"
                                     [outlined]="true"
-                                    [disabled]="incidentLoading || !incidents.length"
+                                    [disabled]="incidentLoading"
                                     (onClick)="startIncidentCostEdit()"
                                 />
 
@@ -356,6 +356,48 @@ import { forkJoin, of } from 'rxjs';
 
                         <div *ngIf="incidentLoading" class="text-center py-5 text-500">
                             <i class="pi pi-spin pi-spinner"></i>
+                        </div>
+
+                        <div
+                            *ngIf="!incidentLoading && incidentEditing"
+                            class="grid mb-3"
+                            style="grid-template-columns:2fr 3fr 180px auto;gap:0.6rem;align-items:end;"
+                        >
+                            <div>
+                                <label class="text-xs text-500 block mb-1">Tiêu đề</label>
+                                <input
+                                    pInputText
+                                    [(ngModel)]="newIncidentDraft.title"
+                                    placeholder="Nhập tiêu đề phát sinh"
+                                    style="width:100%;"
+                                    (keydown.enter)="addIncidentInEditMode()"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs text-500 block mb-1">Mô tả</label>
+                                <input
+                                    pInputText
+                                    [(ngModel)]="newIncidentDraft.description"
+                                    placeholder="Mô tả phát sinh"
+                                    style="width:100%;"
+                                    (keydown.enter)="addIncidentInEditMode()"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs text-500 block mb-1">Chi phí</label>
+                                <p-inputnumber
+                                    [(ngModel)]="newIncidentDraft.price"
+                                    [min]="0"
+                                    [useGrouping]="true"
+                                    [inputStyle]="{ width: '100%', textAlign: 'right' }"
+                                />
+                            </div>
+                            <p-button
+                                label="Thêm incident"
+                                icon="pi pi-plus"
+                                [outlined]="true"
+                                (onClick)="addIncidentInEditMode()"
+                            />
                         </div>
 
                         <table class="cost-table" *ngIf="!incidentLoading && incidents.length; else noIncidentTpl">
@@ -421,10 +463,7 @@ import { forkJoin, of } from 'rxjs';
                             <span>Tạm tính:</span>
                             <span>{{ formatPrice(invoice.subTotal ?? invoice.totalAmount) }}</span>
                         </div>
-                        <div class="summary-line">
-                            <span>Thuế:</span>
-                            <span>{{ formatPrice(invoice.tax ?? 0) }}</span>
-                        </div>
+                        
                         <div class="summary-line total">
                             <span>Tổng cộng:</span>
                             <span style="color:var(--primary-color);">{{ formatPrice(invoice.totalAmount) }}</span>
@@ -493,10 +532,7 @@ import { forkJoin, of } from 'rxjs';
                             <span>Tạm tính:</span>
                             <span>{{ formatPrice(invoice.subTotal ?? invoice.totalAmount) }}</span>
                         </div>
-                        <div class="summary-line">
-                            <span>Thuế:</span>
-                            <span>{{ formatPrice(invoice.tax ?? 0) }}</span>
-                        </div>
+                        
                         <div class="summary-line" *ngIf="incidents.length">
                             <span>Phát sinh ghi nhận:</span>
                             <span>{{ formatPrice(incidentTotalAmount) }}</span>
@@ -607,6 +643,11 @@ export class InvoiceDetailComponent implements OnInit {
     incidentLoading = false;
     incidentEditing = false;
     savingIncidentCosts = false;
+    newIncidentDraft: InvoiceIncidentPayload = {
+        title: '',
+        description: '',
+        price: 0,
+    };
     loading = false;
     returnUrl = '';
     paymentDialog = false;
@@ -731,11 +772,12 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     startIncidentCostEdit() {
-        if (this.incidentLoading || this.savingIncidentCosts || !this.incidents.length) {
+        if (this.incidentLoading || this.savingIncidentCosts) {
             return;
         }
 
         this.incidentEditing = true;
+        this.newIncidentDraft = { title: '', description: '', price: 0 };
         this.cdr.detectChanges();
     }
 
@@ -745,12 +787,53 @@ export class InvoiceDetailComponent implements OnInit {
         }
 
         this.incidentEditing = false;
+        this.newIncidentDraft = { title: '', description: '', price: 0 };
         this.loadIncidentsByContract();
+    }
+
+    addIncidentInEditMode() {
+        if (!this.incidentEditing || this.incidentLoading || this.savingIncidentCosts) {
+            return;
+        }
+
+        const title = String(this.newIncidentDraft.title ?? '').trim();
+        if (!title) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Thiếu tiêu đề',
+                detail: 'Vui lòng nhập tiêu đề phát sinh để thêm.',
+                life: 2500,
+            });
+            return;
+        }
+
+        this.incidents = [
+            ...this.incidents,
+            {
+                title,
+                description: String(this.newIncidentDraft.description ?? '').trim(),
+                price: this.normalizeIncidentPrice(this.newIncidentDraft.price),
+            }
+        ];
+
+        this.newIncidentDraft = { title: '', description: '', price: 0 };
+        this.cdr.detectChanges();
     }
 
     saveIncidentCostChanges() {
         const contractId = Number(this.invoice?.contractId ?? 0);
         if (!this.incidentEditing || this.incidentLoading || this.savingIncidentCosts || !Number.isFinite(contractId) || contractId <= 0) {
+            return;
+        }
+
+        const hasInvalidTitle = this.incidents.some((incident) => !String(incident?.title ?? '').trim());
+        if (hasInvalidTitle) {
+            this.messageService.add({
+                severity: 'warn',
+                summary: 'Dữ liệu chưa hợp lệ',
+                detail: 'Mỗi phát sinh cần có tiêu đề trước khi lưu.',
+                life: 2800,
+            });
             return;
         }
 
@@ -765,6 +848,7 @@ export class InvoiceDetailComponent implements OnInit {
             next: (res) => {
                 this.savingIncidentCosts = false;
                 this.incidentEditing = false;
+                this.newIncidentDraft = { title: '', description: '', price: 0 };
                 this.incidents = (res.data ?? []).map((incident) => ({
                     title: String(incident?.title ?? '').trim(),
                     description: String(incident?.description ?? '').trim(),
