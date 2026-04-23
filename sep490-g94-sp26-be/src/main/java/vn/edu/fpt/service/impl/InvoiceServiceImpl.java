@@ -303,6 +303,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         paymentService.createPayment(paymentRequest);
         contract.setContractState(ContractState.CANCELLED);
+        invoice.setInvoiceState(InvoiceState.REFUNDED);
 
         return mapToInvoiceResponse(invoice, contract);
     }
