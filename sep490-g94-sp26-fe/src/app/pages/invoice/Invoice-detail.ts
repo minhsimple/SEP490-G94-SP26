@@ -344,7 +344,7 @@ import { forkJoin, of } from 'rxjs';
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2" *ngIf="canEditIncident">
                                 <p-button
                                     *ngIf="!incidentEditing"
                                     label="Sửa chi phí phát sinh"
@@ -697,6 +697,9 @@ export class InvoiceDetailComponent implements OnInit {
     menuItemDetails: Array<{ category: string; name: string; quantity: number; unitPrice: number; unit?: string; totalPrice: number }> = [];
     serviceComponentDetails: Array<{ name: string; quantity: number; unitPrice: number; unit?: string; totalPrice: number }> = [];
 
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly isAccountant = this.roleCode.includes('ACCOUNTANT');
+
     paymentForm: { amount: number | null; method: string; note: string; paymentDate: string; round: number } = {
         amount: null, method: 'CASH', note: '', paymentDate: '', round: 1
     };
@@ -752,6 +755,12 @@ export class InvoiceDetailComponent implements OnInit {
         const state = this.contractState.toUpperCase();
         if (state === 'DRAFT' || state === 'CANCELLED') return false;
         return true;
+    }
+
+    get canEditIncident(): boolean {
+        if (!this.isAccountant) return false;
+        const invoiceState = String(this.invoice?.invoiceState ?? '').toUpperCase();
+        return invoiceState !== 'PAID' && invoiceState !== 'REFUNDED';
     }
 
     constructor(

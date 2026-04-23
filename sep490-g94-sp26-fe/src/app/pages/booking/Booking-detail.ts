@@ -1372,7 +1372,7 @@ export class BookingDetailComponent implements OnInit {
 
             <p><strong>BÊN SỬ DỤNG DỊCH VỤ (BÊN A - KHÁCH HÀNG)</strong></p>
             <p><strong>Người đại diện:</strong> <span style="color:#dc2626">${esc(customerName)}</span></p>
-
+            <p><strong>Địa chỉ:</strong> ${esc(customerAddress)}</p>
             <table>
                 <tr>
                     <td><strong>CÔ DÂU: ${esc(brideName)} - Tuổi: ${esc(brideAge)}</strong></td>
@@ -1380,7 +1380,6 @@ export class BookingDetailComponent implements OnInit {
                 </tr>
                 <tr>
                     <td>
-                        <p><strong>Địa chỉ:</strong> ${esc(customerAddress)}</p>
                         <p><strong>Số điện thoại:</strong> ${esc(customerPhone)}</p>
                         <p><strong>Email:</strong> ${esc(customerEmail)}</p>
                         <p><strong>Cha cô dâu:</strong> ${esc(brideFatherName)}</p>
