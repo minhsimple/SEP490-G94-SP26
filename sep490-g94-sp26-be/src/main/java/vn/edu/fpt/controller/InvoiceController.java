@@ -76,4 +76,12 @@ public class InvoiceController {
                 .data(invoiceService.updateIncidentInvoices(contractId, incidentInvoices))
                 .build();
     }
+
+    @Operation(summary = "Hoàn trả chi phí hóa đơn")
+    @PutMapping("/refund/{id}")
+    public ApiResponse<InvoiceResponse> refundInvoice(@PathVariable Integer id) {
+        return ApiResponse.<InvoiceResponse>builder()
+                .data(invoiceService.refundInvoice(id))
+                .build();
+    }
 }

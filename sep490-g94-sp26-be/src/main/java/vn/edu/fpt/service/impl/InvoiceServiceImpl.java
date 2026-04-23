@@ -273,6 +273,41 @@ public class InvoiceServiceImpl implements InvoiceService {
         return mapToInvoiceResponse(invoice, contract);
     }
 
+    @Transactional
+    @Override
+    public InvoiceResponse refundInvoice(Integer id) {
+        Invoice invoice = invoiceRepository.findByIdAndStatus(id, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+
+        Contract contract = contractRepository.findByIdAndStatus(invoice.getContractId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
+        boolean isContractDraftOrCancelled = contract.getContractState() == ContractState.DRAFT || contract.getContractState() == ContractState.CANCELLED;
+
+        if (isContractDraftOrCancelled) {
+            throw new AppException(ERROR_CODE.INVOICE_REFUND_INVALID);
+        }
+
+        List<Payment> successPayments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(contract.getId(), PaymentState.SUCCESS, RecordStatus.active);
+        BigDecimal refundAmount = successPayments.stream()
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        PaymentRequest paymentRequest = PaymentRequest.builder()
+                .contractId(contract.getId())
+                .amount(refundAmount)
+                .method(PaymentMethod.BANK_TRANSFER)
+                .paymentState(PaymentState.REFUNDED)
+                .note("Thanh toán hoàn trả chi phí")
+                .build();
+
+        paymentService.createPayment(paymentRequest);
+        contract.setContractState(ContractState.CANCELLED);
+        invoice.setInvoiceState(InvoiceState.REFUNDED);
+
+        return mapToInvoiceResponse(invoice, contract);
+    }
+
     private Invoice.InvoiceData generateInitialInvoiceData(SetMenu setMenu, Hall hall, ServicePackage servicePackage) {
         List<Integer> serviceIds = packageServiceRepository.findByPackageIdAndStatus(servicePackage.getId(), RecordStatus.active)
                 .stream()
