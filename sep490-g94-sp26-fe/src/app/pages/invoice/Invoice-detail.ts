@@ -751,7 +751,7 @@ export class InvoiceDetailComponent implements OnInit {
 
     get canRefund(): boolean {
         const invoiceState = String(this.invoice?.invoiceState ?? '').toUpperCase();
-        if (invoiceState === 'REFUNDED') return false;
+        if (invoiceState === 'REFUNDED' || invoiceState === 'PAID') return false;
         const state = this.contractState.toUpperCase();
         if (state === 'DRAFT' || state === 'CANCELLED') return false;
         return true;
