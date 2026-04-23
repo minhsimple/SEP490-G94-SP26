@@ -12,6 +12,7 @@ import { Customer, CustomerService } from '../service/customer.service';
 import { HallService } from '../service/hall.service';
 import { MenuItem, SetMenuService } from '../service/set-menu';
 import { ServicePackageService } from '../service/service-package.service';
+import { ServiceService } from '../service/service.service';
 import { Invoice, InvoiceService } from '../service/invoice.service';
 import { Payment, PaymentService } from '../service/payment.service';
 import { UserService } from '../service/users.service';
@@ -460,6 +461,43 @@ import { RoleService } from '../service/role.service';
                         <div class="value" style="margin-top:0.3rem; font-weight:500">{{ customer?.address || '-' }}</div>
                     </div>
 
+                    <!-- Hạng mục đã chọn -->
+                    <div class="card" style="margin-bottom:1rem">
+                        <h2 class="section-title">Hạng mục đã chọn</h2>
+
+                        <div class="value">Set menu: {{ resolvedSetMenuName() || (booking.setMenuId ? ('Set menu #' + booking.setMenuId) : '-') }}</div>
+                        <div class="muted" *ngIf="resolvedSetMenuItems().length === 0" style="margin-top:0.35rem">Chưa có chi tiết món ăn trong set menu.</div>
+                        <div *ngIf="resolvedSetMenuItems().length > 0" style="margin-top:0.45rem">
+                            <div class="line" *ngFor="let item of resolvedSetMenuItems()" style="margin:0.4rem 0; align-items:flex-start">
+                                <span>
+                                    {{ item.name }}
+                                    <small class="muted" style="display:block; margin-top:0.15rem">
+                                        SL {{ item.quantity }}{{ item.unit ? ' ' + item.unit : '' }}
+                                    </small>
+                                </span>
+                                <strong>{{ formatPrice((item.unitPrice || 0) * (item.quantity || 1)) }}</strong>
+                            </div>
+                        </div>
+
+                        <div style="border-top:1px solid #e2e8f0; margin:1rem 0"></div>
+
+                        <div>
+                            <div class="value">Service package: {{ resolvedPackageName() || (booking.packageId ? ('Gói dịch vụ #' + booking.packageId) : '-') }}</div>
+                            <div class="muted" *ngIf="resolvedPackageServices().length === 0" style="margin-top:0.35rem">Chưa có chi tiết dịch vụ trong service package.</div>
+                            <div *ngIf="resolvedPackageServices().length > 0" style="margin-top:0.45rem">
+                                <div class="line" *ngFor="let service of resolvedPackageServices()" style="margin:0.4rem 0; align-items:flex-start">
+                                    <span>
+                                        {{ service.name }}
+                                        <small class="muted" style="display:block; margin-top:0.15rem">
+                                            SL {{ service.quantity }}{{ service.unit ? ' ' + service.unit : '' }}
+                                        </small>
+                                    </span>
+                                    <strong>{{ formatPrice((service.unitPrice || 0) * (service.quantity || 1)) }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Lịch sử thanh toán -->
                     <div class="card">
                         <h2 class="section-title">Lịch sử thanh toán</h2>
@@ -628,6 +666,8 @@ export class BookingDetailComponent implements OnInit {
     setMenuItems: Array<{ name: string; quantity: number; unitPrice: number; unit?: string }> = [];
     packageName = '';
     packagePrice = 0;
+    packageServices: Array<{ serviceId?: number; name: string; quantity: number; unitPrice: number; unit?: string }> = [];
+    private packageServiceNameCache: Record<number, string> = {};
     readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
     readonly isAdminAccount = this.codeRole.includes('ADMIN');
@@ -662,6 +702,7 @@ export class BookingDetailComponent implements OnInit {
         private hallService: HallService,
         private setMenuService: SetMenuService,
         private servicePackageService: ServicePackageService,
+        private serviceService: ServiceService,
         private invoiceService: InvoiceService,
         private paymentService: PaymentService,
         private userService: UserService,
@@ -1072,6 +1113,98 @@ export class BookingDetailComponent implements OnInit {
         return this.setMenuItems;
     }
 
+    resolvedPackageServices(): Array<{ serviceId?: number; name: string; quantity: number; unitPrice: number; unit?: string }> {
+        const invoiceServices = this.normalizePackageServices(this.getInvoiceData()?.service_package_invoice?.services ?? []);
+        const source = invoiceServices.length > 0 ? invoiceServices : this.packageServices;
+
+        return source
+            .map((service) => {
+                const mappedName = service.serviceId ? this.packageServiceNameCache[service.serviceId] : '';
+                return {
+                    ...service,
+                    name: service.name || mappedName || (service.serviceId ? `Dịch vụ #${service.serviceId}` : 'Dịch vụ'),
+                };
+            })
+            .filter((service) => service.name.trim().length > 0);
+    }
+
+    private normalizePackageServices(rawServices: any[]): Array<{ serviceId?: number; name: string; quantity: number; unitPrice: number; unit?: string }> {
+        return (rawServices ?? [])
+            .map((item: any) => {
+                const serviceIdRaw = Number(item?.serviceId ?? item?.id ?? item?.service?.id ?? Number.NaN);
+                const serviceId = Number.isFinite(serviceIdRaw) && serviceIdRaw > 0 ? serviceIdRaw : undefined;
+                const quantityRaw = Number(item?.qty ?? item?.quantity ?? 1);
+                const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1;
+                const unitPriceRaw = Number(item?.price ?? item?.unitPrice ?? item?.basePrice ?? item?.service?.basePrice ?? 0);
+                const unitPrice = Number.isFinite(unitPriceRaw) && unitPriceRaw > 0 ? unitPriceRaw : 0;
+                const name = String(item?.name ?? item?.serviceName ?? item?.service?.name ?? '').trim();
+                const unit = String(item?.unit ?? item?.serviceUnit ?? item?.service?.unit ?? '').trim();
+
+                if (serviceId && name) {
+                    this.packageServiceNameCache[serviceId] = name;
+                }
+
+                return {
+                    serviceId,
+                    name,
+                    quantity,
+                    unitPrice,
+                    unit: unit || undefined,
+                };
+            })
+            .filter((service) => service.serviceId != null || service.name.length > 0);
+    }
+
+    private flattenPackageServices(servicePackage: any): any[] {
+        if (!servicePackage || typeof servicePackage !== 'object') {
+            return [];
+        }
+
+        const directLists = [
+            servicePackage?.serviceResponseList,
+            servicePackage?.ServiceResponseList,
+            servicePackage?.services,
+            servicePackage?.serviceList,
+        ];
+
+        const flattened = directLists.flatMap((items) => Array.isArray(items) ? items : []);
+        if (flattened.length > 0) {
+            return flattened;
+        }
+
+        if (servicePackage?.serviceResponseMap && typeof servicePackage.serviceResponseMap === 'object') {
+            return Object.values(servicePackage.serviceResponseMap).flatMap((items) => Array.isArray(items) ? items : []);
+        }
+
+        return [];
+    }
+
+    private loadPackageServiceNamesByIds(serviceIds: number[]) {
+        const ids = Array.from(new Set(serviceIds.filter((id) => Number.isFinite(id) && id > 0)));
+        ids
+            .filter((id) => !this.packageServiceNameCache[id])
+            .forEach((id) => {
+                this.serviceService.getServiceById(id).subscribe({
+                    next: (res) => {
+                        const name = String(res.data?.name ?? '').trim();
+                        if (!name) {
+                            return;
+                        }
+
+                        this.packageServiceNameCache[id] = name;
+                        this.packageServices = this.packageServices.map((service) =>
+                            service.serviceId === id && !service.name ? { ...service, name } : service
+                        );
+                        this.updateContractPreview();
+                        this.cdr.detectChanges();
+                    },
+                    error: () => {
+                        this.cdr.detectChanges();
+                    },
+                });
+            });
+    }
+
     private loadInvoicePreview(contractId: number) {
         this.invoiceService.searchInvoices({ contractId, page: 0, size: 1 }).subscribe({
             next: (res) => {
@@ -1252,11 +1385,22 @@ export class BookingDetailComponent implements OnInit {
                 this.packageName = res.data?.name ?? '';
                 const price = Number(res.data?.basePrice ?? 0);
                 this.packagePrice = Number.isFinite(price) ? price : 0;
+
+                this.packageServices = this.normalizePackageServices(this.flattenPackageServices(res.data));
+                this.loadPackageServiceNamesByIds(
+                    this.packageServices
+                        .map((service) => Number(service.serviceId ?? 0))
+                        .filter((id) => Number.isFinite(id) && id > 0)
+                );
+
                 this.recalculatePaymentSummary();
                 this.updateContractPreview();
                 this.cdr.detectChanges();
             },
-            error: () => { this.cdr.detectChanges(); },
+            error: () => {
+                this.packageServices = [];
+                this.cdr.detectChanges();
+            },
         });
     }
 
@@ -1352,6 +1496,7 @@ export class BookingDetailComponent implements OnInit {
         const deposit1 = Math.round(amount * (paymentPercent / 100));
         const deposit2 = Math.max(amount - deposit1, 0);
         const notes = this.booking.notes || '-';
+        const packageServices = this.resolvedPackageServices();
         const menuItemsHtml = this.resolvedSetMenuItems().length > 0
             ? this.resolvedSetMenuItems()
                 .map((item, index) => {
@@ -1361,6 +1506,15 @@ export class BookingDetailComponent implements OnInit {
                 })
                 .join('')
             : '<p>- Chưa có dữ liệu chi tiết món ăn trong set menu.</p>';
+        const packageServicesHtml = packageServices.length > 0
+            ? packageServices
+                .map((service, index) => {
+                    const lineTotal = Number(service.unitPrice ?? 0) * Number(service.quantity ?? 1);
+                    const unitText = service.unit ? ` / ${esc(service.unit)}` : '';
+                    return `<p>- Dịch vụ ${index + 1}: ${esc(service.name)} · SL ${esc(service.quantity)}${unitText} · Đơn giá ${esc(this.formatPrice(service.unitPrice))} · Thành tiền ${esc(this.formatPrice(lineTotal))}</p>`;
+                })
+                .join('')
+            : '<p>- Chưa có dữ liệu chi tiết dịch vụ trong gói.</p>';
 
         return `
             <p style="text-align:center; margin:0; font-size:10pt">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
@@ -1408,6 +1562,8 @@ export class BookingDetailComponent implements OnInit {
             <p>- Chi tiết món ăn set menu:</p>
             ${menuItemsHtml}
             <p>- Gói dịch vụ đi kèm: ${esc(this.resolvedPackageName() || '-')}, giá ${esc(this.formatPrice(packageAmount))}.</p>
+            <p>- Chi tiết dịch vụ trong gói:</p>
+            ${packageServicesHtml}
             <p>- Ghi chú bổ sung: ${esc(notes)}.</p>
 
             <p><strong>ĐIỀU II: GIÁ TRỊ HỢP ĐỒNG VÀ THANH TOÁN</strong></p>
