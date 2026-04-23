@@ -144,6 +144,7 @@ public enum ERROR_CODE {
      */
     INVOICE_NOT_FOUND(17001, "Hóa đơn không tồn tại", HttpStatus.NOT_FOUND),
     INVOICE_LIQUIDATE_INVALID(17002, "Hóa đơn thanh lí không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVOICE_REFUND_INVALID(17003, "Hóa đơn của hợp đồng có trạng thái là nháp hoặc đã bị hủy thì không thể hoàn phí", HttpStatus.BAD_REQUEST),
 
     /**
      * Table Layout Error

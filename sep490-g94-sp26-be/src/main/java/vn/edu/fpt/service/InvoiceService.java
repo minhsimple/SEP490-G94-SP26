@@ -18,4 +18,5 @@ public interface InvoiceService {
     List<Invoice.IncidentInvoice> updateIncidentInvoices(Integer contractId, List<Invoice.IncidentInvoice> incidents);
     SimplePage<InvoiceResponse> getAllInvoices(Pageable pageable, InvoiceFilterRequest filterRequest);
     InvoiceResponse liquidateInvoice(Integer id);
+    InvoiceResponse refundInvoice(Integer id);
 }
