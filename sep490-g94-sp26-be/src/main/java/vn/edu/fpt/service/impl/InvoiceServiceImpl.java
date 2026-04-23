@@ -173,6 +173,12 @@ public class InvoiceServiceImpl implements InvoiceService {
     public List<Invoice.IncidentInvoice> updateIncidentInvoices(Integer contractId, List<Invoice.IncidentInvoice> incidents) {
         Invoice invoice = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
+        if (contract.getContractState() == ContractState.CANCELLED || contract.getContractState() == ContractState.LIQUIDATED) {
+            throw new AppException(ERROR_CODE.INVOICE_UPDATE_INCIDENT_INVALID);
+        }
 
         BigDecimal oldIncidentsAmount = invoice.getData().getIncidents().stream()
                 .map(Invoice.IncidentInvoice::getPrice)
@@ -282,9 +288,9 @@ public class InvoiceServiceImpl implements InvoiceService {
         Contract contract = contractRepository.findByIdAndStatus(invoice.getContractId(), RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        boolean isContractDraftOrCancelled = contract.getContractState() == ContractState.DRAFT || contract.getContractState() == ContractState.CANCELLED;
+        boolean isContractDraftOrCancelledOrLiquidated = contract.getContractState() == ContractState.DRAFT || contract.getContractState() == ContractState.CANCELLED || contract.getContractState() == ContractState.LIQUIDATED;
 
-        if (isContractDraftOrCancelled) {
+        if (isContractDraftOrCancelledOrLiquidated) {
             throw new AppException(ERROR_CODE.INVOICE_REFUND_INVALID);
         }
 
