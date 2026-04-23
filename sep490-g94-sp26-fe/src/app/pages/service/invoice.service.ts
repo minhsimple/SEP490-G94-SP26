@@ -257,4 +257,20 @@ export class InvoiceService {
             { headers: this.headers }
         );
     }
+
+    liquidateInvoice(id: number): Observable<SingleResponse<Invoice>> {
+        return this.http.post<SingleResponse<Invoice>>(
+            `${BASE}/invoice/liquidate/${id}`,
+            {},
+            { headers: this.headers }
+        );
+    }
+
+    refundInvoice(id: number): Observable<SingleResponse<Invoice>> {
+        return this.http.put<SingleResponse<Invoice>>(
+            `${BASE}/invoice/refund/${id}`,
+            {},
+            { headers: this.headers }
+        );
+    }
 }

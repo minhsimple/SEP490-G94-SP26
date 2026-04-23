@@ -146,13 +146,33 @@ import { forkJoin, of } from 'rxjs';
                         </div>
                     </div>
                 </div>
-                <span
-                    class="status-chip"
-                    [style.background]="getStatusBg(invoice.invoiceState)"
-                    [style.color]="getStatusColor(invoice.invoiceState)"
-                >
-                    {{ getStatusLabel(invoice.invoiceState) }}
-                </span>
+                <div class="flex items-center gap-2">
+                    <p-button
+                        *ngIf="canRefund"
+                        label="Hoàn tiền"
+                        icon="pi pi-replay"
+                        severity="danger"
+                        [loading]="refundingInvoice"
+                        [disabled]="refundingInvoice"
+                        (onClick)="refundInvoice()"
+                    />
+                    <p-button
+                        *ngIf="canLiquidate"
+                        label="Tất toán"
+                        icon="pi pi-check-circle"
+                        severity="warn"
+                        [loading]="liquidatingContract"
+                        [disabled]="liquidatingContract"
+                        (onClick)="liquidateContract()"
+                    />
+                    <span
+                        class="status-chip"
+                        [style.background]="getStatusBg(invoice.invoiceState)"
+                        [style.color]="getStatusColor(invoice.invoiceState)"
+                    >
+                        {{ getStatusLabel(invoice.invoiceState) }}
+                    </span>
+                </div>
             </div>
 
             <div class="layout">
@@ -407,6 +427,7 @@ import { forkJoin, of } from 'rxjs';
                                     <th>Tiêu đề</th>
                                     <th>Mô tả</th>
                                     <th style="text-align:right;">Chi phí</th>
+                                    <th style="width:96px; text-align:center;">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -427,9 +448,24 @@ import { forkJoin, of } from 'rxjs';
                                             />
                                         </ng-template>
                                     </td>
+                                    <td style="text-align:center;">
+                                        <button
+                                            *ngIf="incidentEditing"
+                                            type="button"
+                                            class="cursor-pointer p-1"
+                                            style="color:#dc2626;background:#fff1f2;border:1px solid #fecdd3;border-radius:7px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;"
+                                            [disabled]="savingIncidentCosts"
+                                            (click)="removeIncidentInEditMode(i)"
+                                            pTooltip="Xóa phát sinh"
+                                            tooltipPosition="top"
+                                        >
+                                            <i class="pi pi-trash" style="font-size:0.85rem;"></i>
+                                        </button>
+                                        <span *ngIf="!incidentEditing" class="text-500">-</span>
+                                    </td>
                                 </tr>
                                 <tr class="subtotal">
-                                    <td colspan="3" style="text-align:right; padding-right:1.5rem;">Tổng phát sinh:</td>
+                                    <td colspan="4" style="text-align:right; padding-right:1.5rem;">Tổng phát sinh:</td>
                                     <td>{{ formatPrice(incidentTotalAmount) }}</td>
                                 </tr>
                             </tbody>
@@ -544,7 +580,7 @@ import { forkJoin, of } from 'rxjs';
                         <div class="summary-line" style="margin-top:0.5rem;">
                             <span>Đã thanh toán:</span>
                             <span class="paid-val" style="color:#16a34a; font-weight:600;">
-                                {{ formatPrice(invoice.paidAmount ?? 0) }}
+                                {{ formatPrice(paidAmountValue) }}
                             </span>
                         </div>
                         <div class="summary-line">
@@ -650,6 +686,9 @@ export class InvoiceDetailComponent implements OnInit {
     };
     loading = false;
     returnUrl = '';
+    contractState = '';
+    liquidatingContract = false;
+    refundingInvoice = false;
     paymentDialog = false;
     paymentSubmitted = false;
     savingPayment = false;
@@ -668,16 +707,28 @@ export class InvoiceDetailComponent implements OnInit {
     ];
 
     methodOptions = [
-        { label: 'Tiền mặt',      value: 'CASH'          },
-        { label: 'Chuyển khoản',  value: 'BANK_TRANSFER'  },
-        { label: 'Thẻ tín dụng',  value: 'CREDIT_CARD'    },
-        { label: 'Ví điện tử',    value: 'E_WALLET'       },
+        { label: 'Tiền mặt', value: 'CASH' },
+        { label: 'Chuyển khoản', value: 'BANK_TRANSFER' },
+        { label: 'Thẻ tín dụng', value: 'CREDIT_CARD' },
+        { label: 'Ví điện tử', value: 'E_WALLET' },
     ];
 
     get remainingAmount(): number {
         const total = Number(this.invoice?.totalAmount ?? 0);
-        const paid  = Number(this.invoice?.paidAmount  ?? 0);
+        const paid = this.paidAmountValue;
         return Math.max(total - paid, 0);
+    }
+
+    get paidAmountValue(): number {
+        const payments = this.invoice?.payments ?? [];
+        if (payments.length > 0) {
+            return payments
+                .filter((payment) => this.isPaidPaymentStatus(payment.status))
+                .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+        }
+
+        const rawPaid = Number(this.invoice?.paidAmount ?? 0);
+        return Number.isFinite(rawPaid) ? rawPaid : 0;
     }
 
     get incidentTotalAmount(): number {
@@ -685,6 +736,22 @@ export class InvoiceDetailComponent implements OnInit {
             const amount = Number(incident?.price ?? 0);
             return sum + (Number.isFinite(amount) ? amount : 0);
         }, 0);
+    }
+
+    get canLiquidate(): boolean {
+        const paymentCount = this.invoice?.payments?.length ?? 0;
+        if (paymentCount > 1) return false;
+        const state = this.contractState.toUpperCase();
+        if (state === 'DRAFT' || state === 'CANCELLED') return false;
+        return true;
+    }
+
+    get canRefund(): boolean {
+        const invoiceState = String(this.invoice?.invoiceState ?? '').toUpperCase();
+        if (invoiceState === 'REFUNDED') return false;
+        const state = this.contractState.toUpperCase();
+        if (state === 'DRAFT' || state === 'CANCELLED') return false;
+        return true;
     }
 
     constructor(
@@ -701,12 +768,13 @@ export class InvoiceDetailComponent implements OnInit {
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private cdr: ChangeDetectorRef,
-    ) {}
+    ) { }
 
     ngOnInit() {
         const navState = this.router.getCurrentNavigation()?.extras?.state as { returnUrl?: string } | undefined;
         const queryReturnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '';
-        this.returnUrl = navState?.returnUrl || history.state?.returnUrl || queryReturnUrl || '';
+        const candidateReturnUrl = navState?.returnUrl || history.state?.returnUrl || queryReturnUrl || '';
+        this.returnUrl = this.isPaymentDetailUrl(candidateReturnUrl) ? '' : candidateReturnUrl;
 
         const id = Number(this.route.snapshot.paramMap.get('id'));
         if (!Number.isFinite(id) || id <= 0) { this.goBack(); return; }
@@ -820,6 +888,19 @@ export class InvoiceDetailComponent implements OnInit {
         this.cdr.detectChanges();
     }
 
+    removeIncidentInEditMode(index: number) {
+        if (!this.incidentEditing || this.savingIncidentCosts) {
+            return;
+        }
+
+        if (!Number.isInteger(index) || index < 0 || index >= this.incidents.length) {
+            return;
+        }
+
+        this.incidents = this.incidents.filter((_, i) => i !== index);
+        this.cdr.detectChanges();
+    }
+
     saveIncidentCostChanges() {
         const contractId = Number(this.invoice?.contractId ?? 0);
         if (!this.incidentEditing || this.incidentLoading || this.savingIncidentCosts || !Number.isFinite(contractId) || contractId <= 0) {
@@ -860,6 +941,7 @@ export class InvoiceDetailComponent implements OnInit {
                     detail: 'Đã cập nhật chi phí phát sinh.',
                     life: 2500,
                 });
+                this.refreshInvoiceTotalAfterIncidentSave();
                 this.cdr.detectChanges();
             },
             error: () => {
@@ -870,6 +952,32 @@ export class InvoiceDetailComponent implements OnInit {
                     detail: 'Không thể cập nhật chi phí phát sinh.',
                     life: 3000,
                 });
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    private refreshInvoiceTotalAfterIncidentSave() {
+        const invoiceId = Number(this.invoice?.id ?? 0);
+        if (!Number.isFinite(invoiceId) || invoiceId <= 0 || !this.invoice) {
+            return;
+        }
+
+        this.invoiceService.getById(invoiceId).subscribe({
+            next: (res) => {
+                const latest = this.adaptInvoice(res.data);
+                this.invoice = {
+                    ...this.invoice,
+                    totalAmount: latest.totalAmount,
+                    subTotal: latest.subTotal,
+                    tax: latest.tax,
+                    hallTotal: latest.hallTotal,
+                    setMenuTotal: latest.setMenuTotal,
+                    serviceTotal: latest.serviceTotal,
+                };
+                this.cdr.detectChanges();
+            },
+            error: () => {
                 this.cdr.detectChanges();
             }
         });
@@ -1123,7 +1231,7 @@ export class InvoiceDetailComponent implements OnInit {
                     ...this.invoice,
                     payments: mappedPayments,
                     paidAmount: mappedPayments
-                        .filter((p) => ['SUCCESS', 'CONFIRMED', 'PAID'].includes(String(p.status ?? '').toUpperCase()))
+                        .filter((p) => this.isPaidPaymentStatus(p.status))
                         .reduce((sum, p) => sum + Number(p.amount ?? 0), 0),
                 };
                 this.cdr.detectChanges();
@@ -1156,16 +1264,102 @@ export class InvoiceDetailComponent implements OnInit {
         });
     }
 
+    liquidateContract() {
+        const invoiceId = this.invoice?.id;
+        if (!invoiceId) return;
+
+        this.confirmationService.confirm({
+            message: 'Bạn có chắc chắn muốn tất toán hóa đơn này?',
+            header: 'Xác nhận thanh toán',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Thanh toán',
+            rejectLabel: 'Hủy',
+            acceptButtonStyleClass: 'p-button-warning',
+            accept: () => {
+                this.liquidatingContract = true;
+                this.invoiceService.liquidateInvoice(invoiceId).subscribe({
+                    next: () => {
+                        this.liquidatingContract = false;
+                        this.messageService.add({
+                            severity: 'success',
+                            summary: 'Thành công',
+                            detail: 'Đã xác nhận thành công.',
+                            life: 3000,
+                        });
+                        this.loadDetail(invoiceId);
+                    },
+                    error: (err) => {
+                        this.liquidatingContract = false;
+                        const detail = err?.error?.message ?? 'Không thể tất toán.';
+                        this.messageService.add({
+                            severity: 'error',
+                            summary: 'Lỗi',
+                            detail,
+                            life: 3000,
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    refundInvoice() {
+        const invoiceId = this.invoice?.id;
+        if (!invoiceId) return;
+
+        this.confirmationService.confirm({
+            message: 'Bạn có chắc chắn muốn hoàn tiền cho hóa đơn này? Hành động này sẽ huỷ hợp đồng và tạo một khoản hoàn trả.',
+            header: 'Xác nhận hoàn tiền',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Hoàn tiền',
+            rejectLabel: 'Hủy',
+            acceptButtonStyleClass: 'p-button-danger',
+            accept: () => {
+                this.refundingInvoice = true;
+                this.invoiceService.refundInvoice(invoiceId).subscribe({
+                    next: () => {
+                        this.refundingInvoice = false;
+                        this.messageService.add({
+                            severity: 'success',
+                            summary: 'Thành công',
+                            detail: 'Đã hoàn tiền thành công.',
+                            life: 3000,
+                        });
+                        this.loadDetail(invoiceId);
+                    },
+                    error: (err) => {
+                        this.refundingInvoice = false;
+                        const detail = err?.error?.message ?? 'Không thể hoàn tiền cho hóa đơn này.';
+                        this.messageService.add({
+                            severity: 'error',
+                            summary: 'Lỗi',
+                            detail,
+                            life: 3000,
+                        });
+                    }
+                });
+            }
+        });
+    }
+
     goBack() {
-        if (this.returnUrl) {
+        if (this.returnUrl && !this.isPaymentDetailUrl(this.returnUrl)) {
             this.router.navigateByUrl(this.returnUrl);
             return;
         }
-        if (window.history.length > 1) {
-            this.location.back();
+
+        const contractId = Number(this.invoice?.contractId ?? 0);
+        if (Number.isFinite(contractId) && contractId > 0) {
+            this.router.navigate(['/pages/booking', contractId, 'view']);
             return;
         }
+
         this.router.navigate(['/pages/invoice']);
+    }
+
+    private isPaymentDetailUrl(url?: string): boolean {
+        const value = String(url ?? '').trim();
+        return /^\/pages\/payment\//i.test(value);
     }
 
     goToContract() {
@@ -1196,6 +1390,8 @@ export class InvoiceDetailComponent implements OnInit {
                 const setMenuWithId = currentSetMenu
                     ? { ...currentSetMenu, id: currentSetMenu.id ?? safeBookingSetMenuId ?? undefined }
                     : (safeBookingSetMenuId ? { id: safeBookingSetMenuId } : undefined);
+
+                this.contractState = String(booking?.contractState ?? booking?.bookingState ?? '').toUpperCase();
 
                 this.invoice = {
                     ...this.invoice,
@@ -1313,26 +1509,26 @@ export class InvoiceDetailComponent implements OnInit {
             tableCount?: number;
             totalPrice?: number;
         }> = raw.setMenus?.length
-            ? raw.setMenus
-            : raw.setMenu
-                ? [{
-                    id: raw.setMenu.id,
-                    name: raw.setMenu.name,
-                    quantity: 1,
-                    pricePerTable: raw.setMenu.setPrice,
-                    tableCount: expectedTables,
-                    totalPrice: setMenuTotal,
-                }]
-                : setMenuData
+                ? raw.setMenus
+                : raw.setMenu
                     ? [{
-                        id: setMenuData.id,
-                        name: setMenuData.name,
+                        id: raw.setMenu.id,
+                        name: raw.setMenu.name,
                         quantity: 1,
-                        pricePerTable: setMenuUnit,
+                        pricePerTable: raw.setMenu.setPrice,
                         tableCount: expectedTables,
                         totalPrice: setMenuTotal,
                     }]
-                    : [];
+                    : setMenuData
+                        ? [{
+                            id: setMenuData.id,
+                            name: setMenuData.name,
+                            quantity: 1,
+                            pricePerTable: setMenuUnit,
+                            tableCount: expectedTables,
+                            totalPrice: setMenuTotal,
+                        }]
+                        : [];
 
         const normalizedSetMenus = setMenuRows.map((menu) => {
             const quantity = Number(menu.quantity ?? 1) || 1;
@@ -1556,15 +1752,15 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     getStatusLabel(s?: string): string {
-        return { UNPAID: 'Chưa thanh toán', PARTIAL: 'Thanh toán 1 phần', PAID: 'Đã thanh toán' }[s ?? ''] ?? s ?? '-';
+        return { UNPAID: 'Chưa thanh toán', PARTIAL: 'Thanh toán 1 phần', PAID: 'Đã thanh toán', REFUNDED: 'Đã hoàn tiền' }[s ?? ''] ?? s ?? '-';
     }
 
     getStatusColor(s?: string): string {
-        return { UNPAID: '#ffffff', PARTIAL: '#1e293b', PAID: '#166534' }[s ?? ''] ?? '#1e293b';
+        return { UNPAID: '#ffffff', PARTIAL: '#1e293b', PAID: '#166534', REFUNDED: '#7c3aed' }[s ?? ''] ?? '#1e293b';
     }
 
     getStatusBg(s?: string): string {
-        return { UNPAID: '#ef4444', PARTIAL: '#fef3c7', PAID: '#dcfce7' }[s ?? ''] ?? '#f1f5f9';
+        return { UNPAID: '#ef4444', PARTIAL: '#fef3c7', PAID: '#dcfce7', REFUNDED: '#ede9fe' }[s ?? ''] ?? '#f1f5f9';
     }
 
     getMethodLabel(m?: string): string {
@@ -1577,7 +1773,8 @@ export class InvoiceDetailComponent implements OnInit {
             SUCCESS: 'Thành công',
             FAILED: 'Thất bại',
             CONFIRMED: 'Đã xác nhận',
-            CANCELLED: 'Đã huỷ'
+            CANCELLED: 'Đã huỷ',
+            REFUNDED: 'Đã hoàn tiền'
         }[s ?? ''] ?? s ?? '-';
     }
 
@@ -1587,7 +1784,8 @@ export class InvoiceDetailComponent implements OnInit {
             SUCCESS: '#dcfce7',
             FAILED: '#fee2e2',
             CONFIRMED: '#dcfce7',
-            CANCELLED: '#fee2e2'
+            CANCELLED: '#fee2e2',
+            REFUNDED: '#ede9fe'
         }[s ?? ''] ?? '#f1f5f9';
     }
 
@@ -1597,7 +1795,13 @@ export class InvoiceDetailComponent implements OnInit {
             SUCCESS: '#16a34a',
             FAILED: '#dc2626',
             CONFIRMED: '#16a34a',
-            CANCELLED: '#dc2626'
+            CANCELLED: '#dc2626',
+            REFUNDED: '#7c3aed'
         }[s ?? ''] ?? '#64748b';
+    }
+
+    private isPaidPaymentStatus(status?: string): boolean {
+        const normalized = String(status ?? '').toUpperCase();
+        return normalized === 'SUCCESS' || normalized === 'CONFIRMED' || normalized === 'PAID';
     }
 }

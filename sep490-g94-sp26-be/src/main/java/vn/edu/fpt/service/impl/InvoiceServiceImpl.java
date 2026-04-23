@@ -173,11 +173,16 @@ public class InvoiceServiceImpl implements InvoiceService {
     public List<Invoice.IncidentInvoice> updateIncidentInvoices(Integer contractId, List<Invoice.IncidentInvoice> incidents) {
         Invoice invoice = invoiceRepository.findByContractIdAndStatus(contractId, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
-        invoice.getData().setIncidents(incidents);
-        Contract contract = contractRepository.findByIdAndStatus(contractId, RecordStatus.active)
-                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
 
-        invoice.setTotalAmount(calculateTotalAmountForInvoice(invoice.getData(), contract.getExpectedTables()));
+        BigDecimal oldIncidentsAmount = invoice.getData().getIncidents().stream()
+                .map(Invoice.IncidentInvoice::getPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal newIncidentsAmount = incidents.stream()
+                        .map(Invoice.IncidentInvoice::getPrice)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal varianceAmount = oldIncidentsAmount.subtract(newIncidentsAmount);
+        invoice.getData().setIncidents(incidents);
+        invoice.setTotalAmount(invoice.getTotalAmount().subtract(varianceAmount));
 
         return invoice.getData().getIncidents();
     }
@@ -264,6 +269,41 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .build();
 
         paymentService.createPayment(paymentRequest);
+
+        return mapToInvoiceResponse(invoice, contract);
+    }
+
+    @Transactional
+    @Override
+    public InvoiceResponse refundInvoice(Integer id) {
+        Invoice invoice = invoiceRepository.findByIdAndStatus(id, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+
+        Contract contract = contractRepository.findByIdAndStatus(invoice.getContractId(), RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.BOOKING_NOT_EXISTED));
+
+        boolean isContractDraftOrCancelled = contract.getContractState() == ContractState.DRAFT || contract.getContractState() == ContractState.CANCELLED;
+
+        if (isContractDraftOrCancelled) {
+            throw new AppException(ERROR_CODE.INVOICE_REFUND_INVALID);
+        }
+
+        List<Payment> successPayments = paymentRepository.findAllByContractIdAndPaymentStateAndStatus(contract.getId(), PaymentState.SUCCESS, RecordStatus.active);
+        BigDecimal refundAmount = successPayments.stream()
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        PaymentRequest paymentRequest = PaymentRequest.builder()
+                .contractId(contract.getId())
+                .amount(refundAmount)
+                .method(PaymentMethod.BANK_TRANSFER)
+                .paymentState(PaymentState.REFUNDED)
+                .note("Thanh toán hoàn trả chi phí")
+                .build();
+
+        paymentService.createPayment(paymentRequest);
+        contract.setContractState(ContractState.CANCELLED);
+        invoice.setInvoiceState(InvoiceState.REFUNDED);
 
         return mapToInvoiceResponse(invoice, contract);
     }
