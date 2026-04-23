@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.time.temporal.ChronoUnit;
 
+import static java.lang.Math.ceil;
+
 
 @Service
 @RequiredArgsConstructor
@@ -221,10 +223,12 @@ public class ContractServiceImpl implements ContractService {
         }
     }
     public void validateNumberOfTable(Integer expectedTables, Integer numberOfGuests) {
+
         if (expectedTables == null || expectedTables <= 0) {
             throw new AppException(ERROR_CODE.BOOKING_INVALID_NUMBER_OF_TABLE);
         }
-        int requiredTables = (int) Math.ceil(numberOfGuests * 1.1 / 10);
+        int requiredTables = (int) Math.ceil(numberOfGuests / 10.0);
+
         if (expectedTables < requiredTables) {
             throw new AppException(ERROR_CODE.BOOKING_INVALID_NUMBER_OF_TABLE);
         }
