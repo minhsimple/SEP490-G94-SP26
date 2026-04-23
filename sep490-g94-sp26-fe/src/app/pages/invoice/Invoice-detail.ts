@@ -148,6 +148,15 @@ import { forkJoin, of } from 'rxjs';
                 </div>
                 <div class="flex items-center gap-2">
                     <p-button
+                        *ngIf="canRefund"
+                        label="Hoàn tiền"
+                        icon="pi pi-replay"
+                        severity="danger"
+                        [loading]="refundingInvoice"
+                        [disabled]="refundingInvoice"
+                        (onClick)="refundInvoice()"
+                    />
+                    <p-button
                         *ngIf="canLiquidate"
                         label="Tất toán"
                         icon="pi pi-check-circle"
@@ -679,6 +688,7 @@ export class InvoiceDetailComponent implements OnInit {
     returnUrl = '';
     contractState = '';
     liquidatingContract = false;
+    refundingInvoice = false;
     paymentDialog = false;
     paymentSubmitted = false;
     savingPayment = false;
@@ -731,6 +741,14 @@ export class InvoiceDetailComponent implements OnInit {
     get canLiquidate(): boolean {
         const paymentCount = this.invoice?.payments?.length ?? 0;
         if (paymentCount > 1) return false;
+        const state = this.contractState.toUpperCase();
+        if (state === 'DRAFT' || state === 'CANCELLED') return false;
+        return true;
+    }
+
+    get canRefund(): boolean {
+        const invoiceState = String(this.invoice?.invoiceState ?? '').toUpperCase();
+        if (invoiceState === 'REFUNDED') return false;
         const state = this.contractState.toUpperCase();
         if (state === 'DRAFT' || state === 'CANCELLED') return false;
         return true;
@@ -1285,6 +1303,45 @@ export class InvoiceDetailComponent implements OnInit {
         });
     }
 
+    refundInvoice() {
+        const invoiceId = this.invoice?.id;
+        if (!invoiceId) return;
+
+        this.confirmationService.confirm({
+            message: 'Bạn có chắc chắn muốn hoàn tiền cho hóa đơn này? Hành động này sẽ huỷ hợp đồng và tạo một khoản hoàn trả.',
+            header: 'Xác nhận hoàn tiền',
+            icon: 'pi pi-exclamation-triangle',
+            acceptLabel: 'Hoàn tiền',
+            rejectLabel: 'Hủy',
+            acceptButtonStyleClass: 'p-button-danger',
+            accept: () => {
+                this.refundingInvoice = true;
+                this.invoiceService.refundInvoice(invoiceId).subscribe({
+                    next: () => {
+                        this.refundingInvoice = false;
+                        this.messageService.add({
+                            severity: 'success',
+                            summary: 'Thành công',
+                            detail: 'Đã hoàn tiền thành công.',
+                            life: 3000,
+                        });
+                        this.loadDetail(invoiceId);
+                    },
+                    error: (err) => {
+                        this.refundingInvoice = false;
+                        const detail = err?.error?.message ?? 'Không thể hoàn tiền cho hóa đơn này.';
+                        this.messageService.add({
+                            severity: 'error',
+                            summary: 'Lỗi',
+                            detail,
+                            life: 3000,
+                        });
+                    }
+                });
+            }
+        });
+    }
+
     goBack() {
         if (this.returnUrl && !this.isPaymentDetailUrl(this.returnUrl)) {
             this.router.navigateByUrl(this.returnUrl);
@@ -1695,15 +1752,15 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     getStatusLabel(s?: string): string {
-        return { UNPAID: 'Chưa thanh toán', PARTIAL: 'Thanh toán 1 phần', PAID: 'Đã thanh toán' }[s ?? ''] ?? s ?? '-';
+        return { UNPAID: 'Chưa thanh toán', PARTIAL: 'Thanh toán 1 phần', PAID: 'Đã thanh toán', REFUNDED: 'Đã hoàn tiền' }[s ?? ''] ?? s ?? '-';
     }
 
     getStatusColor(s?: string): string {
-        return { UNPAID: '#ffffff', PARTIAL: '#1e293b', PAID: '#166534' }[s ?? ''] ?? '#1e293b';
+        return { UNPAID: '#ffffff', PARTIAL: '#1e293b', PAID: '#166534', REFUNDED: '#7c3aed' }[s ?? ''] ?? '#1e293b';
     }
 
     getStatusBg(s?: string): string {
-        return { UNPAID: '#ef4444', PARTIAL: '#fef3c7', PAID: '#dcfce7' }[s ?? ''] ?? '#f1f5f9';
+        return { UNPAID: '#ef4444', PARTIAL: '#fef3c7', PAID: '#dcfce7', REFUNDED: '#ede9fe' }[s ?? ''] ?? '#f1f5f9';
     }
 
     getMethodLabel(m?: string): string {
@@ -1716,7 +1773,8 @@ export class InvoiceDetailComponent implements OnInit {
             SUCCESS: 'Thành công',
             FAILED: 'Thất bại',
             CONFIRMED: 'Đã xác nhận',
-            CANCELLED: 'Đã huỷ'
+            CANCELLED: 'Đã huỷ',
+            REFUNDED: 'Đã hoàn tiền'
         }[s ?? ''] ?? s ?? '-';
     }
 
@@ -1726,7 +1784,8 @@ export class InvoiceDetailComponent implements OnInit {
             SUCCESS: '#dcfce7',
             FAILED: '#fee2e2',
             CONFIRMED: '#dcfce7',
-            CANCELLED: '#fee2e2'
+            CANCELLED: '#fee2e2',
+            REFUNDED: '#ede9fe'
         }[s ?? ''] ?? '#f1f5f9';
     }
 
@@ -1736,7 +1795,8 @@ export class InvoiceDetailComponent implements OnInit {
             SUCCESS: '#16a34a',
             FAILED: '#dc2626',
             CONFIRMED: '#16a34a',
-            CANCELLED: '#dc2626'
+            CANCELLED: '#dc2626',
+            REFUNDED: '#7c3aed'
         }[s ?? ''] ?? '#64748b';
     }
 
