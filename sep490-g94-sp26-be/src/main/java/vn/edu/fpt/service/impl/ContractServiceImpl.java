@@ -243,8 +243,11 @@ public class ContractServiceImpl implements ContractService {
         Invoice invoice = invoiceRepository.findByContractIdAndStatus(id, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
 
+        CustomerResponse customerResponse = customerService.getCustomerById(booking.getCustomerId());
+
         ContractResponse contractResponse = contractMapper.toResponse(booking);
         contractResponse.setInvoiceData(invoice.getData());
+        contractResponse.setCustomerResponse(customerResponse);
 
         return contractResponse;
     }
@@ -313,9 +316,11 @@ public class ContractServiceImpl implements ContractService {
                 .map(contract -> {
                     Invoice invoice = invoiceRepository.findByContractIdAndStatus(contract.getId(), RecordStatus.active)
                             .orElseThrow(() -> new AppException(ERROR_CODE.INVOICE_NOT_FOUND));
+                    CustomerResponse customerResponse = customerService.getCustomerById(contract.getCustomerId());
                     ContractResponse contractResponse = contractMapper.toResponse(contract);
                     contractResponse.setCustomerResponse(customerService.getCustomerById(contract.getCustomerId()));
                     contractResponse.setInvoiceData(invoice.getData());
+                    contractResponse.setCustomerResponse(customerResponse);
                     return contractResponse;
                 })
                 .toList();
