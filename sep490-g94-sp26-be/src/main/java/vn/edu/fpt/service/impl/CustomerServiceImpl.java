@@ -120,11 +120,13 @@ public class CustomerServiceImpl implements CustomerService {
     public CustomerResponse getCustomerById(Integer id) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED));
+        List<MediaAsset> mediaAssetList = MediaAssetUtil.getListMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, id, MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD);
 
         CustomerResponse response = customerMapper.toResponse(customer);
 
         response.setLocationName(locationRepository
                 .findById(response.getLocationId()).get().getName());
+        response.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssetList));
 
         return response;
     }
@@ -134,14 +136,17 @@ public class CustomerServiceImpl implements CustomerService {
     public CustomerResponse changeStatusCustomer(Integer id) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED));
+        List<MediaAsset> mediaAssetList = MediaAssetUtil.getListMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, id, MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD);
 
         if (customer.getStatus() == RecordStatus.active) {
             customer.setStatus(RecordStatus.inactive);
         } else {
             customer.setStatus(RecordStatus.active);
         }
+        CustomerResponse customerResponse = customerMapper.toResponse(customer);
+        customerResponse.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssetList));
 
-        return customerMapper.toResponse(customer);
+        return customerResponse;
     }
 
     @Override
@@ -212,8 +217,10 @@ public class CustomerServiceImpl implements CustomerService {
                 ));
 
         List<CustomerResponse> listResponses = customers.stream().map(customer -> {
+            List<MediaAsset> mediaAssetList = MediaAssetUtil.getListMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, customer.getId(), MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD);
             CustomerResponse response = customerMapper.toResponse(customer);
             response.setLocationName(locationMap.get(customer.getLocationId()));
+            response.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssetList));
             return response;
         }).toList();
 
