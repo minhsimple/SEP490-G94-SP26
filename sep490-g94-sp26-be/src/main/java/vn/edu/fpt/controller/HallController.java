@@ -48,8 +48,9 @@ public class HallController {
     @PutMapping("/update")
     public ApiResponse<HallResponse> updateHall(
             @RequestParam Integer hallId,
-            @Valid @RequestBody  HallRequest request) {
-        HallResponse response = hallService.updateHall(hallId, request);
+            @Valid @RequestPart("request")  HallRequest request,
+            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+        HallResponse response = hallService.updateHall(hallId, request, imageFiles);
         return ApiResponse.<HallResponse>builder()
                 .data(response)
                 .build();
