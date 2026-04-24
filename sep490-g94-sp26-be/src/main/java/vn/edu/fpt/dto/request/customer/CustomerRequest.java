@@ -17,6 +17,7 @@ public class CustomerRequest {
     @NotBlank(message = "Họ tên không đc để trống")
     String fullName;
 
+    @NotBlank(message = "Số căn cước công dân không được để trống")
     String citizenIdNumber;
 
     @NotBlank(message = "Số điện thoại không đc để trống")

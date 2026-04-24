@@ -2,7 +2,10 @@ package vn.edu.fpt.dto.response.customer;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import vn.edu.fpt.dto.response.image.ImageUrlsResponseDTO;
 import vn.edu.fpt.util.enums.RecordStatus;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -29,4 +32,6 @@ public class CustomerResponse {
     String locationName;
 
     RecordStatus status;
+
+    List<ImageUrlsResponseDTO> imageUrls;
 }

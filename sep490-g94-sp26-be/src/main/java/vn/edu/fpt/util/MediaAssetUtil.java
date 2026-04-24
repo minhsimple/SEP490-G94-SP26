@@ -111,6 +111,7 @@ public class MediaAssetUtil {
             case HALL -> ImageCategory.HALL;
             case MENU_ITEM -> ImageCategory.MENU_ITEM;
             case SET_MENU -> ImageCategory.SET_MENU;
+            case CUSTOMER_CITIZEN_ID_CARD -> ImageCategory.CUSTOMER_CITIZEN_ID_CARD;
         };
     }
 }

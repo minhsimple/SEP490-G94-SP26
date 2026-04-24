@@ -13,6 +13,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.customer.CustomerRequest;
 import vn.edu.fpt.dto.request.customer.CustomerUpdateRequest;
@@ -21,6 +22,8 @@ import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
 import vn.edu.fpt.util.enums.Constants;
 import vn.edu.fpt.service.CustomerService;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/customer")
@@ -33,8 +36,10 @@ public class CustomerController {
 
     @Operation(summary = "Tạo khách hàng mới")
     @PostMapping("/create")
-    public ApiResponse<CustomerResponse> createCustomer(@Valid @RequestBody CustomerRequest customerRequest) {
-        CustomerResponse customerResponse = customerService.createCustomer(customerRequest);
+    public ApiResponse<CustomerResponse> createCustomer(
+            @Valid @RequestPart("customerRequest") CustomerRequest customerRequest,
+            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+        CustomerResponse customerResponse = customerService.createCustomer(customerRequest, imageFiles);
         return ApiResponse.<CustomerResponse>builder()
                 .data(customerResponse)
                 .build();
@@ -42,10 +47,12 @@ public class CustomerController {
 
     @Operation(summary = "Cập nhật khách hàng")
     @PutMapping("/update")
-    public ApiResponse<CustomerResponse> updateCustomer(@RequestParam Integer customerId,
-                                                        @Valid @RequestBody
-                                                        CustomerUpdateRequest updateRequest) {
-        CustomerResponse customerResponse = customerService.updateCustomer(customerId, updateRequest);
+    public ApiResponse<CustomerResponse> updateCustomer(
+            @RequestParam Integer customerId,
+            @Valid @RequestPart("updateRequest")
+            CustomerUpdateRequest updateRequest,
+            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+        CustomerResponse customerResponse = customerService.updateCustomer(customerId, updateRequest, imageFiles);
         return ApiResponse.<CustomerResponse>builder()
                 .data(customerResponse)
                 .build();

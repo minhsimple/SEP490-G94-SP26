@@ -3,7 +3,8 @@ package vn.edu.fpt.util.enums;
 public enum ImageCategory {
     MENU_ITEM("menu-items"),
     SET_MENU("set-menus"),
-    HALL("halls");
+    HALL("halls"),
+    CUSTOMER_CITIZEN_ID_CARD("customer-citizen-id-card");
 
     private final String prefix;
 
