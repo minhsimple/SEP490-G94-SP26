@@ -1,6 +1,7 @@
 package vn.edu.fpt.service;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.contract.CalenderContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
@@ -13,9 +14,9 @@ import java.util.List;
 
 public interface ContractService {
 
-    ContractResponse createContract(ContractRequest request) throws Exception;
+    ContractResponse createContract(ContractRequest request, List<MultipartFile> imageFiles) throws Exception;
 
-    ContractResponse updateContract(Integer id, ContractRequest request);
+    ContractResponse updateContract(Integer id, ContractRequest request, List<MultipartFile> imageFiles) throws Exception;
 
     ContractResponse getContractById(Integer id);
 

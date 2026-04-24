@@ -58,7 +58,7 @@ public enum ERROR_CODE {
     CUSTOMER_CITIZEN_ID_NUMBER_EXISTED(6002, "Số CMND/CCCD đã tồn tại", HttpStatus.BAD_REQUEST),
     CUSTOMER_PHONE_EXISTED(6003, "Số điện thoại đã tồn tại", HttpStatus.BAD_REQUEST),
     CUSTOMER_EMAIL_EXISTED(6004, "Email đã tồn tại", HttpStatus.BAD_REQUEST),
-    CUSTOMER_TAX_CODE_EXISTED(6005, "Mã số thuế đã tồn tại", HttpStatus.BAD_REQUEST),
+    CUSTOMER_IMAGE_FILES_EXCEED(6005, "Ảnh căn cước công dân của khách hàng chỉ được gửi 2 ảnh gồm mặt trước và mặt sau", HttpStatus.BAD_REQUEST),
 
     /**
      * Location Error

@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.contract.CalenderContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
@@ -37,8 +38,10 @@ public class ContractController {
 
     @Operation(summary = "Tạo mới hợp đồng tiệc")
     @PostMapping("/create")
-    public ApiResponse<ContractResponse> createContract(@RequestBody @Valid ContractRequest request) throws Exception {
-        ContractResponse response = contractService.createContract(request);
+    public ApiResponse<ContractResponse> createContract(
+            @RequestPart("request") @Valid ContractRequest request,
+            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+        ContractResponse response = contractService.createContract(request, imageFiles);
         return ApiResponse.<ContractResponse>builder()
                 .data(response)
                 .build();
@@ -48,8 +51,9 @@ public class ContractController {
     @PutMapping("/update")
     public ApiResponse<ContractResponse> updateContract(
             @RequestParam Integer bookingId,
-            @Valid @RequestBody ContractRequest request) {
-        ContractResponse response = contractService.updateContract(bookingId, request);
+            @Valid @RequestBody ContractRequest request,
+            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+        ContractResponse response = contractService.updateContract(bookingId, request, imageFiles);
         return ApiResponse.<ContractResponse>builder()
                 .data(response)
                 .build();

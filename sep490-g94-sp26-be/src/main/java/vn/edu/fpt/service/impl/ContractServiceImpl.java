@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.contract.CalenderContractRequest;
 import vn.edu.fpt.dto.request.contract.ContractFilterRequest;
@@ -58,7 +59,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Transactional
     @Override
-    public ContractResponse createContract(ContractRequest request) throws Exception {
+    public ContractResponse createContract(ContractRequest request, List<MultipartFile> imageFiles) throws Exception {
         CustomerResponse customerResponse = new CustomerResponse();
 
         validateContract(request);
@@ -73,9 +74,9 @@ public class ContractServiceImpl implements ContractService {
                     .citizenIdNumber(request.getCustomerRequest().getCitizenIdNumber())
                     .build();
 
-            customerResponse = customerService.updateCustomer(request.getCustomerId(), customerUpdateRequest);
+            customerResponse = customerService.updateCustomer(request.getCustomerId(), customerUpdateRequest, imageFiles);
         } else {
-            customerResponse = customerService.createCustomer(request.getCustomerRequest());
+            customerResponse = customerService.createCustomer(request.getCustomerRequest(), imageFiles);
         }
 
         validateNumberOfGuests(request.getHallId(), request.getExpectedGuests());
@@ -104,7 +105,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Transactional
     @Override
-    public ContractResponse updateContract(Integer id, ContractRequest request) {
+    public ContractResponse updateContract(Integer id, ContractRequest request, List<MultipartFile> imageFiles) throws Exception {
         CustomerResponse customerResponse = new CustomerResponse();
 
         Contract booking = bookingRepository.findById(id)
@@ -139,9 +140,9 @@ public class ContractServiceImpl implements ContractService {
                     .citizenIdNumber(request.getCustomerRequest().getCitizenIdNumber())
                     .build();
 
-            customerResponse = customerService.updateCustomer(request.getCustomerId(), customerUpdateRequest);
+            customerResponse = customerService.updateCustomer(request.getCustomerId(), customerUpdateRequest, imageFiles);
         } else {
-            customerResponse = customerService.createCustomer(request.getCustomerRequest());
+            customerResponse = customerService.createCustomer(request.getCustomerRequest(), imageFiles);
         }
         Invoice.InvoiceData invoiceData = invoiceService.updateInvoiceWhenUpdatingContract(booking, request);
 

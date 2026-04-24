@@ -8,23 +8,21 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.SimplePage;
 import vn.edu.fpt.dto.request.customer.CustomerRequest;
 import vn.edu.fpt.dto.request.customer.CustomerUpdateRequest;
 import vn.edu.fpt.dto.request.customer.CustomersFilterRequest;
 import vn.edu.fpt.dto.response.customer.CustomerResponse;
-import vn.edu.fpt.entity.Customer;
-import vn.edu.fpt.entity.Location;
-import vn.edu.fpt.entity.Role;
-import vn.edu.fpt.entity.User;
-import vn.edu.fpt.respository.RoleRepository;
-import vn.edu.fpt.respository.UserRepository;
+import vn.edu.fpt.entity.*;
+import vn.edu.fpt.respository.*;
+import vn.edu.fpt.service.ImageAssetService;
+import vn.edu.fpt.util.MediaAssetUtil;
+import vn.edu.fpt.util.enums.MediaAssetOwnerType;
 import vn.edu.fpt.util.enums.RecordStatus;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.mapper.CustomerMapper;
-import vn.edu.fpt.respository.CustomerRepository;
-import vn.edu.fpt.respository.LocationRepository;
 import vn.edu.fpt.service.CustomerService;
 import vn.edu.fpt.util.StringUtils;
 
@@ -41,40 +39,55 @@ public class CustomerServiceImpl implements CustomerService {
     private final LocationRepository locationRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final MediaAssetRepository mediaAssetRepository;
 
     private final CustomerMapper customerMapper;
 
+    private final ImageAssetService imageAssetService;
+
     @Override
-    public CustomerResponse createCustomer(CustomerRequest request) {
+    public CustomerResponse createCustomer(CustomerRequest request, List<MultipartFile> imageFiles) throws Exception {
         Location location = locationRepository.findByIdAndStatus(request.getLocationId(), RecordStatus.active).orElseThrow(
                 () -> new AppException(ERROR_CODE.LOCATION_NOT_EXISTED)
         );
 
         if (customerRepository.existsByPhone(request.getPhone())) {
             throw new AppException(ERROR_CODE.CUSTOMER_PHONE_EXISTED);
-        } else if (request.getEmail() != null && customerRepository.existsByEmail(request.getEmail())) {
+        }
+        if(customerRepository.existsByCitizenIdNumber(request.getCitizenIdNumber())) {
+            throw new AppException(ERROR_CODE.CUSTOMER_CITIZEN_ID_NUMBER_EXISTED);
+        }
+        if (request.getEmail() != null && customerRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ERROR_CODE.CUSTOMER_EMAIL_EXISTED);
         }
+
 
         Customer customer = customerMapper.toEntity(request);
         Customer savedCustomer = customerRepository.save(customer);
 
+        List<MediaAsset> mediaAssets = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, savedCustomer.getId(), MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD);
+
         CustomerResponse customerResponse = customerMapper.toResponse(savedCustomer);
         customerResponse.setLocationName(location.getName());
+        customerResponse.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssets));
 
         return customerResponse;
     }
 
     @Transactional
     @Override
-    public CustomerResponse updateCustomer(Integer id, CustomerUpdateRequest customerUpdateRequest) {
+    public CustomerResponse updateCustomer(Integer id, CustomerUpdateRequest customerUpdateRequest, List<MultipartFile> imageFiles) throws Exception {
         Customer customer = customerRepository
                 .findByIdAndStatus(id, RecordStatus.active)
                 .orElseThrow(() -> new AppException(ERROR_CODE.CUSTOMER_NOT_EXISTED));
 
         if (customerUpdateRequest.getPhone() != null && customerRepository.existsByPhoneAndIdNot(customerUpdateRequest.getPhone(), id)) {
             throw new AppException(ERROR_CODE.CUSTOMER_PHONE_EXISTED);
-        } else if (customerUpdateRequest.getEmail() != null && customerRepository.existsByEmailAndIdNot(customerUpdateRequest.getEmail(), id)) {
+        }
+        if (customerUpdateRequest.getCitizenIdNumber() != null && customerRepository.existsByCitizenIdNumberAndIdNot(customerUpdateRequest.getCitizenIdNumber(), id)) {
+            throw new AppException(ERROR_CODE.CUSTOMER_CITIZEN_ID_NUMBER_EXISTED);
+        }
+        if (customerUpdateRequest.getEmail() != null && customerRepository.existsByEmailAndIdNot(customerUpdateRequest.getEmail(), id)) {
             throw new AppException(ERROR_CODE.CUSTOMER_EMAIL_EXISTED);
         }
 
@@ -85,8 +98,20 @@ public class CustomerServiceImpl implements CustomerService {
         }
         customerMapper.updateEntity(customer, customerUpdateRequest);
 
+        List<MediaAsset> mediaAssetList = MediaAssetUtil.getListMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, id, MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD);
+        if (imageFiles != null && !imageFiles.isEmpty()) {
+            if (imageFiles.size() != 2) {
+                throw new AppException(ERROR_CODE.CUSTOMER_IMAGE_FILES_EXCEED);
+            }
+            if (mediaAssetList != null && !mediaAssetList.isEmpty()) {
+                imageAssetService.deleteFolder(mediaAssetList.getFirst().getImageOrigKey());
+            }
+            mediaAssetList = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, id, MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD);
+        }
+
         CustomerResponse customerResponse = customerMapper.toResponse(customer);
         customerResponse.setLocationName(locationRepository.findById(customerResponse.getLocationId()).get().getName());
+        customerResponse.setImageUrls(MediaAssetUtil.getPresignedListImageUrls(imageAssetService, mediaAssetList));
 
         return customerResponse;
     }
