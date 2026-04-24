@@ -77,7 +77,7 @@ public class HallServiceImpl implements HallService {
 
     @Transactional
     @Override
-    public HallResponse updateHall(Integer id, HallRequest request) {
+    public HallResponse updateHall(Integer id, HallRequest request, List<MultipartFile> imageFiles) throws Exception {
         Hall hall = hallRepository.findById(id)
                 .orElseThrow(() -> new AppException(ERROR_CODE.HALL_NOT_EXISTED));
 
@@ -94,6 +94,12 @@ public class HallServiceImpl implements HallService {
         Hall saved = hallRepository.save(hall);
 
         List<MediaAsset> mediaAssetList = MediaAssetUtil.getListMediaAssetByEntityIdAndOwnerType(mediaAssetRepository, saved.getId(), MediaAssetOwnerType.HALL);
+        if (imageFiles != null && !imageFiles.isEmpty()) {
+            if (mediaAssetList != null && !mediaAssetList.isEmpty()) {
+                imageAssetService.deleteFolder(mediaAssetList.getFirst().getImageOrigKey());
+            }
+            mediaAssetList = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, saved.getId(), MediaAssetOwnerType.HALL);
+        }
 
         HallResponse response = hallMapper.toResponse(saved);
         response.setLocationName(location.getName());

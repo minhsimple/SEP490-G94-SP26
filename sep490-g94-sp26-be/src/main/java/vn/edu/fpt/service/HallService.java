@@ -13,7 +13,7 @@ import java.util.List;
 public interface HallService {
     HallResponse createHall(@Valid HallRequest request, List<MultipartFile> imageFiles) throws Exception;
 
-    HallResponse updateHall(Integer id, @Valid HallRequest request);
+    HallResponse updateHall(Integer id, @Valid HallRequest request, List<MultipartFile> imageFiles) throws Exception;
 
     HallResponse getHallById(Integer id);
 
