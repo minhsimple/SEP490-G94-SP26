@@ -183,13 +183,11 @@ class ContractServiceImplTest {
         when(invoiceService.createInvoice(1))
                 .thenReturn(null);
 
-        // Act
         ContractResponse response = contractService.createContract(contractRequest, imageFiles);
 
-        // Assert
         assertNotNull(response);
         assertEquals(1, response.getId());
-        assertEquals("CH-20260426120000001", response.getContractNo());
+        assertEquals("NPS-202603162220331228", response.getContractNo());
         assertEquals(ContractState.DRAFT, response.getContractState());
         verify(bookingRepository, times(1)).save(any(Contract.class));
     }
