@@ -28,7 +28,7 @@ async def extract_cccd(file: UploadFile = File(...)):
         cccd_number = cccd_match.group() if cccd_match else None
         
         # Extract Name (after "Họ và tên" or "Họ và tên Full name:" and before "Ngày sinh")
-        name_match = re.search(r'Họ và tên(?: Full name)?[:\s]+(.*?)(?=\s*Ngày sinh|\s*$)', full_text, re.IGNORECASE)
+        name_match = re.search(r'Full name[:\s]+(.*?)(?=\s*Ngày sinh|\s*$)', full_text, re.IGNORECASE)
         name = name_match.group(1).strip().title() if name_match else None
         
         if cccd_number or name:
