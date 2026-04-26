@@ -23,14 +23,23 @@ async def extract_cccd(file: UploadFile = File(...)):
         results = reader.readtext(image_bytes, detail=0)
         full_text = " ".join(results)
         
-        citizenIdNumber = re.search(r'\b\d{12}\b', full_text)
-        if not citizenIdNumber:
-            match = re.search(r'\b\d{9}\b', full_text)
+        # Extract CCCD/CMND Number (12 or 9 digits)
+        cccd_match = re.search(r'\b\d{12}\b|\b\d{9}\b', full_text)
+        cccd_number = cccd_match.group() if cccd_match else None
         
-        if match:
-            return {"status": "success", "cccd_number": match.group(), "raw_text": full_text}
+        # Extract Name (after "Họ và tên" or "Họ và tên Full name:" and before "Ngày sinh")
+        name_match = re.search(r'Họ và tên(?: Full name)?[:\s]+(.*?)(?=\s*Ngày sinh|\s*$)', full_text, re.IGNORECASE)
+        name = name_match.group(1).strip().title() if name_match else None
+        
+        if cccd_number or name:
+            response_data = {"status": "success", "raw_text": full_text}
+            if cccd_number:
+                response_data["cccd_number"] = cccd_number
+            if name:
+                response_data["name"] = name
+            return response_data
         else:
-            return {"status": "not_found", "message": "Không tìm thấy số CCCD", "raw_text": full_text}
+            return {"status": "not_found", "message": "Không tìm thấy thông tin", "raw_text": full_text}
             
     except Exception as e:
         return {"status": "error", "message": str(e)}
