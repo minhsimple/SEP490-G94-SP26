@@ -63,6 +63,13 @@ export class CustomerService {
         });
     }
 
+    private getAuthHeaders(): HttpHeaders {
+        const token = localStorage.getItem('accessToken');
+        return new HttpHeaders({
+            Authorization: `Bearer ${token}`
+        });
+    }
+
     searchCustomers(params: CustomerSearchParams = {}): Observable<ApiResponse<PageResponse<Customer>>> {
         let httpParams = new HttpParams()
             .set('page', params.page ?? 0)
@@ -101,9 +108,20 @@ export class CustomerService {
         notes?: string;
         locationId?: number;
         password?: string;
-    }): Observable<ApiResponse<Customer>> {
-        return this.http.post<ApiResponse<Customer>>(`${this.baseUrl}/create`, customer, {
-            headers: this.getHeaders()
+    }, imageFiles: File[] = []): Observable<ApiResponse<Customer>> {
+        const formData = new FormData();
+        formData.append('customerRequest', new Blob([JSON.stringify(customer)], { type: 'application/json' }));
+        imageFiles.forEach(file => {
+            if (file instanceof File) {
+                formData.append('imageFiles', file, file.name);
+            }
+        });
+
+        // Backend requires imageFiles part. If empty array, we might need to send an empty file to prevent MissingServletRequestPartException
+        // Wait, if no imageFiles are provided, we don't append anything. We'll see if BE accepts it. If BE throws an error, it will be MissingServletRequestPartException, not InvalidContentTypeException.
+
+        return this.http.post<ApiResponse<Customer>>(`${this.baseUrl}/create`, formData, {
+            headers: this.getAuthHeaders()
         });
     }
 
@@ -116,9 +134,17 @@ export class CustomerService {
         address?: string;
         notes?: string;
         locationId?: number;
-    }): Observable<ApiResponse<Customer>> {
-        return this.http.put<ApiResponse<Customer>>(`${this.baseUrl}/update`, customer, {
-            headers: this.getHeaders(),
+    }, imageFiles: File[] = []): Observable<ApiResponse<Customer>> {
+        const formData = new FormData();
+        formData.append('updateRequest', new Blob([JSON.stringify(customer)], { type: 'application/json' }));
+        imageFiles.forEach(file => {
+            if (file instanceof File) {
+                formData.append('imageFiles', file, file.name);
+            }
+        });
+
+        return this.http.put<ApiResponse<Customer>>(`${this.baseUrl}/update`, formData, {
+            headers: this.getAuthHeaders(),
             params: new HttpParams().set('customerId', id)
         });
     }

@@ -155,6 +155,105 @@ interface BookingSummary {
             color: #1e293b;
             margin-bottom: 1rem;
         }
+        .customer-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .customer-card-title {
+            margin-bottom: 0;
+        }
+        .customer-upload-trigger {
+            flex-shrink: 0;
+        }
+        .customer-upload-popup-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+            padding: 1rem;
+        }
+        .customer-upload-popup {
+            width: min(1160px, 96vw);
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+            border: 1px solid #e2e8f0;
+            padding: 1.15rem;
+        }
+        .customer-upload-popup-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.85rem;
+        }
+        .customer-upload-popup-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .customer-upload-popup-close {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        .customer-upload-popup-close:hover {
+            background: #f1f5f9;
+        }
+        .customer-upload-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 0.55rem;
+        }
+        .customer-upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+        }
+        .customer-upload-item {
+            min-width: 0;
+        }
+        .customer-upload-btn {
+            width: 100%;
+            justify-content: center;
+        }
+        .customer-upload-file {
+            margin-top: 0.35rem;
+            font-size: 0.74rem;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .customer-upload-error {
+            margin-top: 0.45rem;
+            font-size: 0.75rem;
+            color: #b91c1c;
+        }
+        .customer-upload-preview-image {
+            width: 100%;
+            height: 350px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            object-fit: cover;
+            display: block;
+            background: #ffffff;
+        }
+        .hidden-file-input {
+            display: none;
+        }
         .field-wrap {
             margin-bottom: 1rem;
         }
@@ -402,7 +501,19 @@ interface BookingSummary {
         <div class="create-layout">
             <div>
                 <div class="section-card">
-                    <div class="section-title">Khách hàng và điều phối</div>
+                    <div class="customer-card-header">
+                        <div class="section-title customer-card-title">Khách hàng và điều phối</div>
+                        <p-button
+                            label="Tải ảnh CCCD"
+                            icon="pi pi-upload"
+                            severity="secondary"
+                            styleClass="customer-upload-trigger"
+                            (onClick)="openCitizenCardUploadPopup()"
+                        />
+                    </div>
+                    <div class="customer-upload-error" *ngIf="!isEditMode && submitting && (!citizenCardImages.front || !citizenCardImages.back)">
+                        Vui lòng tải lên đủ ảnh CCCD mặt trước và mặt sau.
+                    </div>
                     <div [class.two-col]="!shouldHideSalesAssigneeField">
                         <div class="field-wrap">
                             <label class="field-label">Số điện thoại khách hàng <span class="req">*</span></label>
@@ -495,6 +606,68 @@ interface BookingSummary {
                         </div>
                     </div>
 
+                </div>
+
+                <div class="customer-upload-popup-backdrop" *ngIf="showCitizenCardUploadPopup" (click)="closeCitizenCardUploadPopup()">
+                    <div class="customer-upload-popup" (click)="$event.stopPropagation()">
+                        <div class="customer-upload-popup-header">
+                            <div class="customer-upload-popup-title">Tải ảnh CCCD khách hàng</div>
+                            <button class="customer-upload-popup-close" type="button" (click)="closeCitizenCardUploadPopup()">
+                                <i class="pi pi-times"></i>
+                            </button>
+                        </div>
+
+                        <div class="customer-upload-title">Vui lòng tải đủ 2 ảnh: mặt trước và mặt sau <span class="req">*</span></div>
+                        <div class="customer-upload-grid">
+                            <div class="customer-upload-item">
+                                <input
+                                    #citizenCardFrontInput
+                                    class="hidden-file-input"
+                                    type="file"
+                                    accept="image/*"
+                                    (change)="onCitizenCardImageSelected($event, 'front')"
+                                />
+                                <p-button
+                                    label="Mặt trước"
+                                    icon="pi pi-upload"
+                                    severity="secondary"
+                                    styleClass="customer-upload-btn"
+                                    (onClick)="citizenCardFrontInput.click()"
+                                />
+                                <div class="customer-upload-file">{{ citizenCardImages.front?.name || 'Chưa chọn ảnh' }}</div>
+                                <img
+                                    *ngIf="citizenCardPreviewUrls.front"
+                                    class="customer-upload-preview-image"
+                                    [src]="citizenCardPreviewUrls.front"
+                                    alt="Preview CCCD mặt trước"
+                                />
+                            </div>
+
+                            <div class="customer-upload-item">
+                                <input
+                                    #citizenCardBackInput
+                                    class="hidden-file-input"
+                                    type="file"
+                                    accept="image/*"
+                                    (change)="onCitizenCardImageSelected($event, 'back')"
+                                />
+                                <p-button
+                                    label="Mặt sau"
+                                    icon="pi pi-upload"
+                                    severity="secondary"
+                                    styleClass="customer-upload-btn"
+                                    (onClick)="citizenCardBackInput.click()"
+                                />
+                                <div class="customer-upload-file">{{ citizenCardImages.back?.name || 'Chưa chọn ảnh' }}</div>
+                                <img
+                                    *ngIf="citizenCardPreviewUrls.back"
+                                    class="customer-upload-preview-image"
+                                    [src]="citizenCardPreviewUrls.back"
+                                    alt="Preview CCCD mặt sau"
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="section-card">
@@ -855,6 +1028,15 @@ export class BookingCreateComponent implements OnInit {
         email: '',
         address: '',
     };
+    citizenCardImages: { front: File | null; back: File | null } = {
+        front: null,
+        back: null,
+    };
+    citizenCardPreviewUrls: { front: string | null; back: string | null } = {
+        front: null,
+        back: null,
+    };
+    showCitizenCardUploadPopup = false;
     salesNameMap: Record<number, string> = {};
     saleRoleIds = new Set<number>();
     shiftOptions = [
@@ -1654,6 +1836,119 @@ export class BookingCreateComponent implements OnInit {
         this.customerDraft.citizenIdNumber = this.normalizeCitizenIdNumber(value);
     }
 
+    openCitizenCardUploadPopup() {
+        this.showCitizenCardUploadPopup = true;
+    }
+
+    closeCitizenCardUploadPopup() {
+        this.showCitizenCardUploadPopup = false;
+    }
+
+    onCitizenCardImageSelected(event: Event, side: 'front' | 'back') {
+        const input = event.target as HTMLInputElement | null;
+        const file = input?.files?.[0] ?? null;
+        const oldPreviewUrl = this.citizenCardPreviewUrls[side];
+
+        if (!file) {
+            this.citizenCardImages[side] = null;
+            this.citizenCardPreviewUrls[side] = null;
+            if (oldPreviewUrl) {
+                URL.revokeObjectURL(oldPreviewUrl);
+            }
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            this.warn('Chỉ chấp nhận tệp ảnh cho CCCD');
+            this.citizenCardImages[side] = null;
+            this.citizenCardPreviewUrls[side] = null;
+            if (oldPreviewUrl) {
+                URL.revokeObjectURL(oldPreviewUrl);
+            }
+            if (input) {
+                input.value = '';
+            }
+            return;
+        }
+
+        if (oldPreviewUrl) {
+            URL.revokeObjectURL(oldPreviewUrl);
+        }
+        this.citizenCardImages[side] = file;
+        this.citizenCardPreviewUrls[side] = URL.createObjectURL(file);
+
+        if (side === 'front') {
+            this.extractCCCDInfo(file);
+        }
+    }
+
+    isExtractingCCCD = false;
+
+    private extractCCCDInfo(file: File) {
+        this.isExtractingCCCD = true;
+        this.messageService.add({
+            severity: 'info',
+            summary: 'Đang xử lý',
+            detail: 'Đang trích xuất thông tin CCCD mặt trước...',
+            life: 2000,
+        });
+
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        this.http.post<any>('http://localhost:8000/api/ocr/extract-cccd', formData).subscribe({
+            next: (res) => {
+                this.isExtractingCCCD = false;
+                if (res.status === 'success') {
+                    let updated = false;
+                    if (res.cccd_number) {
+                        this.customerDraft.citizenIdNumber = res.cccd_number;
+                        updated = true;
+                    }
+                    if (res.name) {
+                        this.customerDraft.fullName = res.name;
+                        updated = true;
+                    }
+                    
+                    if (updated) {
+                        this.syncSelectedCustomerLabel();
+                        this.messageService.add({
+                            severity: 'success',
+                            summary: 'Thành công',
+                            detail: 'Đã trích xuất thông tin CCCD',
+                            life: 3000,
+                        });
+                    } else {
+                        this.messageService.add({
+                            severity: 'info',
+                            summary: 'Lưu ý',
+                            detail: 'Không tìm thấy thông tin trên ảnh, vui lòng kiểm tra lại.',
+                            life: 3000,
+                        });
+                    }
+                } else {
+                    this.messageService.add({
+                        severity: 'warn',
+                        summary: 'Lưu ý',
+                        detail: 'Không tìm thấy thông tin trên ảnh, vui lòng nhập tay',
+                        life: 3000,
+                    });
+                }
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                this.isExtractingCCCD = false;
+                this.messageService.add({
+                    severity: 'error',
+                    summary: 'Lỗi',
+                    detail: 'Lỗi khi kết nối đến dịch vụ OCR',
+                    life: 4000,
+                });
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
     selectSetMenu(menu: SetMenuOption) {
         this.form.setMenuId = menu.id;
         this.syncSetMenuSummary();
@@ -1814,8 +2109,8 @@ export class BookingCreateComponent implements OnInit {
                 this.form.customerId = customerId;
                 const payload = this.buildPayload();
                 return this.isEditMode && this.bookingId
-                    ? this.bookingService.update(this.bookingId, payload)
-                    : this.bookingService.create(payload);
+                    ? this.bookingService.update(this.bookingId, payload, this.getCitizenCardImageFiles())
+                    : this.bookingService.create(payload, this.getCitizenCardImageFiles());
             })
         ).subscribe({
             next: (res) => {
@@ -1906,7 +2201,7 @@ export class BookingCreateComponent implements OnInit {
                     email: this.customerDraft.email?.trim() || undefined,
                     address,
                     locationId,
-                }).pipe(
+                }, this.getCitizenCardImageFiles()).pipe(
                     map((createRes) => {
                         const createdId = Number(createRes.data?.id);
                         if (!Number.isFinite(createdId) || createdId <= 0) {
@@ -1957,6 +2252,10 @@ export class BookingCreateComponent implements OnInit {
     }
 
     private validateForm(): boolean {
+        if (!this.isEditMode && (!this.citizenCardImages.front || !this.citizenCardImages.back)) {
+            this.warn('Vui lòng tải ảnh CCCD mặt trước và mặt sau');
+            return false;
+        }
         if (!this.customerDraft.phone?.trim()) {
             this.warn('Vui lòng nhập số điện thoại khách hàng');
             return false;
@@ -2032,6 +2331,11 @@ export class BookingCreateComponent implements OnInit {
 
     private normalizeCitizenIdNumber(value: string): string {
         return String(value ?? '').replace(/\D/g, '').slice(0, 12);
+    }
+
+    private getCitizenCardImageFiles(): File[] {
+        const { front, back } = this.citizenCardImages;
+        return [front, back].filter((file): file is File => file instanceof File);
     }
 
     private buildPayload(): BookingUpsertPayload {

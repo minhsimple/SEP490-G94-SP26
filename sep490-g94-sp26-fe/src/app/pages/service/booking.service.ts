@@ -226,6 +226,35 @@ export class BookingService {
         });
     }
 
+    private getAuthHeaders(): HttpHeaders {
+        const token = localStorage.getItem('accessToken') ?? '';
+        return new HttpHeaders({
+            Authorization: `Bearer ${token}`
+        });
+    }
+
+    private normalizeCitizenCardImageFiles(imageFiles: File[]): File[] {
+        if (!Array.isArray(imageFiles) || imageFiles.length === 0) {
+            return [];
+        }
+
+        const uniqueMap = new Map<string, File>();
+        for (const file of imageFiles) {
+            if (!(file instanceof File)) {
+                continue;
+            }
+
+            const key = `${file.name}__${file.size}__${file.lastModified}`;
+            uniqueMap.set(key, file);
+
+            if (uniqueMap.size >= 2) {
+                break;
+            }
+        }
+
+        return Array.from(uniqueMap.values());
+    }
+
     searchBookings(params: BookingSearchParams = {}): Observable<ApiResponse<PageResponse<Booking>>> {
         const contractNo = params.contractNo ?? params.bookingNo;
         const contractState = params.contractState ?? params.bookingState;
@@ -265,17 +294,29 @@ export class BookingService {
         );
     }
 
-    create(payload: BookingUpsertPayload): Observable<ApiResponse<Booking>> {
-        return this.http.post<ApiResponse<any>>(`${BASE}/contract/create`, payload, {
-            headers: this.getHeaders(),
+    create(payload: BookingUpsertPayload, imageFiles: File[] = []): Observable<ApiResponse<Booking>> {
+        const normalizedImageFiles = this.normalizeCitizenCardImageFiles(imageFiles);
+
+        const formData = new FormData();
+        formData.append('request', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+        normalizedImageFiles.forEach((file) => formData.append('imageFiles', file, file.name));
+
+        return this.http.post<ApiResponse<any>>(`${BASE}/contract/create`, formData, {
+            headers: this.getAuthHeaders(),
         }).pipe(
             map((res) => this.normalizeBookingSingleResponse(res))
         );
     }
 
-    update(id: number, payload: BookingUpsertPayload): Observable<ApiResponse<Booking>> {
-        return this.http.put<ApiResponse<any>>(`${BASE}/contract/update`, payload, {
-            headers: this.getHeaders(),
+    update(id: number, payload: BookingUpsertPayload, imageFiles: File[] = []): Observable<ApiResponse<Booking>> {
+        const normalizedImageFiles = this.normalizeCitizenCardImageFiles(imageFiles);
+
+        const formData = new FormData();
+        formData.append('request', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+        normalizedImageFiles.forEach((file) => formData.append('imageFiles', file, file.name));
+
+        return this.http.put<ApiResponse<any>>(`${BASE}/contract/update`, formData, {
+            headers: this.getAuthHeaders(),
             params: new HttpParams().set('bookingId', id),
         }).pipe(
             map((res) => this.normalizeBookingSingleResponse(res))
