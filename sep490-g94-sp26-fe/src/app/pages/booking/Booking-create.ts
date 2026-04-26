@@ -2109,7 +2109,7 @@ export class BookingCreateComponent implements OnInit {
                 this.form.customerId = customerId;
                 const payload = this.buildPayload();
                 return this.isEditMode && this.bookingId
-                    ? this.bookingService.update(this.bookingId, payload)
+                    ? this.bookingService.update(this.bookingId, payload, this.getCitizenCardImageFiles())
                     : this.bookingService.create(payload, this.getCitizenCardImageFiles());
             })
         ).subscribe({
@@ -2201,7 +2201,7 @@ export class BookingCreateComponent implements OnInit {
                     email: this.customerDraft.email?.trim() || undefined,
                     address,
                     locationId,
-                }).pipe(
+                }, this.getCitizenCardImageFiles()).pipe(
                     map((createRes) => {
                         const createdId = Number(createRes.data?.id);
                         if (!Number.isFinite(createdId) || createdId <= 0) {
