@@ -23,8 +23,8 @@ async def extract_cccd(file: UploadFile = File(...)):
         results = reader.readtext(image_bytes, detail=0)
         full_text = " ".join(results)
         
-        match = re.search(r'\b\d{12}\b', full_text)
-        if not match:
+        citizenIdNumber = re.search(r'\b\d{12}\b', full_text)
+        if not citizenIdNumber:
             match = re.search(r'\b\d{9}\b', full_text)
         
         if match:

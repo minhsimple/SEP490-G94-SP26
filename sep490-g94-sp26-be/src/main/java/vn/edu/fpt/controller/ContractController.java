@@ -51,7 +51,7 @@ public class ContractController {
     @PutMapping("/update")
     public ApiResponse<ContractResponse> updateContract(
             @RequestParam Integer bookingId,
-            @Valid @RequestBody ContractRequest request,
+            @Valid @RequestPart("request") ContractRequest request,
             @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
         ContractResponse response = contractService.updateContract(bookingId, request, imageFiles);
         return ApiResponse.<ContractResponse>builder()
