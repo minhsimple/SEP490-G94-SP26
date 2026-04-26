@@ -1876,6 +1876,77 @@ export class BookingCreateComponent implements OnInit {
         }
         this.citizenCardImages[side] = file;
         this.citizenCardPreviewUrls[side] = URL.createObjectURL(file);
+
+        if (side === 'front') {
+            this.extractCCCDInfo(file);
+        }
+    }
+
+    isExtractingCCCD = false;
+
+    private extractCCCDInfo(file: File) {
+        this.isExtractingCCCD = true;
+        this.messageService.add({
+            severity: 'info',
+            summary: 'Đang xử lý',
+            detail: 'Đang trích xuất thông tin CCCD mặt trước...',
+            life: 2000,
+        });
+
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        this.http.post<any>('http://localhost:8000/api/ocr/extract-cccd', formData).subscribe({
+            next: (res) => {
+                this.isExtractingCCCD = false;
+                if (res.status === 'success') {
+                    let updated = false;
+                    if (res.cccd_number) {
+                        this.customerDraft.citizenIdNumber = res.cccd_number;
+                        updated = true;
+                    }
+                    if (res.name) {
+                        this.customerDraft.fullName = res.name;
+                        updated = true;
+                    }
+                    
+                    if (updated) {
+                        this.syncSelectedCustomerLabel();
+                        this.messageService.add({
+                            severity: 'success',
+                            summary: 'Thành công',
+                            detail: 'Đã trích xuất thông tin CCCD',
+                            life: 3000,
+                        });
+                    } else {
+                        this.messageService.add({
+                            severity: 'info',
+                            summary: 'Lưu ý',
+                            detail: 'Không tìm thấy thông tin trên ảnh, vui lòng kiểm tra lại.',
+                            life: 3000,
+                        });
+                    }
+                } else {
+                    this.messageService.add({
+                        severity: 'warn',
+                        summary: 'Lưu ý',
+                        detail: 'Không tìm thấy thông tin trên ảnh, vui lòng nhập tay',
+                        life: 3000,
+                    });
+                }
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                this.isExtractingCCCD = false;
+                this.messageService.add({
+                    severity: 'error',
+                    summary: 'Lỗi',
+                    detail: 'Lỗi khi kết nối đến dịch vụ OCR',
+                    life: 4000,
+                });
+                this.cdr.detectChanges();
+            }
+        });
     }
 
     selectSetMenu(menu: SetMenuOption) {
