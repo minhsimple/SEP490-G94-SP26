@@ -1543,21 +1543,31 @@ export class BookingCreateComponent implements OnInit {
     private loadHalls(locationId: number, selectedHallId?: number): Observable<void> {
         return this.hallService.searchHalls({ locationId, page: 0, size: 100 }).pipe(
             tap((res) => {
-                this.hallOptions = (res.data?.content ?? []).map((hall) => ({
+                const selectedId = Number(selectedHallId ?? this.form.hallId ?? 0);
+                this.hallOptions = (res.data?.content ?? [])
+                    .filter((hall) => {
+                        const hallId = Number(hall.id);
+                        return this.isSelectableResourceStatus(hall.status) || (selectedId > 0 && hallId === selectedId);
+                    })
+                    .map((hall) => ({
                     id: Number(hall.id),
                     label: hall.name ?? `Sảnh #${hall.id}`,
                     basePrice: Number(hall.basePrice ?? 0) || 0,
-                }));
+                    }));
 
-                if (selectedHallId) {
-                    this.form.hallId = selectedHallId;
-                    this.syncHallSummary();
+                if (selectedId > 0 && this.hallOptions.some((hall) => hall.id === selectedId)) {
+                    this.form.hallId = selectedId;
+                } else if (this.form.hallId && !this.hallOptions.some((hall) => hall.id === this.form.hallId)) {
+                    this.form.hallId = null;
                 }
+
+                this.syncHallSummary();
                 this.cdr.detectChanges();
             }),
             mapTo(void 0),
             catchError(() => {
                 this.hallOptions = [];
+                this.form.hallId = null;
                 this.summary.hallPrice = 0;
                 this.cdr.detectChanges();
                 return of(void 0);
@@ -1568,27 +1578,39 @@ export class BookingCreateComponent implements OnInit {
     private loadSetMenus(locationId: number, selectedSetMenuId?: number | null): Observable<void> {
         return this.setMenuService.searchSetMenus({ locationId, page: 0, size: 100 }).pipe(
             switchMap((res) => {
-                const locationMenus = (res.data?.content ?? []).map((menu) => ({
-                    id: Number(menu.id),
-                    label: menu.name ?? `Set menu #${menu.id}`,
-                    price: menu.setPrice ?? 0,
-                    imageUrl: this.extractSetMenuImageUrl(menu),
-                }));
+                const selectedId = Number(selectedSetMenuId ?? this.form.setMenuId ?? 0);
+                const rawLocationMenus = res.data?.content ?? [];
+                const locationMenus = rawLocationMenus
+                    .filter((menu) => {
+                        const menuId = Number(menu.id);
+                        return this.isSelectableResourceStatus(menu.status) || (selectedId > 0 && menuId === selectedId);
+                    })
+                    .map((menu) => ({
+                        id: Number(menu.id),
+                        label: menu.name ?? `Set menu #${menu.id}`,
+                        price: menu.setPrice ?? 0,
+                        imageUrl: this.extractSetMenuImageUrl(menu),
+                    }));
 
                 // Keep branch-based behavior; fallback to hall endpoint if branch query is empty.
-                if (locationMenus.length > 0 || !this.form.hallId) {
+                if (rawLocationMenus.length > 0 || !this.form.hallId) {
                     return of(locationMenus);
                 }
 
                 return this.http.get<any>('http://localhost:8080/api/v1/set-menu', {
                     params: new HttpParams().set('hallId', this.form.hallId)
                 }).pipe(
-                    map((hallRes) => (hallRes.data ?? []).map((menu: any) => ({
-                        id: Number(menu.id),
-                        label: menu.name ?? `Set menu #${menu.id}`,
-                        price: menu.pricePerTable ?? menu.setPrice ?? menu.price ?? 0,
-                        imageUrl: this.extractSetMenuImageUrl(menu),
-                    })))
+                    map((hallRes) => (hallRes.data ?? [])
+                        .filter((menu: any) => {
+                            const menuId = Number(menu.id);
+                            return this.isSelectableResourceStatus(menu?.status) || (selectedId > 0 && menuId === selectedId);
+                        })
+                        .map((menu: any) => ({
+                            id: Number(menu.id),
+                            label: menu.name ?? `Set menu #${menu.id}`,
+                            price: menu.pricePerTable ?? menu.setPrice ?? menu.price ?? 0,
+                            imageUrl: this.extractSetMenuImageUrl(menu),
+                        })))
                 );
             }),
             tap((menus) => {
@@ -1617,11 +1639,17 @@ export class BookingCreateComponent implements OnInit {
     private loadPackages(locationId: number, selectedPackageId?: number | null): Observable<void> {
         return this.servicePackageService.searchServicePackages({ locationId, page: 0, size: 100 }).pipe(
             tap((res) => {
+                const selectedId = Number(selectedPackageId ?? this.form.packageId ?? 0);
                 const scopedPackages = (res.data?.content ?? []).filter((item: any) => {
                     const packageLocationId = Number(
                         item.locationId ?? item.branchId ?? item.locationResponse?.id ?? item.location?.id
                     );
-                    return packageLocationId === Number(locationId);
+                    if (packageLocationId !== Number(locationId)) {
+                        return false;
+                    }
+
+                    const packageId = Number(item.id);
+                    return this.isSelectableResourceStatus(item.status) || (selectedId > 0 && packageId === selectedId);
                 });
 
                 this.packageOptions = scopedPackages.map((item) => ({
@@ -2294,6 +2322,10 @@ export class BookingCreateComponent implements OnInit {
             this.warn('Vui lòng chọn sảnh cưới');
             return false;
         }
+        if (!this.hallOptions.some((hall) => hall.id === this.form.hallId)) {
+            this.warn('Sảnh đã chọn hiện không còn hoạt động, vui lòng chọn sảnh khác');
+            return false;
+        }
         if (!this.form.bookingDate) {
             this.warn('Vui lòng chọn ngày tổ chức');
             return false;
@@ -2307,7 +2339,11 @@ export class BookingCreateComponent implements OnInit {
             return false;
         }
         if (this.form.setMenuId != null && !this.setMenuOptions.some((menu) => menu.id === this.form.setMenuId)) {
-            this.warn('Set menu đã chọn không hợp lệ với chi nhánh hiện tại');
+            this.warn('Set menu đã chọn hiện không còn hoạt động hoặc không thuộc chi nhánh hiện tại');
+            return false;
+        }
+        if (this.form.packageId != null && !this.packageOptions.some((pkg) => pkg.id === this.form.packageId)) {
+            this.warn('Combo dịch vụ đã chọn hiện không còn hoạt động hoặc không thuộc chi nhánh hiện tại');
             return false;
         }
         if (!this.form.expectedTables || !this.form.expectedGuests) {
@@ -2614,5 +2650,13 @@ export class BookingCreateComponent implements OnInit {
             return 'INACTIVE';
         }
         return normalized;
+    }
+
+    private isSelectableResourceStatus(value?: string): boolean {
+        const normalized = this.normalizeStatusValue(value);
+        if (!normalized) {
+            return true;
+        }
+        return normalized !== 'INACTIVE';
     }
 }
