@@ -1901,11 +1901,11 @@ export class BookingCreateComponent implements OnInit {
                 this.isExtractingCCCD = false;
                 if (res.status === 'success') {
                     let updated = false;
-                    if (res.cccd_number) {
+                    if (res.cccd_number && !this.customerDraft.citizenIdNumber) {
                         this.customerDraft.citizenIdNumber = res.cccd_number;
                         updated = true;
                     }
-                    if (res.name) {
+                    if (res.name && !this.customerDraft.fullName) {
                         this.customerDraft.fullName = res.name;
                         updated = true;
                     }
