@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, BehaviorSubject } from 'rxjs';
+import { Router } from '@angular/router';
+import { Observable, BehaviorSubject, of, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { ApiResponse } from './users.service';
 
 export interface UserProfile {
@@ -94,7 +96,50 @@ export class AuthService {
         this.activeLocationIdSubject.next(normalized);
     }
 
-    constructor(private http: HttpClient) { }
+    constructor(private http: HttpClient, private router: Router) {
+        if (typeof window !== 'undefined') {
+            window.addEventListener('storage', this.handleStorageEvent);
+        }
+    }
+
+    private readonly handleStorageEvent = (event: StorageEvent): void => {
+        if (event.storageArea !== localStorage) {
+            return;
+        }
+
+        const watchedKeys = new Set<string>(Object.values(this.storageKeys));
+        if (event.key !== null && !watchedKeys.has(event.key)) {
+            return;
+        }
+
+        const accessToken = this.getAccessToken();
+        const refreshToken = this.getRefreshToken();
+        const hasUsableRefreshToken = !!refreshToken && !this.isTokenExpired(refreshToken);
+
+        // If another tab clears tokens, logout immediately in current tab without reload.
+        if (!accessToken && !hasUsableRefreshToken) {
+            this.clearSessionStateOnly();
+            if (this.router.url !== '/auth/login') {
+                void this.router.navigate(['/auth/login']);
+            }
+            return;
+        }
+
+        // Keep lightweight state in sync across tabs.
+        const nextCodeRole = localStorage.getItem(this.storageKeys.codeRole) ?? '';
+        if (this.codeRoleSubject.getValue() !== nextCodeRole) {
+            this.codeRoleSubject.next(nextCodeRole);
+        }
+
+        const nextLocationId = (() => {
+            const value = Number(localStorage.getItem(this.storageKeys.locationId) ?? 0);
+            return Number.isFinite(value) && value > 0 ? value : null;
+        })();
+
+        if (this.activeLocationIdSubject.getValue() !== nextLocationId) {
+            this.activeLocationIdSubject.next(nextLocationId);
+        }
+    };
 
     private isPlaceholderToken(token: string): boolean {
         const normalized = token.trim().toLowerCase();
@@ -230,17 +275,81 @@ export class AuthService {
         return this.isPlaceholderToken(token) ? '' : token;
     }
 
+    getRefreshToken(): string {
+        const token = localStorage.getItem(this.storageKeys.refreshToken) ?? '';
+        return this.isPlaceholderToken(token) ? '' : token;
+    }
+
     getTokenType(): string {
         return localStorage.getItem(this.storageKeys.tokenType) || 'Bearer';
     }
 
+    private persistRefreshedTokens(data: Partial<LoginData>): void {
+        if (data.accessToken && !this.isPlaceholderToken(data.accessToken)) {
+            localStorage.setItem(this.storageKeys.accessToken, data.accessToken);
+        }
+
+        if (data.refreshToken && !this.isPlaceholderToken(data.refreshToken)) {
+            localStorage.setItem(this.storageKeys.refreshToken, data.refreshToken);
+        }
+
+        if (data.tokenType && data.tokenType.trim()) {
+            localStorage.setItem(this.storageKeys.tokenType, data.tokenType);
+        }
+    }
+
+    refreshAccessToken(): Observable<LoginData> {
+        const refreshToken = this.getRefreshToken();
+        if (!refreshToken) {
+            return throwError(() => new Error('Missing refresh token'));
+        }
+
+        const headers = new HttpHeaders({
+            Authorization: `${this.getTokenType()} ${refreshToken}`
+        });
+
+        return this.http.post<LoginResponse>(`${this.baseUrl}/refresh`, null, { headers }).pipe(
+            map((response) => {
+                const data = response?.data;
+                if (!data?.accessToken || this.isPlaceholderToken(data.accessToken)) {
+                    throw new Error('Invalid refresh response');
+                }
+
+                this.persistRefreshedTokens(data);
+                return data;
+            })
+        );
+    }
+
+    logout(): Observable<void> {
+        const refreshToken = this.getRefreshToken();
+        if (!refreshToken) {
+            return of(void 0);
+        }
+
+        const headers = new HttpHeaders({
+            Authorization: `${this.getTokenType()} ${refreshToken}`
+        });
+
+        return this.http.post<ApiResponse<unknown>>(`${this.baseUrl}/logout`, null, { headers }).pipe(
+            map(() => void 0),
+            catchError(() => of(void 0))
+        );
+    }
+
     isAuthenticated(): boolean {
         const token = this.getAccessToken();
+        const refreshToken = this.getRefreshToken();
+        const hasUsableRefreshToken = !!refreshToken && !this.isTokenExpired(refreshToken);
+
         if (!token) {
-            return false;
+            return hasUsableRefreshToken;
         }
 
         if (this.isTokenExpired(token)) {
+            if (hasUsableRefreshToken) {
+                return true;
+            }
             this.clearAuth();
             return false;
         }
@@ -250,6 +359,10 @@ export class AuthService {
 
     clearAuth(): void {
         Object.values(this.storageKeys).forEach((key) => localStorage.removeItem(key));
+        this.clearSessionStateOnly();
+    }
+
+    private clearSessionStateOnly(): void {
         this.codeRoleSubject.next('');
         this.activeLocationIdSubject.next(null);
     }

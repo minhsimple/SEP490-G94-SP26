@@ -7,7 +7,6 @@ import { StyleClassModule } from 'primeng/styleclass';
 import { SelectModule } from 'primeng/select';
 import { AppConfigurator } from './app.configurator';
 import { LayoutService } from '../service/layout.service';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from './../../pages/service/auth.service';
 import { LocationService } from '../../pages/service/location.service';
@@ -391,7 +390,6 @@ export class AppTopbar implements OnInit, OnDestroy {
   layoutService = inject(LayoutService);
 
   constructor(
-    private http: HttpClient,
     private router: Router,
     private authService: AuthService,
     private locationService: LocationService,
@@ -533,10 +531,7 @@ export class AppTopbar implements OnInit, OnDestroy {
 
   logout() {
     this.profileMenuOpen.set(false);
-    const token = localStorage.getItem('accessToken');
-    const headers = new HttpHeaders({ Authorization: `Bearer ${token}` });
-
-    this.http.post('http://localhost:8080/api/v1/auth/logout', null, { headers }).subscribe({
+    this.authService.logout().subscribe({
       next: () => this.clearAndRedirect(),
       error: () => this.clearAndRedirect(),
     });
