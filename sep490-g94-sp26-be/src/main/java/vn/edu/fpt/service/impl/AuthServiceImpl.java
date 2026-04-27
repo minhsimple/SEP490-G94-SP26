@@ -1,13 +1,18 @@
 package vn.edu.fpt.service.impl;
 
+import io.mailtrap.client.MailtrapClient;
+import io.mailtrap.model.request.emails.Address;
+import io.mailtrap.model.request.emails.MailtrapMail;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import vn.edu.fpt.dto.request.authorization.ChangePasswordRequest;
 import vn.edu.fpt.dto.response.AuthResponse;
 import vn.edu.fpt.dto.request.authorization.LoginRequest;
 import vn.edu.fpt.dto.request.authorization.RegisterRequest;
@@ -26,6 +31,7 @@ import vn.edu.fpt.respository.UserLocationRepository;
 import vn.edu.fpt.util.security.JwtTokenUtil;
 import vn.edu.fpt.service.AuthService;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,8 +53,13 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserMapper userMapper;
 
+    private final MailtrapClient mailtrapClient;
+
     @Value("${jwt.refresh-expiration:604800000}")
     private Long refreshExpiration;
+
+    @Value("${mailtrap.email}")
+    private String mailtrapEmail;
 
     @Override
     @Transactional
@@ -162,6 +173,69 @@ public class AuthServiceImpl implements AuthService {
         return user;
     }
 
+    @Transactional
+    @Override
+    public void changePassword(UserDetails userDetails, ChangePasswordRequest request) {
+        User user = findUserByEmail(userDetails.getUsername());
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+            throw new AppException(ERROR_CODE.INVALID_OLD_PASSWORD);
+        }
+
+        // Update to new password
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    @Transactional
+    @Override
+    public void sendOTP(String email) {
+        User user = findUserByEmail(email);
+
+        String otp = generateOTP();
+        user.setOtp(otp);
+        user.setOtpExpiresAt(LocalDateTime.now().plusMinutes(5));
+        user.setOTPVerified(false);
+
+        mailtrapClient.send(MailtrapMail.builder()
+                .from(new Address("hello@demomailtrap.com", "WeddingLink"))
+                .to(List.of(new Address(mailtrapEmail)))
+                .subject("Reset password")
+                .text("Your OTP for password reset is: " + otp + ". It will expire in 5 minutes.")
+                .category("Integration Test")
+                .build());
+    }
+
+    @Transactional
+    @Override
+    public void verifyOTP(String email, String otp) {
+        User user = findUserByEmail(email);
+
+        if (!user.getOtp().equals(otp)) {
+            throw new AppException(ERROR_CODE.OTP_INVALID);
+        }
+        if (LocalDateTime.now().isAfter(user.getOtpExpiresAt())) {
+            throw new AppException(ERROR_CODE.OTP_EXPIRED);
+        }
+
+        user.setOTPVerified(true);
+    }
+
+    @Transactional
+    @Override
+    public void resetPassword(String email, String newPassword) {
+        User user = findUserByEmail(email);
+
+        if (!user.isOTPVerified()) {
+            throw new AppException(ERROR_CODE.OTP_NOT_VERIFIED);
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setOtp(null);
+        user.setOtpExpiresAt(null);
+        user.setOTPVerified(false);
+    }
+
     // ==================== Private Helper Methods ====================
 
     private void validateEmailNotExists(String email) {
@@ -229,5 +303,11 @@ public class AuthServiceImpl implements AuthService {
                 .locationIds(locationIds)
                 .codeRole(role.getCode())
                 .build();
+    }
+
+    private String generateOTP() {
+        SecureRandom random = new SecureRandom();
+        int number = random.nextInt(1000000);
+        return String.format("%06d", number);
     }
 }

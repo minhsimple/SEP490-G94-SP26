@@ -4,15 +4,18 @@ package vn.edu.fpt.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import vn.edu.fpt.dto.request.authorization.ChangePasswordRequest;
 import vn.edu.fpt.dto.request.authorization.LoginRequest;
 import vn.edu.fpt.dto.request.authorization.RegisterRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.AuthResponse;
 import vn.edu.fpt.dto.response.UserResponse;
-import vn.edu.fpt.entity.User;
+
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.service.AuthService;
@@ -53,6 +56,41 @@ public class AuthController {
         return ApiResponse.<AuthResponse>builder()
                 .message("Token refreshed successfully")
                 .data(response)
+                .build();
+    }
+
+    @PostMapping("/send-otp")
+    public ApiResponse<Void> sendOtp(@RequestParam String email) {
+        authService.sendOTP(email);
+        return ApiResponse.<Void>builder()
+                .message("OTP sent successfully")
+                .build();
+    }
+
+    @PostMapping("/verify-otp")
+    public ApiResponse<Void> verifyOTP(@RequestParam String email, @RequestParam String otp) {
+        authService.verifyOTP(email, otp);
+        return ApiResponse.<Void>builder()
+                .message("OTP verified successfully")
+                .build();
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(@RequestParam String email, @RequestParam String newPassword) {
+        authService.resetPassword(email, newPassword);
+        return ApiResponse.<Void>builder()
+                .message("Password reset successfully")
+                .build();
+    }
+
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody ChangePasswordRequest changePasswordRequest
+            ) {
+        authService.changePassword(userDetails, changePasswordRequest);
+        return ApiResponse.<Void>builder()
+                .message("Password changed successfully")
                 .build();
     }
 
