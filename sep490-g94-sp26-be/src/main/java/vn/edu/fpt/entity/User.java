@@ -6,6 +6,8 @@ import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.Comment;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "users", schema = "wedding")
 @Getter
@@ -37,5 +39,14 @@ public class User extends BaseEntity {
     @Column(name = "role_id")
     @Comment("role id")
     Integer role_id;
+
+    @Column(name = "otp")
+    String otp;
+
+    @Column(name = "is_otp_verified")
+    boolean isOTPVerified;
+
+    @Column(name = "otp_expires_at")
+    LocalDateTime otpExpiresAt;
 }
 
