@@ -1,10 +1,12 @@
 package vn.edu.fpt.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +28,9 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DashBoardController {
     DashBoardService dashBoardService;
+
+    @Operation(summary = "Lấy dashboard quản lý theo địa điểm")
+    @PostMapping("/search")
     public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
             @RequestPart("request") @Valid AdminDashBoardRequest request) throws Exception {
         return ApiResponse.<AdminDashBoardResponse>builder()

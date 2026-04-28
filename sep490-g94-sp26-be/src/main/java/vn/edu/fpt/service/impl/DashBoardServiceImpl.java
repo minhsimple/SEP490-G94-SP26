@@ -34,15 +34,20 @@ public class DashBoardServiceImpl implements DashBoardService {
         LocalDateTime fromDateTime = request.getFromDate().atStartOfDay();
         LocalDateTime toDateTime = request.getToDate().atTime(23, 59, 59);
 
-        // Get invoices in date range for selected locations
+        List<Integer> locationIds = request.getLocationIds();
+        if (locationIds == null || locationIds.isEmpty()) {
+            locationIds = locationRepository.findAllByStatus(RecordStatus.active).stream()
+                    .map(Location::getId)
+                    .toList();
+        }
+
         List<Invoice> invoices = invoiceRepository.findAllByLocationIdsAndCreatedAtBetween(
-                request.getLocationIds(),
+                locationIds,
                 fromDateTime,
                 toDateTime
         );
 
-        // Get all contracts in date range for selected locations
-        List<Hall> halls = hallRepository.findAllByLocationIdIn(request.getLocationIds());
+        List<Hall> halls = hallRepository.findAllByLocationIdIn(locationIds);
         Set<Integer> hallIds = halls.stream().map(Hall::getId).collect(Collectors.toSet());
 
         List<Contract> contracts = contractRepository.findAllByHallIdInAndCreatedAtBetween(
@@ -72,7 +77,7 @@ public class DashBoardServiceImpl implements DashBoardService {
 
         // Center data (grouped by location)
         List<AdminDashBoardResponse.Center> centers = buildCentersList(
-                request.getLocationIds(),
+                locationIds,
                 invoices,
                 contracts,
                 allPayments,
