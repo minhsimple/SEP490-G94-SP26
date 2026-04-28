@@ -70,6 +70,7 @@ public enum ERROR_CODE {
      */
     LOCATION_NOT_EXISTED(7001, "Địa điểm không tồn tại", HttpStatus.NOT_FOUND),
     LOCATION_EXISTED(7002, "Địa điểm đã tồn tại", HttpStatus.BAD_REQUEST),
+    LOCATION_NOT_FOUND(7002, "Không tìm thấy địa điểm ", HttpStatus.NOT_FOUND),
 
     /**
      * Category Menu Item Error
