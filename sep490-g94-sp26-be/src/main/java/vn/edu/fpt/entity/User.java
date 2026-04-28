@@ -44,7 +44,7 @@ public class User extends BaseEntity {
     String otp;
 
     @Column(name = "is_otp_verified")
-    boolean isOTPVerified;
+    Boolean isOTPVerified;
 
     @Column(name = "otp_expires_at")
     LocalDateTime otpExpiresAt;
