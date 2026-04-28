@@ -64,11 +64,6 @@ public class AdminDashBoardResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Business {
-        private Integer totalRooms;
-        private Integer occupiedRooms;
-        private Integer availableRooms;
-        private Double occupancyRate;
-
         private Integer newContracts;
         private Integer expiringContracts;
         private Integer liquidatedContracts;

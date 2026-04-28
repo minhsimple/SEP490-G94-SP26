@@ -27,6 +27,7 @@ public class DashBoardServiceImpl implements DashBoardService {
     private final HallRepository hallRepository;
     private final PaymentRepository paymentRepository;
     private final LocationRepository locationRepository;
+    private final CustomerRepository customerRepository;
 
     @Override
     public AdminDashBoardResponse getAdminDashBoard(AdminDashBoardRequest request) {
@@ -63,7 +64,9 @@ public class DashBoardServiceImpl implements DashBoardService {
                 invoices,
                 contracts,
                 allPayments,
-                halls
+                halls,
+                fromDateTime,
+                toDateTime
         );
         response.setSummary(summary);
 
@@ -73,7 +76,9 @@ public class DashBoardServiceImpl implements DashBoardService {
                 invoices,
                 contracts,
                 allPayments,
-                halls
+                halls,
+                fromDateTime,
+                toDateTime
         );
         response.setCenters(centers);
 
@@ -84,32 +89,15 @@ public class DashBoardServiceImpl implements DashBoardService {
             List<Invoice> invoices,
             List<Contract> contracts,
             List<Payment> allPayments,
-            List<Hall> halls) {
+            List<Hall> halls,
+            LocalDateTime fromDateTime,
+            LocalDateTime toDateTime) {
 
         // Tạo Financial
         BigDecimal totalRevenue = allPayments.stream()
                 .filter(p -> p.getPaymentState() == PaymentState.SUCCESS)
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-//        Map<Integer, BigDecimal> paidByContract = allPayments.stream()
-//                .filter(p -> p.getPaymentState() == PaymentState.SUCCESS)
-//                .collect(Collectors.groupingBy(
-//                        Payment::getContractId,
-//                        Collectors.mapping(
-//                                Payment::getAmount,
-//                                Collectors.reducing(BigDecimal.ZERO, BigDecimal::add)
-//                        )
-//                ));
-//
-//
-//        BigDecimal totalDebt = invoices.stream()
-//                .map(i -> {
-//                    BigDecimal paid = paidByContract.getOrDefault(i.getContractId(), BigDecimal.ZERO);
-//                    return i.getTotalAmount().subtract(paid);
-//                })
-//                .filter(debt -> debt.compareTo(BigDecimal.ZERO) > 0)
-//                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal expectedRevenue = invoices.stream()
                 .map(i -> i.getTotalAmount() != null ? i.getTotalAmount() : BigDecimal.ZERO)
@@ -126,14 +114,6 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .build();
 
         //Tạo Business
-        Integer totalRooms = halls.size();
-        Long occupiedRooms = contracts.stream()
-                .filter(c -> c.getContractState() == ContractState.ACTIVE)
-                .map(Contract::getHallId)
-                .distinct()
-                .count();
-        Integer availableRooms = (int) (totalRooms - occupiedRooms);
-        Double occupancyRate = totalRooms > 0 ? (occupiedRooms.doubleValue() / totalRooms * 100) : 0.0;
 
         Long newContracts = contracts.stream()
                 .filter(c -> c.getContractState() == ContractState.ACTIVE)
@@ -146,10 +126,6 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .count();
 
         AdminDashBoardResponse.Business business = AdminDashBoardResponse.Business.builder()
-                .totalRooms(totalRooms)
-                .occupiedRooms(occupiedRooms.intValue())
-                .availableRooms(availableRooms)
-                .occupancyRate(occupancyRate)
                 .newContracts(newContracts.intValue())
                 .expiringContracts(expiringContracts.intValue())
                 .liquidatedContracts(liquidatedContracts.intValue())
@@ -165,11 +141,19 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .totalIncidents(totalIncidents)
                 .build();
 
-        // Customer
-        Long newCustomers = contracts.stream()
-                .map(Contract::getCustomerId)
-                .distinct()
+
+        Map<Integer, List<Contract>> contractsByCustomer = contracts.stream()
+                .collect(Collectors.groupingBy(Contract::getCustomerId));
+
+        long newCustomers = contractsByCustomer.values().stream()
+                .map(customerContracts -> customerContracts.stream()
+                        .min(Comparator.comparing(Contract::getCreatedAt))
+                        .orElse(null))
+                .filter(firstContract -> firstContract != null &&
+                        !firstContract.getCreatedAt().isBefore(fromDateTime) &&
+                        !firstContract.getCreatedAt().isAfter(toDateTime))
                 .count();
+
         Long totalActiveResidents = contracts.stream()
                 .filter(c -> c.getContractState() == ContractState.ACTIVE)
                 .map(Contract::getCustomerId)
@@ -177,7 +161,7 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .count();
 
         AdminDashBoardResponse.Customer customer = AdminDashBoardResponse.Customer.builder()
-                .newCustomers(newCustomers.intValue())
+                .newCustomers((int) newCustomers)
                 .totalActiveResidents(totalActiveResidents.intValue())
                 .build();
 
@@ -194,7 +178,9 @@ public class DashBoardServiceImpl implements DashBoardService {
             List<Invoice> invoices,
             List<Contract> contracts,
             List<Payment> allPayments,
-            List<Hall> halls) {
+            List<Hall> halls,
+            LocalDateTime fromDateTime,
+            LocalDateTime toDateTime) {
 
         List<AdminDashBoardResponse.Center> centers = new ArrayList<>();
 
@@ -210,8 +196,14 @@ public class DashBoardServiceImpl implements DashBoardService {
                     .collect(Collectors.toSet());
 
             // Filter data for this location
+            Map<Integer, Contract> contractMap = contracts.stream()
+                    .collect(Collectors.toMap(Contract::getId, c -> c));
+
             List<Invoice> locationInvoices = invoices.stream()
-                    .filter(inv -> locationHallIds.contains(inv.getId()))
+                    .filter(inv -> {
+                        Contract c = contractMap.get(inv.getContractId());
+                        return c != null && locationHallIds.contains(c.getHallId());
+                    })
                     .toList();
 
             List<Contract> locationContracts = contracts.stream()
@@ -246,7 +238,7 @@ public class DashBoardServiceImpl implements DashBoardService {
                     .totalIncidents(totalIncidents)
                     .build();
 
-            AdminDashBoardResponse.Customer centerCustomer = buildCenterCustomer(locationContracts);
+            AdminDashBoardResponse.Customer centerCustomer = buildCenterCustomer(locationContracts, fromDateTime, toDateTime);
 
             AdminDashBoardResponse.Center center = AdminDashBoardResponse.Center.builder()
                     .centerId(locationId)
@@ -291,19 +283,8 @@ public class DashBoardServiceImpl implements DashBoardService {
             List<Contract> contracts,
             List<Hall> halls) {
 
-        int totalRooms = halls.size();
-        long occupiedRooms = contracts.stream()
-                .filter(c -> c.getContractState() == ContractState.ACTIVE
-                        || c.getContractState() == ContractState.LIQUIDATED)
-                .map(Contract::getHallId)
-                .distinct()
-                .count();
 
         return AdminDashBoardResponse.Business.builder()
-                .totalRooms(totalRooms)
-                .occupiedRooms((int) occupiedRooms)
-                .availableRooms(totalRooms - (int) occupiedRooms)
-                .occupancyRate(totalRooms > 0 ? ((double) occupiedRooms / totalRooms * 100) : 0.0)
                 .newContracts((int) contracts.stream()
                         .filter(c -> c.getContractState() == ContractState.ACTIVE).count())
                 .expiringContracts((int) contracts.stream()
@@ -313,17 +294,37 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .build();
     }
 
-    private AdminDashBoardResponse.Customer buildCenterCustomer(List<Contract> contracts) {
+    private AdminDashBoardResponse.Customer buildCenterCustomer(
+            List<Contract> contracts,
+            LocalDateTime fromDateTime,
+            LocalDateTime toDateTime) {
+
+        Map<Integer, List<Contract>> contractsByCustomer = contracts.stream()
+                .collect(Collectors.groupingBy(Contract::getCustomerId));
+
+
+        long newCustomers = contractsByCustomer.values().stream()
+
+                .map(customerContracts -> customerContracts.stream()
+                        .min(Comparator.comparing(Contract::getCreatedAt))
+                        .orElse(null))
+
+                .filter(firstContract -> firstContract != null &&
+                        !firstContract.getCreatedAt().isBefore(fromDateTime) &&
+                        !firstContract.getCreatedAt().isAfter(toDateTime))
+
+                .count();
+
+        long totalActiveResidents = contracts.stream()
+                .filter(c -> c.getContractState() == ContractState.ACTIVE)
+                .map(Contract::getCustomerId)
+                .distinct()
+                .count();
+
+
         return AdminDashBoardResponse.Customer.builder()
-                .newCustomers((int) contracts.stream()
-                        .map(Contract::getCustomerId)
-                        .distinct()
-                        .count())
-                .totalActiveResidents((int) contracts.stream()
-                        .filter(c -> c.getContractState() == ContractState.ACTIVE)
-                        .map(Contract::getCustomerId)
-                        .distinct()
-                        .count())
+                .newCustomers((int) newCustomers)
+                .totalActiveResidents((int) totalActiveResidents)
                 .build();
     }
 }
