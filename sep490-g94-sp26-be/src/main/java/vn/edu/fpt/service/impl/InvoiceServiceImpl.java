@@ -21,6 +21,7 @@ import vn.edu.fpt.service.PaymentService;
 import vn.edu.fpt.util.enums.*;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -157,6 +158,12 @@ public class InvoiceServiceImpl implements InvoiceService {
         }
         invoice.setData(invoiceData);
         invoice.setTotalAmount(calculateTotalAmountForInvoice(invoiceData, contractRequest.getExpectedTables()));
+
+        if (contract.getContractState() == ContractState.DRAFT) {
+            paymentRepository.findAllByContractIdAndPaymentStateAndStatus(contract.getId(), PaymentState.PENDING, RecordStatus.active).stream()
+                    .findFirst().ifPresent(payment -> payment.setAmount(invoice.getTotalAmount().multiply(BigDecimal.valueOf(contract.getPaymentPercent()))
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)));
+        }
 
         return invoiceData;
     }
