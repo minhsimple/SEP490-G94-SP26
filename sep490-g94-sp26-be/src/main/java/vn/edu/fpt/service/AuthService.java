@@ -1,5 +1,7 @@
 package vn.edu.fpt.service;
 
+import org.springframework.security.core.userdetails.UserDetails;
+import vn.edu.fpt.dto.request.authorization.ChangePasswordRequest;
 import vn.edu.fpt.dto.response.AuthResponse;
 import vn.edu.fpt.dto.request.authorization.LoginRequest;
 import vn.edu.fpt.dto.request.authorization.RegisterRequest;
@@ -42,6 +44,14 @@ public interface AuthService {
      * @return the User entity
      */
     UserResponse getCurrentUser(String email);
+
+    void changePassword(UserDetails userDetails, ChangePasswordRequest request);
+
+    void sendOTP(String email);
+
+    void verifyOTP(String email, String otp);
+
+    void resetPassword(String email, String newPassword);
 
     /**
      * Logout user by revoking the refresh token.

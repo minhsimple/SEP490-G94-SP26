@@ -21,6 +21,11 @@ public enum ERROR_CODE {
     UNAUTHORIZED(1006, "Bạn không có quyền", HttpStatus.FORBIDDEN),
     INVALID_AUTH(1007, "Tên người dùng hoặc mật khẩu không hợp lệ", HttpStatus.BAD_REQUEST),
     INVALID_REFRESH_TOKEN(1008, "Refresh token không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVALID_OLD_PASSWORD(1009, "Password cũ không hợp lệ", HttpStatus.BAD_REQUEST),
+    OTP_EXPIRED(1010, "Mã OTP đã hết hạn", HttpStatus.BAD_REQUEST),
+    OTP_INVALID(1011, "Mã OTP không hợp lệ", HttpStatus.BAD_REQUEST),
+    OTP_NOT_VERIFIED(1012, "Mã OTP chưa được xác minh", HttpStatus.BAD_REQUEST),
+
     /**
      * Valid Error
      **/
@@ -65,6 +70,7 @@ public enum ERROR_CODE {
      */
     LOCATION_NOT_EXISTED(7001, "Địa điểm không tồn tại", HttpStatus.NOT_FOUND),
     LOCATION_EXISTED(7002, "Địa điểm đã tồn tại", HttpStatus.BAD_REQUEST),
+    LOCATION_NOT_FOUND(7002, "Không tìm thấy địa điểm ", HttpStatus.NOT_FOUND),
 
     /**
      * Category Menu Item Error

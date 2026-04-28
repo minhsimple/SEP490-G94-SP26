@@ -1,10 +1,16 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
+import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../pages/service/auth.service';
 
-const AUTH_FREE_ENDPOINTS = ['/api/v1/auth/login', '/api/v1/auth/refresh'];
+const AUTH_FREE_ENDPOINTS = [
+	'/api/v1/auth/login',
+	'/api/v1/auth/refresh',
+	'/api/v1/auth/logout',
+	'/api/v1/auth/logout-all'
+];
+const REFRESH_RETRY_HEADER = 'x-refresh-retried';
 
 function isAuthFreeRequest(url: string): boolean {
 	return AUTH_FREE_ENDPOINTS.some((endpoint) => url.includes(endpoint));
@@ -218,23 +224,58 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 	const token = authService.getAccessToken();
 	const tokenType = authService.getTokenType();
 
-	const requestWithAuth = token && !isAuthFreeRequest(req.url)
+	const requestWithAuth = token && !isAuthFreeRequest(req.url) && !req.headers.has('Authorization')
 		? req.clone({ setHeaders: { Authorization: `${tokenType} ${token}` } })
 		: req;
 
 	const request = applyBranchScope(requestWithAuth);
 
+	const redirectToLogin = () => {
+		authService.clearAuth();
+		if (router.url !== '/auth/login') {
+			void router.navigate(['/auth/login']);
+		}
+	};
+
 	return next(request).pipe(
 		catchError((error: HttpErrorResponse) => {
-			if (error.status === 401 && !isAuthFreeRequest(request.url)) {
-				authService.clearAuth();
-
-				if (router.url !== '/auth/login') {
-					void router.navigate(['/auth/login']);
-				}
+			if (error.status !== 401) {
+				return throwError(() => error);
 			}
 
-			return throwError(() => error);
+			if (request.headers.has(REFRESH_RETRY_HEADER) || isAuthFreeRequest(request.url)) {
+				redirectToLogin();
+				return throwError(() => error);
+			}
+
+			const refreshToken = authService.getRefreshToken();
+			if (!refreshToken) {
+				redirectToLogin();
+				return throwError(() => error);
+			}
+
+			return authService.refreshAccessToken().pipe(
+				switchMap((refreshData) => {
+					const newAccessToken = refreshData?.accessToken || authService.getAccessToken();
+					if (!newAccessToken) {
+						redirectToLogin();
+						return throwError(() => error);
+					}
+
+					const retriedRequest = request.clone({
+						setHeaders: {
+							Authorization: `${authService.getTokenType()} ${newAccessToken}`,
+							[REFRESH_RETRY_HEADER]: '1'
+						}
+					});
+
+					return next(retriedRequest);
+				}),
+				catchError((refreshError) => {
+					redirectToLogin();
+					return throwError(() => refreshError);
+				})
+			);
 		})
 	);
 };
