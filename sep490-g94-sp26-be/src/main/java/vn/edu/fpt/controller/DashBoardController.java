@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import vn.edu.fpt.dto.request.dashboard.AdminDashBoardRequest;
 import vn.edu.fpt.dto.request.hall.HallRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.dashboard.AccountantDashBoardResponse;
@@ -24,14 +25,13 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class DashBoardController {
-//    DashBoardService dashBoardService;
-//    public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
-//            @RequestPart("request") @Valid HallRequest request) throws Exception {
-//        HallResponse response = dashBoardService.getAdminDashBoard(request);
-//        return ApiResponse.<AdminDashBoardResponse>builder()
-//                .data(response)
-//                .build();
-//    }
+    DashBoardService dashBoardService;
+    public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
+            @RequestPart("request") @Valid AdminDashBoardRequest request) throws Exception {
+        return ApiResponse.<AdminDashBoardResponse>builder()
+                .data(dashBoardService.getAdminDashBoard(request))
+                .build();
+    }
 //
 //    public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
 //            @RequestPart("request") @Valid HallRequest request) throws Exception {
