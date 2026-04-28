@@ -195,7 +195,7 @@ public class AuthServiceImpl implements AuthService {
         String otp = generateOTP();
         user.setOtp(otp);
         user.setOtpExpiresAt(LocalDateTime.now().plusMinutes(5));
-        user.setOTPVerified(false);
+        user.setIsOTPVerified(false);
 
         mailtrapClient.send(MailtrapMail.builder()
                 .from(new Address("hello@demomailtrap.com", "WeddingLink"))
@@ -218,7 +218,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ERROR_CODE.OTP_EXPIRED);
         }
 
-        user.setOTPVerified(true);
+        user.setIsOTPVerified(true);
     }
 
     @Transactional
@@ -226,14 +226,14 @@ public class AuthServiceImpl implements AuthService {
     public void resetPassword(String email, String newPassword) {
         User user = findUserByEmail(email);
 
-        if (!user.isOTPVerified()) {
+        if (!user.getIsOTPVerified()) {
             throw new AppException(ERROR_CODE.OTP_NOT_VERIFIED);
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setOtp(null);
         user.setOtpExpiresAt(null);
-        user.setOTPVerified(false);
+        user.setIsOTPVerified(false);
     }
 
     // ==================== Private Helper Methods ====================

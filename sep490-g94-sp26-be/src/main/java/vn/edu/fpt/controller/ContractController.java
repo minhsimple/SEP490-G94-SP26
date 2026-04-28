@@ -52,7 +52,7 @@ public class ContractController {
     public ApiResponse<ContractResponse> updateContract(
             @RequestParam Integer bookingId,
             @Valid @RequestPart("request") ContractRequest request,
-            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+            @RequestPart(value = "imageFiles", required = false) List<MultipartFile> imageFiles) throws Exception {
         ContractResponse response = contractService.updateContract(bookingId, request, imageFiles);
         return ApiResponse.<ContractResponse>builder()
                 .data(response)
