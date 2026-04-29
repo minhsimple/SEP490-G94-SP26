@@ -467,7 +467,7 @@ public class ContractServiceImpl implements ContractService {
     }
 
     private String generateContractNo() {
-        String prefix = "CH-";
+        String prefix = "NPS-";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String random = String.valueOf((int) (Math.random() * 9000) + 1000);
         return prefix + timestamp + random;
