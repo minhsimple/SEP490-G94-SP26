@@ -12,6 +12,8 @@ public interface HallRepository extends BaseRepository<Hall, Integer> {
 
     List<Hall> findAllByIdIn(Set<Integer> ids);
 
+    List<Hall> findAllByLocationIdIn(List<Integer> locationIds);
+
     Optional<Hall> findByIdAndStatus(Integer id, RecordStatus status);
     Boolean existsByIdAndStatus(Integer id, RecordStatus status);
 

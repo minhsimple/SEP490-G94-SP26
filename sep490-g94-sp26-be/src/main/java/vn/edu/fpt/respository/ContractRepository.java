@@ -1,6 +1,7 @@
 package vn.edu.fpt.respository;
 
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import vn.edu.fpt.dto.response.contract.CalenderContractResponse;
 import vn.edu.fpt.entity.Contract;
 import vn.edu.fpt.util.enums.ContractState;
@@ -30,6 +31,17 @@ public interface ContractRepository extends BaseRepository<Contract, Integer> {
 
     List<Contract> findAllByHallIdAndContractState(Integer hallId, ContractState bookingState);
 
+    @Query("""
+        SELECT c
+        FROM Contract c
+        WHERE c.hallId IN :hallIds
+          AND c.createdAt BETWEEN :fromDateTime AND :toDateTime
+    """)
+    List<Contract> findAllByHallIdInAndCreatedAtBetween(
+            @Param("hallIds") Set<Integer> hallIds,
+            @Param("fromDateTime") LocalDateTime fromDateTime,
+            @Param("toDateTime") LocalDateTime toDateTime
+    );
 
     @Query("""
             SELECT new vn.edu.fpt.dto.response.contract.CalenderContractResponse(
