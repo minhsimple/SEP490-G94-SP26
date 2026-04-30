@@ -380,7 +380,7 @@ export class AuthService {
         return headers;
     }
 
-    // ── Forgot Password Flow ──────────────────────────────────────────────
+
     sendOtp(email: string): Observable<ApiResponse<void>> {
         return this.http.post<ApiResponse<void>>(
             `${this.baseUrl}/send-otp?email=${encodeURIComponent(email)}`,
