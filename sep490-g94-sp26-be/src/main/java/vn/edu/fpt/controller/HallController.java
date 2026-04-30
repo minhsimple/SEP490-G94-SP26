@@ -49,7 +49,7 @@ public class HallController {
     public ApiResponse<HallResponse> updateHall(
             @RequestParam Integer hallId,
             @Valid @RequestPart("request")  HallRequest request,
-            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+            @RequestPart(value = "imageFiles", required = false) List<MultipartFile> imageFiles) throws Exception {
         HallResponse response = hallService.updateHall(hallId, request, imageFiles);
         return ApiResponse.<HallResponse>builder()
                 .data(response)
