@@ -380,6 +380,28 @@ export class AuthService {
         return headers;
     }
 
+    // ── Forgot Password Flow ──────────────────────────────────────────────
+    sendOtp(email: string): Observable<ApiResponse<void>> {
+        return this.http.post<ApiResponse<void>>(
+            `${this.baseUrl}/send-otp?email=${encodeURIComponent(email)}`,
+            null
+        );
+    }
+
+    verifyOtp(email: string, otp: string): Observable<ApiResponse<void>> {
+        return this.http.post<ApiResponse<void>>(
+            `${this.baseUrl}/verify-otp?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`,
+            null
+        );
+    }
+
+    resetPassword(email: string, newPassword: string): Observable<ApiResponse<void>> {
+        return this.http.post<ApiResponse<void>>(
+            `${this.baseUrl}/reset-password?email=${encodeURIComponent(email)}&newPassword=${encodeURIComponent(newPassword)}`,
+            null
+        );
+    }
+
     getMe(): Observable<ApiResponse<UserProfile>> {
         return this.http.get<ApiResponse<UserProfile>>(`${this.baseUrl}/me`, {
             headers: this.getHeaders()
