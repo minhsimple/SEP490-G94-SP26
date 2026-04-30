@@ -402,6 +402,14 @@ export class AuthService {
         );
     }
 
+    changePassword(payload: { oldPassword: string; newPassword: string }): Observable<ApiResponse<void>> {
+        return this.http.post<ApiResponse<void>>(
+            `${this.baseUrl}/change-password`,
+            payload,
+            { headers: this.getHeaders() }
+        );
+    }
+
     getMe(): Observable<ApiResponse<UserProfile>> {
         return this.http.get<ApiResponse<UserProfile>>(`${this.baseUrl}/me`, {
             headers: this.getHeaders()
