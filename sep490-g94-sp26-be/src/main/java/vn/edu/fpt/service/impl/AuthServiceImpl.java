@@ -55,6 +55,9 @@ public class AuthServiceImpl implements AuthService {
 
     private final MailtrapClient mailtrapClient;
 
+    @Value("${mailtrap.domain.email}")
+    private String mailtrapDomainEmail;
+
     @Value("${jwt.refresh-expiration:604800000}")
     private Long refreshExpiration;
 
@@ -198,7 +201,7 @@ public class AuthServiceImpl implements AuthService {
         user.setIsOTPVerified(false);
 
         mailtrapClient.send(MailtrapMail.builder()
-                .from(new Address("hello@demomailtrap.com", "WeddingLink"))
+                .from(new Address(mailtrapDomainEmail, "WeddingLink"))
                 .to(List.of(new Address(mailtrapEmail)))
                 .subject("Reset password")
                 .text("Your OTP for password reset is: " + otp + ". It will expire in 5 minutes.")
