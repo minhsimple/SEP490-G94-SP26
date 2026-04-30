@@ -732,50 +732,105 @@ interface BookingSummary {
                         />
                     </div>
 
-                    <div class="two-col">
-                        <div class="field-wrap">
-                            <label class="field-label">Sảnh cưới <span class="req">*</span></label>
-                            <p-select
-                                [options]="hallOptions"
-                                [(ngModel)]="form.hallId"
-                                optionLabel="label"
-                                optionValue="id"
-                                placeholder="Chọn sảnh"
-                                [showClear]="true"
-                                (onChange)="onHallChange()"
-                                styleClass="w-full"
-                            />
-                        </div>
-                        <div class="field-wrap">
-                            <label class="field-label">Ca tổ chức <span class="req">*</span></label>
-                            <p-select
-                                [options]="shiftOptions"
-                                [(ngModel)]="form.bookingTime"
-                                optionLabel="label"
-                                optionValue="value"
-                                styleClass="w-full"
-                            />
+                    <div class="field-wrap">
+                        <label class="field-label">Sảnh cưới <span class="req">*</span></label>
+                        <p-select
+                            [options]="hallOptions"
+                            [(ngModel)]="form.hallId"
+                            optionLabel="label"
+                            optionValue="id"
+                            placeholder="Chọn sảnh"
+                            [showClear]="true"
+                            (onChange)="onHallChange()"
+                            styleClass="w-full"
+                        />
+                    </div>
+
+                    <div class="field-wrap" *ngIf="form.hallId" style="margin-top: 1rem;">
+                        <label class="field-label" style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin-bottom: 0.5rem;">
+                            <i class="pi pi-calendar" style="color: #0ea5e9; margin-right: 4px;"></i> Lịch sảnh {{ summary.hallName }}
+                        </label>
+                        <div class="hc-container" style="position: relative; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff;">
+                            <div class="hc-header" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                <p-button icon="pi pi-chevron-left" [text]="true" (onClick)="hcPrevMonth()"></p-button>
+                                <div class="hc-title" style="font-weight: 600; font-size: 0.95rem; color: #334155;">Tháng {{ hcMonth + 1 }}, {{ hcYear }}</div>
+                                <p-button icon="pi pi-chevron-right" [text]="true" (onClick)="hcNextMonth()"></p-button>
+                            </div>
+                            <div class="hc-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); background: #f1f5f9; gap: 1px;">
+                                <div class="hc-dow" style="background: #fff; text-align: center; font-size: 0.75rem; font-weight: 600; color: #64748b; padding: 0.5rem 0;" *ngFor="let d of ['CN','T2','T3','T4','T5','T6','T7']">{{ d }}</div>
+                                
+                                <div class="hc-cell" *ngFor="let cell of hcCells" 
+                                     style="background: #fff; min-height: 80px; padding: 4px; display: flex; flex-direction: column;"
+                                     [style.opacity]="!cell.isCurrentMonth || cell.isPast ? '0.4' : '1'">
+                                     
+                                     <div class="hc-day" 
+                                          style="font-size: 0.85rem; font-weight: 600; text-align: center; margin-bottom: 4px;"
+                                          [style.color]="cell.isToday ? '#fff' : '#334155'"
+                                          [style.background]="cell.isToday ? '#2563eb' : 'transparent'"
+                                          [style.borderRadius]="cell.isToday ? '50%' : '0'"
+                                          [style.width]="cell.isToday ? '24px' : 'auto'"
+                                          [style.height]="cell.isToday ? '24px' : 'auto'"
+                                          [style.lineHeight]="cell.isToday ? '24px' : 'normal'"
+                                          [style.margin]="cell.isToday ? '0 auto 4px auto' : '0 0 4px 0'">
+                                          {{ cell.day }}
+                                     </div>
+                                     
+                                     <div class="hc-slots" *ngIf="cell.isCurrentMonth && !cell.isPast" style="display: flex; flex-direction: column; gap: 6px;">
+                                         <div class="hc-slot" 
+                                              style="font-size: 0.85rem; font-weight: 500; padding: 6px 0; text-align: center; border-radius: 4px; border: 1px solid transparent; transition: all 0.2s;"
+                                              [style.background]="cell.slot1Booked ? '#fee2e2' : (isSlotSelected(cell.date, 'SLOT_1') ? '#2563eb' : '#e0f2fe')"
+                                              [style.color]="cell.slot1Booked ? '#ef4444' : (isSlotSelected(cell.date, 'SLOT_1') ? '#fff' : '#0284c7')"
+                                              [style.textDecoration]="cell.slot1Booked ? 'line-through' : 'none'"
+                                              [style.cursor]="cell.slot1Booked ? 'not-allowed' : 'pointer'"
+                                              (click)="selectSlot(cell.date, 'SLOT_1', cell.slot1Booked)">Sáng</div>
+                                              
+                                         <div class="hc-slot" 
+                                              style="font-size: 0.85rem; font-weight: 500; padding: 6px 0; text-align: center; border-radius: 4px; border: 1px solid transparent; transition: all 0.2s;"
+                                              [style.background]="cell.slot2Booked ? '#fee2e2' : (isSlotSelected(cell.date, 'SLOT_2') ? '#2563eb' : '#e0f2fe')"
+                                              [style.color]="cell.slot2Booked ? '#ef4444' : (isSlotSelected(cell.date, 'SLOT_2') ? '#fff' : '#0284c7')"
+                                              [style.textDecoration]="cell.slot2Booked ? 'line-through' : 'none'"
+                                              [style.cursor]="cell.slot2Booked ? 'not-allowed' : 'pointer'"
+                                              (click)="selectSlot(cell.date, 'SLOT_2', cell.slot2Booked)">Chiều</div>
+                                     </div>
+                                </div>
+                            </div>
+                            <div class="hc-loading" *ngIf="hcLoading" style="position: absolute; inset: 0; background: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; z-index: 10;">
+                                <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: #2563eb;"></i>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="three-col">
-                        <div class="field-wrap">
+                    <div class="two-col" style="margin-top: 1rem;">
+                        <div class="field-wrap" style="pointer-events: none; opacity: 0.8;">
                             <label class="field-label">Ngày tổ chức <span class="req">*</span></label>
                             <p-datepicker
                                 [(ngModel)]="form.bookingDate"
                                 dateFormat="dd/mm/yy"
-                                [showIcon]="true"
-                                [minDate]="today"
+                                [minDate]="minAllowedDate"
                                 (ngModelChange)="onBookingDateChange()"
                                 placeholder="Chọn ngày"
                                 styleClass="w-full"
+                                [readonlyInput]="true"
                             />
                         </div>
+                        <div class="field-wrap" style="pointer-events: none; opacity: 0.8;">
+                            <label class="field-label">Ca tổ chức <span class="req">*</span></label>
+                            <input
+                                pInputText
+                                [value]="getShiftLabel(form.bookingTime)"
+                                placeholder="Chọn ca"
+                                class="w-full"
+                                readonly
+                            />
+                        </div>
+                    </div>
+
+                    <div class="two-col">
                         <div class="field-wrap">
                             <label class="field-label">Số bàn dự kiến <span class="req">*</span></label>
                             <p-inputnumber
                                 [(ngModel)]="form.expectedTables"
-                                [min]="1"
+                                [min]="minExpectedTables"
                                 [max]="500"
                                 (ngModelChange)="recalcEstimatedTotal()"
                                 styleClass="w-full"
@@ -787,6 +842,7 @@ interface BookingSummary {
                             <p-inputnumber
                                 [(ngModel)]="form.expectedGuests"
                                 [min]="1"
+                                (ngModelChange)="onGuestsChange()"
                                 styleClass="w-full"
                                 inputStyleClass="w-full"
                             />
@@ -1003,6 +1059,7 @@ export class BookingCreateComponent implements OnInit {
     loading = false;
     statusSubmitting = false;
     today = new Date();
+    minAllowedDate = new Date();
     loadedBookingState = 'DRAFT';
     currentStatus = 'ACTIVE';
     selectedBookingState = 'DRAFT';
@@ -1044,6 +1101,12 @@ export class BookingCreateComponent implements OnInit {
         { label: 'Ca chiều (17:00 - 21:00)', value: 'SLOT_2' },
         { label: 'Cả ngày (09:00 - 17:00)', value: 'SLOT_3' },
     ];
+
+    hcMonth: number = new Date().getMonth();
+    hcYear: number = new Date().getFullYear();
+    hcCells: any[] = [];
+    hcLoading: boolean = false;
+    hcBookings: any[] = [];
 
     form = {
         customerId: null as number | null,
@@ -1102,6 +1165,19 @@ export class BookingCreateComponent implements OnInit {
         return Number(this.form.salesId) === this.loggedInUserId;
     }
 
+    get minExpectedTables(): number {
+        const guests = Number(this.form.expectedGuests) || 0;
+        return guests > 0 ? Math.ceil(guests / 10) : 1;
+    }
+
+    onGuestsChange() {
+        const minTables = this.minExpectedTables;
+        if ((this.form.expectedTables || 0) < minTables) {
+            this.form.expectedTables = minTables;
+        }
+        this.recalcEstimatedTotal();
+    }
+
     constructor(
         private http: HttpClient,
         private route: ActivatedRoute,
@@ -1121,6 +1197,10 @@ export class BookingCreateComponent implements OnInit {
     ) {}
 
     ngOnInit() {
+        this.today.setHours(0, 0, 0, 0);
+        this.minAllowedDate = new Date(this.today);
+        this.minAllowedDate.setMonth(this.minAllowedDate.getMonth() + 3);
+
         const id = Number(this.route.snapshot.paramMap.get('id'));
         if (Number.isFinite(id) && id > 0) {
             this.bookingId = id;
@@ -1412,6 +1492,8 @@ export class BookingCreateComponent implements OnInit {
         return this.salesNameMap[id] ?? `Sales #${id}`;
     }
 
+
+
     private isSaleUser(user: any): boolean {
         const roleId = Number(user?.roleId ?? user?.role?.id);
         if (Number.isFinite(roleId) && roleId > 0 && this.saleRoleIds.has(roleId)) {
@@ -1680,12 +1762,22 @@ export class BookingCreateComponent implements OnInit {
         this.syncHallSummary();
 
         if (!this.form.locationId) {
+            this.hcBookings = [];
+            this.buildHcCells();
             return;
         }
 
-        // Keep options scoped by location. Only retry set menu fallback by hall when branch query returned empty.
-        if (this.form.hallId && this.setMenuOptions.length === 0) {
-            this.loadSetMenus(this.form.locationId, this.form.setMenuId).subscribe(() => this.cdr.detectChanges());
+        if (this.form.hallId) {
+            this.hcMonth = new Date().getMonth();
+            this.hcYear = new Date().getFullYear();
+            this.loadHcBookings();
+            
+            if (this.setMenuOptions.length === 0) {
+                this.loadSetMenus(this.form.locationId, this.form.setMenuId).subscribe(() => this.cdr.detectChanges());
+            }
+        } else {
+            this.hcBookings = [];
+            this.buildHcCells();
         }
     }
 
@@ -1694,6 +1786,166 @@ export class BookingCreateComponent implements OnInit {
         this.summary.hallName = selectedHall?.label ?? (this.form.hallId ? `Sảnh #${this.form.hallId}` : '');
         this.summary.hallPrice = selectedHall?.basePrice ?? 0;
         this.recalcEstimatedTotal();
+    }
+
+    buildHcCells() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const firstDay = new Date(this.hcYear, this.hcMonth, 1).getDay();
+        const daysInMonth = new Date(this.hcYear, this.hcMonth + 1, 0).getDate();
+        const prevDays = new Date(this.hcYear, this.hcMonth, 0).getDate();
+
+        const cells: any[] = [];
+        for (let i = 0; i < firstDay; i++) {
+            cells.push({ isCurrentMonth: false, day: prevDays - firstDay + 1 + i, isPast: true });
+        }
+        for (let d = 1; d <= daysInMonth; d++) {
+            const date = new Date(this.hcYear, this.hcMonth, d);
+            const dateStr = this.fmtDate(date);
+            const isPast = date.getTime() < this.minAllowedDate.getTime();
+            
+            const dayBookings = this.hcBookings.filter(b => b.date === dateStr);
+            let slot1Booked = false;
+            let slot2Booked = false;
+            let slot3Booked = false;
+            for (const b of dayBookings) {
+                if (b.shift === 'SLOT_1') slot1Booked = true;
+                if (b.shift === 'SLOT_2') slot2Booked = true;
+                if (b.shift === 'SLOT_3') {
+                    slot1Booked = true;
+                    slot2Booked = true;
+                    slot3Booked = true;
+                }
+            }
+            
+            cells.push({
+                isCurrentMonth: true,
+                day: d,
+                date: date,
+                dateStr: dateStr,
+                isPast: isPast,
+                isToday: date.getTime() === today.getTime(),
+                slot1Booked,
+                slot2Booked,
+                slot3Booked
+            });
+        }
+        const rem = (firstDay + daysInMonth) % 7;
+        for (let d = 1; d <= (rem === 0 ? 0 : 7 - rem); d++) {
+            cells.push({ isCurrentMonth: false, day: d, isPast: true });
+        }
+        this.hcCells = cells;
+    }
+
+    hcPrevMonth() {
+        this.hcMonth--;
+        if (this.hcMonth < 0) {
+            this.hcMonth = 11;
+            this.hcYear--;
+        }
+        this.loadHcBookings();
+    }
+
+    hcNextMonth() {
+        this.hcMonth++;
+        if (this.hcMonth > 11) {
+            this.hcMonth = 0;
+            this.hcYear++;
+        }
+        this.loadHcBookings();
+    }
+
+    loadHcBookings() {
+        if (!this.form.hallId) return;
+        this.hcLoading = true;
+        const monthStr = String(this.hcMonth + 1).padStart(2, '0');
+        const lastDay = new Date(this.hcYear, this.hcMonth + 1, 0).getDate();
+        
+        this.bookingService.searchBookings({
+            hallId: this.form.hallId,
+            size: 500,
+            bookingDateFrom: `${this.hcYear}-${monthStr}-01`,
+            bookingDateTo: `${this.hcYear}-${monthStr}-${String(lastDay).padStart(2, '0')}`,
+        }).subscribe({
+            next: (res) => {
+                this.hcBookings = (res.data?.content || [])
+                    .filter((b: any) => {
+                        const status = String(b.contractState ?? b.bookingState ?? b.status).trim().toUpperCase();
+                        return status !== 'DRAFT' && status !== 'CANCELLED';
+                    })
+                    .map((b: any) => ({
+                        date: this.parseAndFmt(b.bookingDate ?? b.eventDate),
+                        shift: (b.shift ?? b.bookingTime ?? 'SLOT_1').toUpperCase()
+                    }));
+                this.buildHcCells();
+                this.hcLoading = false;
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.hcBookings = [];
+                this.buildHcCells();
+                this.hcLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    parseAndFmt(dateStr: string) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr.split('T')[0];
+        return this.fmtDate(d);
+    }
+
+    fmtDate(d: Date) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    isSlotSelected(date: Date, shift: string) {
+        if (!this.form.bookingDate || !date) return false;
+        if (this.fmtDate(this.form.bookingDate) !== this.fmtDate(date)) return false;
+        if (this.form.bookingTime === 'SLOT_3') return true;
+        return this.form.bookingTime === shift;
+    }
+
+    selectSlot(date: Date, shift: string, booked: boolean) {
+        if (booked) return;
+        const sameDate = this.form.bookingDate && this.fmtDate(this.form.bookingDate) === this.fmtDate(date);
+        const currentShift = sameDate ? this.form.bookingTime : null;
+
+        if (!sameDate) {
+            this.form.bookingDate = date;
+            this.form.bookingTime = shift;
+            this.onBookingDateChange();
+            return;
+        }
+
+        if (shift === 'SLOT_1') {
+            if (currentShift === 'SLOT_2') {
+                this.form.bookingTime = 'SLOT_3';
+            } else if (currentShift === 'SLOT_3') {
+                this.form.bookingTime = 'SLOT_2';
+            } else if (currentShift === 'SLOT_1') {
+                this.form.bookingDate = null;
+                this.form.bookingTime = 'SLOT_1';
+            } else {
+                this.form.bookingTime = 'SLOT_1';
+            }
+        } else if (shift === 'SLOT_2') {
+            if (currentShift === 'SLOT_1') {
+                this.form.bookingTime = 'SLOT_3';
+            } else if (currentShift === 'SLOT_3') {
+                this.form.bookingTime = 'SLOT_1';
+            } else if (currentShift === 'SLOT_2') {
+                this.form.bookingDate = null;
+                this.form.bookingTime = 'SLOT_1';
+            } else {
+                this.form.bookingTime = 'SLOT_2';
+            }
+        }
+        
+        this.onBookingDateChange();
     }
 
     onCustomerPhoneInput(value: string) {
