@@ -40,14 +40,9 @@ public class DashBoardServiceImpl implements DashBoardService {
                     .map(Location::getId)
                     .toList();
         }
-
-        List<Invoice> invoices = invoiceRepository.findAllByLocationIdsAndCreatedAtBetween(
-                locationIds,
-                fromDateTime,
-                toDateTime
-        );
-
         List<Hall> halls = hallRepository.findAllByLocationIdIn(locationIds);
+
+
         Set<Integer> hallIds = halls.stream().map(Hall::getId).collect(Collectors.toSet());
 
         List<Contract> contracts = contractRepository.findAllByHallIdInAndCreatedAtBetween(
@@ -55,9 +50,16 @@ public class DashBoardServiceImpl implements DashBoardService {
                 fromDateTime,
                 toDateTime
         );
+        Set<Integer> contractIds = contracts.stream().map(Contract::getId).collect(Collectors.toSet());
+
+
+        List<Invoice> invoices = invoiceRepository.findAllByContractIdAndCreatedAtBetween(
+                contractIds,
+                fromDateTime,
+                toDateTime
+        );
 
         // Get all payments for these contracts
-        Set<Integer> contractIds = contracts.stream().map(Contract::getId).collect(Collectors.toSet());
         List<Payment> allPayments = paymentRepository.findAllByContractIdIn(contractIds);
 
         // Build response
