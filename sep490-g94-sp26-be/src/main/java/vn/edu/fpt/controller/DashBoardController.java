@@ -6,10 +6,7 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.request.dashboard.AdminDashBoardRequest;
 import vn.edu.fpt.dto.request.hall.HallRequest;
@@ -32,7 +29,7 @@ public class DashBoardController {
     @Operation(summary = "Lấy dashboard quản lý theo địa điểm")
     @PostMapping("/search")
     public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
-            @RequestPart("request") @Valid AdminDashBoardRequest request) throws Exception {
+            @RequestBody @Valid AdminDashBoardRequest request) throws Exception {
         return ApiResponse.<AdminDashBoardResponse>builder()
                 .data(dashBoardService.getAdminDashBoard(request))
                 .build();

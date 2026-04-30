@@ -8,6 +8,7 @@ import vn.edu.fpt.util.enums.RecordStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface InvoiceRepository extends BaseRepository<Invoice, Integer>{
     Optional<Invoice> findByIdAndStatus(Integer id, RecordStatus status);
@@ -19,12 +20,11 @@ public interface InvoiceRepository extends BaseRepository<Invoice, Integer>{
     @Query("""
         SELECT i
         FROM Invoice i
-        JOIN Hall h
-        WHERE h.locationId IN :locationIds
+        WHERE i.contractId IN :contractIds
           AND i.createdAt BETWEEN :fromDateTime AND :toDateTime
     """)
-    List<Invoice> findAllByLocationIdsAndCreatedAtBetween(
-            @Param("locationIds") List<Integer> locationIds,
+    List<Invoice> findAllByContractIdAndCreatedAtBetween(
+            @Param("contractIds") Set<Integer> contractIds,
             @Param("fromDateTime") LocalDateTime fromDateTime,
             @Param("toDateTime") LocalDateTime toDateTime
     );
