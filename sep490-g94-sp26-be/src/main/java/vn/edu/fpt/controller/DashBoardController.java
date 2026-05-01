@@ -29,7 +29,7 @@ import java.util.List;
 public class DashBoardController {
     DashBoardService dashBoardService;
 
-    @PreAuthorize("hasRole('ADMIN,MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN,MANAGER')")
     @Operation(summary = "Lấy dashboard quản lý theo địa điểm")
     @PostMapping("/search")
     public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
