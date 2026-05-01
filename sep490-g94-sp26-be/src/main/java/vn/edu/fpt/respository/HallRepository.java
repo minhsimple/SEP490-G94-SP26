@@ -24,5 +24,7 @@ public interface HallRepository extends BaseRepository<Hall, Integer> {
     Boolean existsByCodeAndStatusAndIdNot(String code, RecordStatus status, Integer id);
 
     Boolean existsByCodeAndIdNot(String code, Integer id);
+
+    List<Hall> findAllByLocationId(Integer locationId);
 }
 

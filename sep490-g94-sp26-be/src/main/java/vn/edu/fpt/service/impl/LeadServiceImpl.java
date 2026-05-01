@@ -212,7 +212,7 @@ public SimplePage<LeadResponse> getAllLeads(Pageable pageable, LeadsFilterReques
 
         userRepository.findByEmailAndStatus(userDetails.getUsername(), RecordStatus.active)
                 .ifPresentOrElse(user -> {
-                    boolean hasLocation = userLocationRepository.findByUserId(user.getId())
+                    boolean hasLocation = userLocationRepository.findAllByUserId(user.getId())
                             .stream()
                             .anyMatch(ul -> ul.getLocationId().equals(lead.getLocationId()));
 

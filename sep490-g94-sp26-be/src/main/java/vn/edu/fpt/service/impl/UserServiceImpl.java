@@ -59,7 +59,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // Fetch saved location IDs
-        List<Integer> locationIds = userLocationRepository.findByUserId(savedUser.getId())
+        List<Integer> locationIds = userLocationRepository.findAllByUserId(savedUser.getId())
                 .stream()
                 .map(UserLocation::getLocationId)
                 .collect(Collectors.toList());
@@ -75,7 +75,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
         UserResponse response = userMapper.toResponse(user);
         // Fetch location IDs
-        List<Integer> locationIds = userLocationRepository.findByUserId(id)
+        List<Integer> locationIds = userLocationRepository.findAllByUserId(id)
                 .stream()
                 .map(UserLocation::getLocationId)
                 .collect(Collectors.toList());
@@ -103,7 +103,7 @@ public class UserServiceImpl implements UserService {
             Set<Integer> newLocationIds = new HashSet<>(request.getLocationIds());
             userLocationRepository.deleteByUserIdAndLocationIdNotIn(id, newLocationIds);
 
-            Set<Integer> existingLocationIds = userLocationRepository.findByUserId(id)
+            Set<Integer> existingLocationIds = userLocationRepository.findAllByUserId(id)
                     .stream()
                     .map(UserLocation::getLocationId)
                     .collect(Collectors.toSet());
@@ -120,7 +120,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // Fetch location IDs
-        List<Integer> locationIds = userLocationRepository.findByUserId(id)
+        List<Integer> locationIds = userLocationRepository.findAllByUserId(id)
                 .stream()
                 .map(UserLocation::getLocationId)
                 .collect(Collectors.toList());
@@ -172,7 +172,7 @@ public class UserServiceImpl implements UserService {
                 .map(user -> {
                     UserResponse response = userMapper.toResponse(user);
                     // Fetch location IDs for this user
-                    List<Integer> locationIds = userLocationRepository.findByUserId(user.getId())
+                    List<Integer> locationIds = userLocationRepository.findAllByUserId(user.getId())
                             .stream()
                             .map(UserLocation::getLocationId)
                             .collect(Collectors.toList());
@@ -202,7 +202,7 @@ public class UserServiceImpl implements UserService {
         User saved = userRepository.save(user);
         UserResponse response = userMapper.toResponse(saved);
         // Fetch location IDs
-        List<Integer> locationIds = userLocationRepository.findByUserId(id)
+        List<Integer> locationIds = userLocationRepository.findAllByUserId(id)
                 .stream()
                 .map(UserLocation::getLocationId)
                 .collect(Collectors.toList());
