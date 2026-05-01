@@ -212,22 +212,38 @@ import { Subscription } from 'rxjs';
                             <input type="number" pInputText [(ngModel)]="editingHall.basePrice" placeholder="5000000" min="0" />
                         </div>
 
-                        <div class="form-field full" *ngIf="editingHall?.id">
-                            <label>URL ảnh sảnh</label>
-                            <input type="text" pInputText [(ngModel)]="editingHall.imageUrl" placeholder="https://... (Chỉ dùng khi cập nhật)" />
-                        </div>
-
-                        <div class="form-field full" *ngIf="!editingHall?.id">
-                            <label>Ảnh sảnh cưới (Tùy chọn)</label>
+                        <div class="form-field full">
+                            <label>Ảnh sảnh cưới</label>
                             
-                            <div class="flex flex-wrap gap-3 mb-2" *ngIf="selectedImageUrls.length > 0">
-                                <div *ngFor="let url of selectedImageUrls" class="relative border-round overflow-hidden bg-gray-100 flex items-center justify-center p-1" style="width: 100px; height: 75px; border: 1px solid #cbd5e1;">
-                                    <img [src]="url" class="w-full h-full" style="object-fit: cover; border-radius: 4px;" alt="Image Preview" />
+                            <!-- Current Images (Only when editing) -->
+                            <div *ngIf="editingHall?.id && editingHall.imageUrls && editingHall.imageUrls.length > 0" class="mb-3">
+                                <span class="text-sm font-semibold text-600 block mb-2">Ảnh hiện tại:</span>
+                                <div class="flex flex-wrap gap-3">
+                                    <div *ngFor="let img of editingHall?.imageUrls" class="relative border-round overflow-hidden bg-gray-100 flex items-center justify-center p-1" style="width: 100px; height: 75px; border: 1px solid #cbd5e1;">
+                                        <img [src]="img.thumbnailUrl || img.mediumUrl || img.originalUrl" class="w-full h-full" style="object-fit: cover; border-radius: 4px;" alt="Current Image" />
+                                    </div>
                                 </div>
                             </div>
 
-                            <input type="file" #fileInput (change)="onFileSelect($event)" accept="image/*" multiple class="w-full p-2 border-1 surface-border border-round" />
-                            <small class="text-500">Mẹo: Bạn có thể chọn nhiều ảnh cùng lúc.</small>
+                            <!-- New Images Preview -->
+                            <div *ngIf="selectedImageUrls.length > 0" class="mb-3">
+                                <span class="text-sm font-semibold text-600 block mb-2">{{ editingHall?.id ? 'Ảnh mới sẽ thay thế:' : 'Ảnh đã chọn:' }}</span>
+                                <div class="flex flex-wrap gap-3">
+                                    <div *ngFor="let url of selectedImageUrls" class="relative border-round overflow-hidden bg-gray-100 flex items-center justify-center p-1" style="width: 100px; height: 75px; border: 1px solid #cbd5e1;">
+                                        <img [src]="url" class="w-full h-full" style="object-fit: cover; border-radius: 4px;" alt="New Image Preview" />
+                                        <div class="absolute top-0 right-0 p-1 bg-primary text-white text-xs border-round-bl">Mới</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="upload-container p-3 border-1 border-dashed surface-border border-round text-center bg-gray-50">
+                                <input type="file" #fileInput (change)="onFileSelect($event)" accept="image/*" multiple class="hidden" id="hallFileInput" />
+                                <label for="hallFileInput" class="cursor-pointer flex flex-column align-items-center gap-2">
+                                    <i class="pi pi-cloud-upload text-4xl text-primary"></i>
+                                    <span class="text-900 font-medium">{{ editingHall?.id ? 'Chọn ảnh mới để thay thế' : 'Bấm để tải ảnh lên' }}</span>
+                                    <span class="text-500 text-sm">Hỗ trợ JPG, PNG. Có thể chọn nhiều ảnh.</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="form-field full">
@@ -549,6 +565,32 @@ import { Subscription } from 'rxjs';
             background: var(--surface-ground, #f8f9fa);
             border-radius: 8px;
         }
+
+        .upload-container {
+            border: 2px dashed var(--surface-border, #dee2e6);
+            transition: all 0.2s;
+            cursor: pointer;
+
+            &:hover {
+                border-color: var(--primary-color);
+                background: rgba(59, 130, 246, 0.04);
+            }
+        }
+
+        .text-600 { color: var(--text-color-secondary); }
+        .font-semibold { font-weight: 600; }
+        .block { display: block; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-3 { margin-bottom: 1rem; }
+        .relative { position: relative; }
+        .absolute { position: absolute; }
+        .top-0 { top: 0; }
+        .right-0 { right: 0; }
+        .p-1 { padding: 0.25rem; }
+        .bg-primary { background-color: var(--primary-color); }
+        .text-white { color: white; }
+        .text-xs { font-size: 0.7rem; }
+        .border-round-bl { border-bottom-left-radius: 4px; }
     `]
 })
 export class HallComponent implements OnInit, OnDestroy {
@@ -732,13 +774,12 @@ export class HallComponent implements OnInit, OnDestroy {
             locationId: this.editingHall.locationId,
             capacity: Number(this.editingHall.capacity),
             basePrice: this.editingHall.basePrice != null && this.editingHall.basePrice !== '' ? Number(this.editingHall.basePrice) : null,
-            imageUrl: this.editingHall.imageUrl || null,
             notes: this.editingHall.notes || null,
             status: this.isActive ? 'ACTIVE' : 'INACTIVE'
         };
 
         if (this.editingHall.id) {
-            this.hallService.updateHall(this.editingHall.id, payload).subscribe({
+            this.hallService.updateHall(this.editingHall.id, payload, this.selectedImages).subscribe({
                 next: (res) => {
                     if (res.code === 200) {
                         // toggle status nếu cần

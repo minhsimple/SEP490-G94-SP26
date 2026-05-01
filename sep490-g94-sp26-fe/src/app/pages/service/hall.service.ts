@@ -123,9 +123,22 @@ export class HallService {
         capacity?: number;
         basePrice?: number | null;
         notes?: string;
-    }): Observable<ApiResponse<Hall>> {
-        return this.http.put<ApiResponse<Hall>>(`${this.baseUrl}/update`, hall, {
-            headers: this.getHeaders(),
+    }, imageFiles?: File[]): Observable<ApiResponse<Hall>> {
+        const formData = new FormData();
+        formData.append('request', new Blob([JSON.stringify(hall)], { type: 'application/json' }));
+        if (imageFiles && imageFiles.length > 0) {
+            imageFiles.forEach(file => {
+                formData.append('imageFiles', file);
+            });
+        }
+
+        const token = localStorage.getItem('accessToken');
+        const headers = new HttpHeaders({
+            Authorization: `Bearer ${token}`
+        });
+
+        return this.http.put<ApiResponse<Hall>>(`${this.baseUrl}/update`, formData, {
+            headers: headers,
             params: new HttpParams().set('hallId', id)
         });
     }
