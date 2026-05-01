@@ -16,6 +16,7 @@ export interface Customer {
     location?: { id: number; name: string };
     status?: 'active' | 'inactive';
     password?: string;
+    imageUrls?: any[];
     createdAt?: string;
     updatedAt?: string;
 }

@@ -45,6 +45,10 @@ import { Booking, BookingService } from '../service/booking.service';
                         <p-tag [value]="statusLabel(customer?.status)" [severity]="statusSeverity(customer?.status)"></p-tag>
                     </div>
                 </div>
+                
+                <button class="btn-cccd" *ngIf="customerImageUrls.length > 0" (click)="cccdDialogVisible = true">
+                    <i class="pi pi-id-card"></i> Xem ảnh CCCD
+                </button>
             </div>
 
             <div class="contracts-card">
@@ -111,6 +115,31 @@ import { Booking, BookingService } from '../service/booking.service';
                         </tr>
                     </ng-template>
                 </p-table>
+            </div>
+        </div>
+
+        <!-- CCCD Dialog -->
+        <div class="cccd-overlay" *ngIf="cccdDialogVisible" (click)="cccdDialogVisible = false">
+            <div class="cccd-modal" (click)="$event.stopPropagation()">
+                <div class="cccd-modal-header">
+                    <div class="cccd-modal-title">
+                        <i class="pi pi-id-card"></i> Ảnh CCCD - {{ customer?.fullName || 'Khách hàng' }}
+                    </div>
+                    <p-button icon="pi pi-times" [rounded]="true" [text]="true" severity="secondary" (onClick)="cccdDialogVisible = false" />
+                </div>
+                <div class="cccd-modal-body">
+                    <div class="cccd-card" *ngIf="customerImageUrls.length >= 1">
+                        <div class="cccd-card-label"><i class="pi pi-image"></i> Mặt trước</div>
+                        <img [src]="getCcImage(0)" alt="CCCD mặt trước" />
+                    </div>
+                    <div class="cccd-card" *ngIf="customerImageUrls.length >= 2">
+                        <div class="cccd-card-label"><i class="pi pi-image"></i> Mặt sau</div>
+                        <img [src]="getCcImage(1)" alt="CCCD mặt sau" />
+                    </div>
+                    <div class="cccd-empty" *ngIf="customerImageUrls.length === 0">
+                        Chưa có ảnh CCCD cho khách hàng này.
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -224,6 +253,103 @@ import { Booking, BookingService } from '../service/booking.service';
         .loading-wrap .pi-spinner {
             font-size: 1.2rem;
         }
+
+        /* ── CCCD Dialog ── */
+        .cccd-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+            padding: 1rem;
+        }
+        .cccd-modal {
+            width: min(95vw, 780px);
+            max-height: calc(100vh - 2rem);
+            background: #fff;
+            border-radius: 14px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 24px 48px rgba(15, 23, 42, 0.35);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .cccd-modal-header {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.85rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .cccd-modal-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .cccd-modal-body {
+            padding: 1.25rem;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .cccd-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .cccd-card-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #334155;
+            padding: 0.55rem 0.85rem;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .cccd-card img {
+            width: 100%;
+            display: block;
+            object-fit: contain;
+            max-height: 340px;
+            background: #f1f5f9;
+        }
+        .cccd-empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 2rem 1rem;
+            font-size: 0.92rem;
+        }
+        .btn-cccd {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 1rem;
+            padding: 0.45rem 0.85rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #3b82f6;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            width: 100%;
+            justify-content: center;
+        }
+        .btn-cccd:hover {
+            background: #dbeafe;
+            border-color: #93c5fd;
+        }
+
         @media (max-width: 992px) {
             .grid-wrap {
                 grid-template-columns: 1fr;
@@ -242,6 +368,9 @@ export class CustomerDetailComponent implements OnInit {
     totalContracts = 0;
     currentPage = 0;
     pageSize = 10;
+    
+    customerImageUrls: any[] = [];
+    cccdDialogVisible = false;
 
     constructor(
         private route: ActivatedRoute,
@@ -278,6 +407,7 @@ export class CustomerDetailComponent implements OnInit {
         this.customerService.getCustomerById(this.customerId).subscribe({
             next: (res) => {
                 this.customer = res.data;
+                this.customerImageUrls = (res.data as any)?.imageUrls ?? [];
                 this.loadingCustomer = false;
                 this.cdr.markForCheck();
             },
@@ -391,5 +521,13 @@ export class CustomerDetailComponent implements OnInit {
             CANCELLED: 'danger'
         };
         return map[state ?? ''] ?? 'secondary';
+    }
+
+    getCcImage(index: number): string {
+        if (!this.customerImageUrls || this.customerImageUrls.length <= index) return '';
+        const img = this.customerImageUrls[index];
+        if (!img) return '';
+        if (typeof img === 'string') return img;
+        return img.originalUrl || img.original_url || img.mediumUrl || img.medium_url || img.url || '';
     }
 }
