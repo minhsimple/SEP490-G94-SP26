@@ -78,11 +78,15 @@ public class MediaAssetUtil {
             MediaAssetRepository mediaAssetRepository,
             List<MultipartFile> imageFiles,
             Integer entityId,
-            MediaAssetOwnerType mediaAssetOwnerType
+            MediaAssetOwnerType mediaAssetOwnerType,
+            List<MediaAsset> mediaAssetList
     ) throws Exception {
         List<ImageStorageResult> imageStorageResults = imageAssetService.uploadImageSets(getImageCategoryForAsset(mediaAssetOwnerType), entityId, imageFiles);
         if (imageStorageResults == null || imageStorageResults.isEmpty()) {
             return null;
+        }
+        if (mediaAssetList != null && !mediaAssetList.isEmpty()) {
+            mediaAssetRepository.deleteByOwnerIdAndOwnerType(entityId, mediaAssetOwnerType);
         }
         List<MediaAsset> mediaAssets = imageStorageResults.stream()
                 .map(imageStorageResult -> MediaAsset.builder()

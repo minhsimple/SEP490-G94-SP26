@@ -66,7 +66,7 @@ public class HallServiceImpl implements HallService {
         hall.setStatus(RecordStatus.active);
         Hall saved = hallRepository.save(hall);
 
-        List<MediaAsset> mediaAssets = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, saved.getId(), MediaAssetOwnerType.HALL);
+        List<MediaAsset> mediaAssets = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, saved.getId(), MediaAssetOwnerType.HALL, null);
 
         HallResponse response = hallMapper.toResponse(saved);
         response.setLocationName(location.getName());
@@ -98,7 +98,7 @@ public class HallServiceImpl implements HallService {
             if (mediaAssetList != null && !mediaAssetList.isEmpty()) {
                 imageAssetService.deleteFolder(mediaAssetList.getFirst().getImageOrigKey());
             }
-            mediaAssetList = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, saved.getId(), MediaAssetOwnerType.HALL);
+            mediaAssetList = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, saved.getId(), MediaAssetOwnerType.HALL, mediaAssetList);
         }
 
         HallResponse response = hallMapper.toResponse(saved);
