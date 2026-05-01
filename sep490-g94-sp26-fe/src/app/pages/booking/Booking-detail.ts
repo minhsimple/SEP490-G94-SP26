@@ -1448,6 +1448,9 @@ export class BookingDetailComponent implements OnInit {
                 this.customer = res.data;
                 this.customerName = res.data?.fullName ?? '';
                 this.customerImageUrls = (res.data as any)?.imageUrls ?? [];
+                if (this.customerImageUrls.length > 2) {
+                    this.customerImageUrls = this.customerImageUrls.slice(-2);
+                }
                 this.updateContractPreview();
                 this.cdr.detectChanges();
             },
