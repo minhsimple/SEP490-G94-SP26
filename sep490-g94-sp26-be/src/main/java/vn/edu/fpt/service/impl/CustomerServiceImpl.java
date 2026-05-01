@@ -65,7 +65,7 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = customerMapper.toEntity(request);
         Customer savedCustomer = customerRepository.save(customer);
 
-        List<MediaAsset> mediaAssets = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, savedCustomer.getId(), MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD);
+        List<MediaAsset> mediaAssets = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, savedCustomer.getId(), MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD, null);
 
         CustomerResponse customerResponse = customerMapper.toResponse(savedCustomer);
         customerResponse.setLocationName(location.getName());
@@ -106,7 +106,7 @@ public class CustomerServiceImpl implements CustomerService {
             if (mediaAssetList != null && !mediaAssetList.isEmpty()) {
                 imageAssetService.deleteFolder(mediaAssetList.getFirst().getImageOrigKey());
             }
-            mediaAssetList = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, id, MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD);
+            mediaAssetList = MediaAssetUtil.uploadListImageAssets(imageAssetService, mediaAssetRepository, imageFiles, id, MediaAssetOwnerType.CUSTOMER_CITIZEN_ID_CARD, mediaAssetList);
         }
 
         CustomerResponse customerResponse = customerMapper.toResponse(customer);
