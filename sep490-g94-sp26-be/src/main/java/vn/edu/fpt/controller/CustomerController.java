@@ -51,7 +51,7 @@ public class CustomerController {
             @RequestParam Integer customerId,
             @Valid @RequestPart("updateRequest")
             CustomerUpdateRequest updateRequest,
-            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+            @RequestPart(value = "imageFiles", required = false) List<MultipartFile> imageFiles) throws Exception {
         CustomerResponse customerResponse = customerService.updateCustomer(customerId, updateRequest, imageFiles);
         return ApiResponse.<CustomerResponse>builder()
                 .data(customerResponse)

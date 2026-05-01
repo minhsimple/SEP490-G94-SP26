@@ -80,9 +80,9 @@ import { AuthService } from '../service/auth.service';
                                     <p-checkbox [(ngModel)]="checked" id="rememberme1" binary class="mr-2" />
                                     <label for="rememberme1">Remember me</label>
                                 </div>
-                                <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">
+                                <a routerLink="/auth/forgot-password" class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">
                                     Forgot password?
-                                </span>
+                                </a>
                             </div>
 
                             <p-button

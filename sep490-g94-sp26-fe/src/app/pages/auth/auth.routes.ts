@@ -2,10 +2,12 @@ import { Routes } from '@angular/router';
 import { Access } from './access';
 import { Login } from './login';
 import { Error } from './error';
+import { ForgotPassword } from './forgot-password';
 import { guestOnlyGuard } from '../../components/auth.guard';
 
 export default [
     { path: 'access', component: Access },
     { path: 'error', component: Error },
-    { path: 'login', component: Login, canActivate: [guestOnlyGuard] }
+    { path: 'login', component: Login, canActivate: [guestOnlyGuard] },
+    { path: 'forgot-password', component: ForgotPassword, canActivate: [guestOnlyGuard] }
 ] as Routes;

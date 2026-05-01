@@ -380,6 +380,36 @@ export class AuthService {
         return headers;
     }
 
+
+    sendOtp(email: string): Observable<ApiResponse<void>> {
+        return this.http.post<ApiResponse<void>>(
+            `${this.baseUrl}/send-otp?email=${encodeURIComponent(email)}`,
+            null
+        );
+    }
+
+    verifyOtp(email: string, otp: string): Observable<ApiResponse<void>> {
+        return this.http.post<ApiResponse<void>>(
+            `${this.baseUrl}/verify-otp?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(otp)}`,
+            null
+        );
+    }
+
+    resetPassword(email: string, newPassword: string): Observable<ApiResponse<void>> {
+        return this.http.post<ApiResponse<void>>(
+            `${this.baseUrl}/reset-password?email=${encodeURIComponent(email)}&newPassword=${encodeURIComponent(newPassword)}`,
+            null
+        );
+    }
+
+    changePassword(payload: { oldPassword: string; newPassword: string }): Observable<ApiResponse<void>> {
+        return this.http.post<ApiResponse<void>>(
+            `${this.baseUrl}/change-password`,
+            payload,
+            { headers: this.getHeaders() }
+        );
+    }
+
     getMe(): Observable<ApiResponse<UserProfile>> {
         return this.http.get<ApiResponse<UserProfile>>(`${this.baseUrl}/me`, {
             headers: this.getHeaders()

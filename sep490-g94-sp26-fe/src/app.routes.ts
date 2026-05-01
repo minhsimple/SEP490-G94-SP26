@@ -10,6 +10,7 @@ export const appRoutes: Routes = [
         children: [
             { path: '', redirectTo: 'pages/dashboard', pathMatch: 'full' },
             { path: 'profile', loadComponent: () => import('./app/pages/profile/profile').then(m => m.ProfileComponent) },
+            { path: 'change-password', loadComponent: () => import('./app/pages/profile/change-password').then(m => m.ChangePasswordComponent) },
             { path: 'pages', loadChildren: () => import('./app/pages/pages.routes') }
         ]
     },
