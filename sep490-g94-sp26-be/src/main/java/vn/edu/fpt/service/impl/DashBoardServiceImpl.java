@@ -133,8 +133,9 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .filter(c -> c.getContractState() == ContractState.ACTIVE)
                 .count();
         Long expiringContracts = contracts.stream()
-                .filter(c -> c.getContractState() == ContractState.CANCELLED)
+                .filter(c -> c.getContractState()==ContractState.CANCELLED )
                 .count();
+
         Long liquidatedContracts = contracts.stream()
                 .filter(c -> c.getContractState() == ContractState.LIQUIDATED)
                 .count();
