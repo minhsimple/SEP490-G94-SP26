@@ -8,12 +8,31 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { Customer, CustomerService } from '../service/customer.service';
 import { Booking, BookingService } from '../service/booking.service';
+import { DialogModule } from 'primeng/dialog';
+import { InputTextModule } from 'primeng/inputtext';
+import { FileUploadModule } from 'primeng/fileupload';
+import { FormsModule } from '@angular/forms';
+import { SelectModule } from 'primeng/select';
+import { LocationService } from '../service/location.service';
+import { AuthService } from '../service/auth.service';
 
 @Component({
     selector: 'app-customer-detail',
     standalone: true,
-    imports: [CommonModule, RouterModule, ButtonModule, TableModule, TagModule, ToastModule],
-    providers: [MessageService, BookingService],
+    imports: [
+        CommonModule, 
+        RouterModule, 
+        ButtonModule, 
+        TableModule, 
+        TagModule, 
+        ToastModule, 
+        DialogModule, 
+        InputTextModule, 
+        FileUploadModule, 
+        FormsModule,
+        SelectModule
+    ],
+    providers: [MessageService, BookingService, LocationService],
     template: `
         <p-toast />
 
@@ -22,7 +41,10 @@ import { Booking, BookingService } from '../service/booking.service';
                 <h2>Chi tiết khách hàng</h2>
                 <span class="page-subtitle">Thông tin khách hàng và danh sách hợp đồng liên quan</span>
             </div>
-            <p-button label="Quay lại" icon="pi pi-arrow-left" severity="secondary" [outlined]="true" (onClick)="goBack()" />
+            <div class="flex gap-2">
+                <p-button label="Chỉnh sửa" icon="pi pi-pencil" severity="info" [outlined]="true" (onClick)="editCustomer()" />
+                <p-button label="Quay lại" icon="pi pi-arrow-left" severity="secondary" [outlined]="true" (onClick)="goBack()" />
+            </div>
         </div>
 
         <div class="grid-wrap" *ngIf="!loadingCustomer; else customerLoadingTpl">
@@ -38,6 +60,7 @@ import { Booking, BookingService } from '../service/booking.service';
                 <div class="summary-content">
                     <div class="row"><span>Email</span><strong>{{ customer?.email || '-' }}</strong></div>
                     <div class="row"><span>Số điện thoại</span><strong>{{ customer?.phone || '-' }}</strong></div>
+                    <div class="row"><span>Số CMND/CCCD</span><strong>{{ customer?.citizenIdNumber || '-' }}</strong></div>
                     <div class="row"><span>Chi nhánh</span><strong>{{ customer?.locationName || customer?.location?.name || '-' }}</strong></div>
                     <div class="row"><span>Địa chỉ</span><strong>{{ customer?.address || '-' }}</strong></div>
                     <div class="row"><span>Ghi chú</span><strong>{{ customer?.notes || '-' }}</strong></div>
@@ -142,13 +165,194 @@ import { Booking, BookingService } from '../service/booking.service';
                 </div>
             </div>
         </div>
-
         <ng-template #customerLoadingTpl>
             <div class="loading-wrap">
                 <i class="pi pi-spin pi-spinner"></i>
                 <span>Đang tải thông tin khách hàng...</span>
             </div>
         </ng-template>
+
+        <!-- Edit Customer Dialog -->
+        <p-dialog
+            [(visible)]="editDialogVisible"
+            [style]="{ width: '540px', maxHeight: '90vh' }"
+            [contentStyle]="{ overflow: 'auto', maxHeight: 'calc(90vh - 9rem)' }"
+            header="Chỉnh sửa khách hàng"
+            [modal]="true"
+            appendTo="body"
+            [draggable]="false"
+            [resizable]="false"
+            [breakpoints]="{ '960px': '92vw', '640px': '96vw' }"
+            styleClass="p-fluid"
+        >
+            <div class="flex flex-col gap-5">
+                <div>
+                    <label for="fullName" class="block font-bold mb-2">
+                        Họ và tên <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        pInputText
+                        id="fullName"
+                        [(ngModel)]="editCustomerData.fullName"
+                        required
+                        autofocus
+                        fluid
+                        placeholder="Nguyễn Văn A"
+                    />
+                    <small class="text-red-500" *ngIf="submitted && !editCustomerData.fullName">
+                        Họ và tên là bắt buộc.
+                    </small>
+                </div>
+
+                <div>
+                    <label for="citizenIdNumber" class="block font-bold mb-2">Số CMND/CCCD</label>
+                    <input
+                        type="text"
+                        pInputText
+                        id="citizenIdNumber"
+                        [(ngModel)]="editCustomerData.citizenIdNumber"
+                        fluid
+                        placeholder="012345678901"
+                    />
+                </div>
+
+                <div>
+                    <label for="email" class="block font-bold mb-2">Email</label>
+                    <input
+                        type="email"
+                        pInputText
+                        id="email"
+                        [(ngModel)]="editCustomerData.email"
+                        fluid
+                        placeholder="email@example.com"
+                    />
+                </div>
+
+                <div>
+                    <label for="phone" class="block font-bold mb-2">Số điện thoại</label>
+                    <input
+                        type="text"
+                        pInputText
+                        id="phone"
+                        [(ngModel)]="editCustomerData.phone"
+                        fluid
+                        placeholder="0901234567"
+                    />
+                </div>
+
+                <div>
+                    <label for="locationId" class="block font-bold mb-2">Chi nhánh</label>
+                    <p-select
+                        [(ngModel)]="editCustomerData.locationId"
+                        inputId="locationId"
+                        [options]="locationOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Chọn chi nhánh"
+                        fluid
+                        [filter]="true"
+                        filterBy="label"
+                        emptyMessage="Không có dữ liệu"
+                        [disabled]="isLocationLocked"
+                    />
+                </div>
+
+                <div>
+                    <label for="address" class="block font-bold mb-2">Địa chỉ</label>
+                    <input
+                        type="text"
+                        pInputText
+                        id="address"
+                        [(ngModel)]="editCustomerData.address"
+                        fluid
+                        placeholder="123 Đường ABC, TP.HCM"
+                    />
+                </div>
+
+                <div>
+                    <label for="notes" class="block font-bold mb-2">Ghi chú</label>
+                    <input
+                        type="text"
+                        pInputText
+                        id="notes"
+                        [(ngModel)]="editCustomerData.notes"
+                        fluid
+                        placeholder="Ghi chú thêm..."
+                    />
+                </div>
+
+                <div *ngIf="customerImageUrls.length > 0">
+                    <label class="block font-bold mb-2">Ảnh CCCD hiện tại</label>
+                    <div class="flex gap-4 overflow-x-auto pb-2">
+                        <div *ngFor="let img of customerImageUrls; let i = index" class="relative group">
+                            <img [src]="getCcImage(i)" alt="CCCD" class="h-32 w-48 object-cover rounded border" />
+                            <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center">
+                                {{ i === 0 ? 'Mặt trước' : 'Mặt sau' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold mb-2">
+                        Cập nhật ảnh CCCD <span class="font-normal text-sm text-gray-500">(Tải ảnh mới nếu muốn thay đổi)</span>
+                    </label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-2">
+                            <span class="text-sm font-medium text-gray-600">Mặt trước</span>
+                            <p-fileupload 
+                                mode="basic" 
+                                chooseLabel="Chọn mặt trước" 
+                                chooseIcon="pi pi-image"
+                                accept="image/*" 
+                                [maxFileSize]="5000000" 
+                                (onSelect)="onFrontFileSelect($event)"
+                                styleClass="p-button-outlined w-full"
+                            />
+                            <div *ngIf="frontPreview" class="mt-2 relative">
+                                <img [src]="frontPreview" alt="Front Preview" class="h-24 w-full object-cover rounded border border-green-500" />
+                                <div class="absolute top-0 right-0 bg-green-500 text-white p-1 rounded-bl">
+                                    <i class="pi pi-check text-[10px]"></i>
+                                </div>
+                            </div>
+                            <div *ngIf="frontFile && !frontPreview" class="text-xs text-green-600 font-medium truncate">
+                                <i class="pi pi-check mr-1"></i>{{ frontFile.name }}
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <span class="text-sm font-medium text-gray-600">Mặt sau</span>
+                            <p-fileupload 
+                                mode="basic" 
+                                chooseLabel="Chọn mặt sau" 
+                                chooseIcon="pi pi-image"
+                                accept="image/*" 
+                                [maxFileSize]="5000000" 
+                                (onSelect)="onBackFileSelect($event)"
+                                styleClass="p-button-outlined w-full"
+                            />
+                            <div *ngIf="backPreview" class="mt-2 relative">
+                                <img [src]="backPreview" alt="Back Preview" class="h-24 w-full object-cover rounded border border-green-500" />
+                                <div class="absolute top-0 right-0 bg-green-500 text-white p-1 rounded-bl">
+                                    <i class="pi pi-check text-[10px]"></i>
+                                </div>
+                            </div>
+                            <div *ngIf="backFile && !backPreview" class="text-xs text-green-600 font-medium truncate">
+                                <i class="pi pi-check mr-1"></i>{{ backFile.name }}
+                            </div>
+                        </div>
+                    </div>
+                    <small class="text-gray-500 block mt-2">
+                        Yêu cầu tải lên cả 2 mặt nếu bạn muốn thay đổi ảnh CCCD.
+                    </small>
+                </div>
+            </div>
+
+            <ng-template #footer>
+                <p-button label="Hủy" icon="pi pi-times" [text]="true" (onClick)="editDialogVisible = false" />
+                <p-button label="Lưu" icon="pi pi-check" [loading]="saving" (onClick)="saveCustomer()" />
+            </ng-template>
+        </p-dialog>
     `,
     styles: [`
         .page-header {
@@ -372,12 +576,25 @@ export class CustomerDetailComponent implements OnInit {
     customerImageUrls: any[] = [];
     cccdDialogVisible = false;
 
+    editDialogVisible = false;
+    editCustomerData: any = {};
+    frontFile: File | null = null;
+    backFile: File | null = null;
+    frontPreview: string | null = null;
+    backPreview: string | null = null;
+    saving = false;
+    locationOptions: any[] = [];
+    isLocationLocked = false;
+    submitted = false;
+
     constructor(
         private route: ActivatedRoute,
         private router: Router,
         private location: Location,
         private customerService: CustomerService,
         private bookingService: BookingService,
+        private locationService: LocationService,
+        private authService: AuthService,
         private messageService: MessageService,
         private cdr: ChangeDetectorRef
     ) {}
@@ -423,6 +640,99 @@ export class CustomerDetailComponent implements OnInit {
                     life: 3000
                 });
                 this.cdr.markForCheck();
+            }
+        });
+    }
+
+    loadLocationOptions(): void {
+        this.locationService.searchLocations({ page: 0, size: 100 }).subscribe({
+            next: (res) => {
+                this.locationOptions = res.data.content.map(l => ({ label: l.name, value: l.id }));
+                this.checkLocationLock();
+            }
+        });
+    }
+
+    checkLocationLock(): void {
+        const role = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+        const isAdmin = role.includes('ADMIN');
+        if (!isAdmin) {
+            const locId = localStorage.getItem('locationId');
+            if (locId) {
+                this.isLocationLocked = true;
+                this.editCustomerData.locationId = Number(locId);
+            }
+        }
+    }
+
+    editCustomer(): void {
+        if (!this.customer) return;
+        this.editCustomerData = { ...this.customer };
+        this.clearFilePreviews();
+        this.submitted = false;
+        this.editDialogVisible = true;
+        this.loadLocationOptions();
+    }
+
+    clearFilePreviews(): void {
+        if (this.frontPreview) URL.revokeObjectURL(this.frontPreview);
+        if (this.backPreview) URL.revokeObjectURL(this.backPreview);
+        this.frontPreview = null;
+        this.backPreview = null;
+        this.frontFile = null;
+        this.backFile = null;
+    }
+
+    onFrontFileSelect(event: any): void {
+        if (this.frontPreview) URL.revokeObjectURL(this.frontPreview);
+        this.frontFile = event.currentFiles[0];
+        if (this.frontFile) {
+            this.frontPreview = URL.createObjectURL(this.frontFile);
+        }
+    }
+
+    onBackFileSelect(event: any): void {
+        if (this.backPreview) URL.revokeObjectURL(this.backPreview);
+        this.backFile = event.currentFiles[0];
+        if (this.backFile) {
+            this.backPreview = URL.createObjectURL(this.backFile);
+        }
+    }
+
+    saveCustomer(): void {
+        this.submitted = true;
+        if (!this.editCustomerData.fullName?.trim()) {
+            return;
+        }
+
+        const imageFiles: File[] = [];
+        if (this.frontFile && this.backFile) {
+            imageFiles.push(this.frontFile, this.backFile);
+        } else if (this.frontFile || this.backFile) {
+            this.messageService.add({ severity: 'warn', summary: 'Thông báo', detail: 'Vui lòng chọn đủ cả 2 mặt ảnh CCCD' });
+            return;
+        }
+
+        this.saving = true;
+        this.customerService.updateCustomer(this.customerId, {
+            fullName: this.editCustomerData.fullName,
+            citizenIdNumber: this.editCustomerData.citizenIdNumber,
+            email: this.editCustomerData.email,
+            phone: this.editCustomerData.phone,
+            address: this.editCustomerData.address,
+            notes: this.editCustomerData.notes,
+            locationId: this.editCustomerData.locationId
+        }, imageFiles).subscribe({
+            next: () => {
+                this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Cập nhật thông tin khách hàng thành công' });
+                this.editDialogVisible = false;
+                this.saving = false;
+                this.clearFilePreviews();
+                this.loadCustomer();
+            },
+            error: (err) => {
+                this.saving = false;
+                this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: err.error?.message || 'Cập nhật thất bại' });
             }
         });
     }

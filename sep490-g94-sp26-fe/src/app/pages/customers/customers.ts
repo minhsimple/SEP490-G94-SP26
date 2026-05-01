@@ -19,6 +19,8 @@ import { Location, LocationService } from '../service/location.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../service/auth.service';
 import { Subscription } from 'rxjs';
+import { FileUploadModule } from 'primeng/fileupload';
+import { TooltipModule } from 'primeng/tooltip';
 
 interface Column {
     field: string;
@@ -42,7 +44,9 @@ interface Column {
         TagModule,
         InputIconModule,
         IconFieldModule,
-        ConfirmDialogModule
+        ConfirmDialogModule,
+        FileUploadModule,
+        TooltipModule
     ],
     template: `
         <div class="card">
@@ -234,6 +238,18 @@ interface Column {
                         </div>
 
                         <div>
+                            <label for="citizenIdNumber" class="block font-bold mb-2">Số CMND/CCCD</label>
+                            <input
+                                type="text"
+                                pInputText
+                                id="citizenIdNumber"
+                                [(ngModel)]="customer.citizenIdNumber"
+                                fluid
+                                placeholder="012345678901"
+                            />
+                        </div>
+
+                        <div>
                             <label for="email" class="block font-bold mb-2">Email</label>
                             <input
                                 type="email"
@@ -299,6 +315,72 @@ interface Column {
                             />
                         </div>
 
+                        <div *ngIf="isEditing && (customer.imageUrls?.length ?? 0) > 0">
+                            <label class="block font-bold mb-2">Ảnh CCCD hiện tại</label>
+                            <div class="flex gap-4 overflow-x-auto pb-2">
+                                <div *ngFor="let img of customer.imageUrls; let i = index" class="relative group">
+                                    <img [src]="getCcImage(img)" alt="CCCD" class="h-32 w-48 object-cover rounded border" />
+                                    <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center">
+                                        {{ i === 0 ? 'Mặt trước' : 'Mặt sau' }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-bold mb-2">
+                                Cập nhật ảnh CCCD <span *ngIf="isEditing" class="font-normal text-sm text-gray-500">(Tải ảnh mới nếu muốn thay đổi)</span>
+                            </label>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="flex flex-col gap-2">
+                                    <span class="text-sm font-medium text-gray-600">Mặt trước</span>
+                                    <p-fileupload 
+                                        mode="basic" 
+                                        chooseLabel="Chọn mặt trước" 
+                                        chooseIcon="pi pi-image"
+                                        accept="image/*" 
+                                        (onSelect)="onFrontFileSelect($event)"
+                                        styleClass="p-button-outlined w-full"
+                                    />
+                                    <div *ngIf="frontPreview" class="mt-2 relative">
+                                        <img [src]="frontPreview" alt="Front Preview" class="h-24 w-full object-cover rounded border border-green-500" />
+                                        <div class="absolute top-0 right-0 bg-green-500 text-white p-1 rounded-bl">
+                                            <i class="pi pi-check text-[10px]"></i>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="frontFile && !frontPreview" class="text-xs text-green-600 font-medium truncate">
+                                        <i class="pi pi-check mr-1"></i>{{ frontFile.name }}
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <span class="text-sm font-medium text-gray-600">Mặt sau</span>
+                                    <p-fileupload 
+                                        mode="basic" 
+                                        chooseLabel="Chọn mặt sau" 
+                                        chooseIcon="pi pi-image"
+                                        accept="image/*" 
+                                        [maxFileSize]="5000000" 
+                                        (onSelect)="onBackFileSelect($event)"
+                                        styleClass="p-button-outlined w-full"
+                                    />
+                                    <div *ngIf="backPreview" class="mt-2 relative">
+                                        <img [src]="backPreview" alt="Back Preview" class="h-24 w-full object-cover rounded border border-green-500" />
+                                        <div class="absolute top-0 right-0 bg-green-500 text-white p-1 rounded-bl">
+                                            <i class="pi pi-check text-[10px]"></i>
+                                        </div>
+                                    </div>
+                                    <div *ngIf="backFile && !backPreview" class="text-xs text-green-600 font-medium truncate">
+                                        <i class="pi pi-check mr-1"></i>{{ backFile.name }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <small class="text-gray-500 block mt-2">
+                                Yêu cầu tải lên cả 2 mặt nếu bạn muốn thay đổi ảnh CCCD.
+                            </small>
+                        </div>
+
                     </div>
                 </ng-template>
 
@@ -340,6 +422,10 @@ export class Customers implements OnInit, OnDestroy {
     newPhone = '';
 
     isEditing = false;
+    frontFile: File | null = null;
+    backFile: File | null = null;
+    frontPreview: string | null = null;
+    backPreview: string | null = null;
     selectedCustomers!: Customer[] | null;
     submitted = false;
     saving = false;
@@ -513,6 +599,7 @@ export class Customers implements OnInit, OnDestroy {
         };
         this.newEmail = '';
         this.newPhone = '';
+        this.clearFilePreviews();
         this.isEditing = false;
         this.submitted = false;
         this.customerDialog = true;
@@ -527,6 +614,10 @@ export class Customers implements OnInit, OnDestroy {
                         ? this.accountLocationId
                         : res.data.locationId
                 };
+                if (this.customer.imageUrls && this.customer.imageUrls.length > 2) {
+                    this.customer.imageUrls = this.customer.imageUrls.slice(-2);
+                }
+                this.clearFilePreviews();
                 this.isEditing = true;
                 this.submitted = false;
                 this.customerDialog = true;
@@ -539,6 +630,10 @@ export class Customers implements OnInit, OnDestroy {
                         ? this.accountLocationId
                         : customer.locationId
                 };
+                if (this.customer.imageUrls && this.customer.imageUrls.length > 2) {
+                    this.customer.imageUrls = this.customer.imageUrls.slice(-2);
+                }
+                this.clearFilePreviews();
                 this.isEditing = true;
                 this.submitted = false;
                 this.customerDialog = true;
@@ -576,6 +671,16 @@ export class Customers implements OnInit, OnDestroy {
     hideDialog() {
         this.customerDialog = false;
         this.submitted = false;
+        this.clearFilePreviews();
+    }
+
+    clearFilePreviews() {
+        if (this.frontPreview) URL.revokeObjectURL(this.frontPreview);
+        if (this.backPreview) URL.revokeObjectURL(this.backPreview);
+        this.frontPreview = null;
+        this.backPreview = null;
+        this.frontFile = null;
+        this.backFile = null;
     }
 
     saveCustomer() {
@@ -589,19 +694,30 @@ export class Customers implements OnInit, OnDestroy {
             : this.customer.locationId;
 
         if (this.isEditing) {
+            const imageFiles: File[] = [];
+            if (this.frontFile && this.backFile) {
+                imageFiles.push(this.frontFile, this.backFile);
+            } else if (this.frontFile || this.backFile) {
+                this.messageService.add({ severity: 'warn', summary: 'Thông báo', detail: 'Vui lòng chọn đủ cả 2 mặt ảnh CCCD', life: 3000 });
+                this.saving = false;
+                return;
+            }
+
             this.customerService.updateCustomer(this.customer.id, {
                 fullName: this.customer.fullName,
                 phone: this.customer.phone,
                 email: this.customer.email,
                 address: this.customer.address,
                 notes: this.customer.notes,
+                citizenIdNumber: this.customer.citizenIdNumber,
                 locationId: payloadLocationId
-            }).subscribe({
+            }, imageFiles).subscribe({
                 next: (res) => {
                     this.loadCustomers(this.selectedLocationId);
                     this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã cập nhật khách hàng', life: 3000 });
                     this.customerDialog = false;
                     this.saving = false;
+                    this.clearFilePreviews();
                     this.cdr.markForCheck();
                 },
                 error: () => {
@@ -611,20 +727,29 @@ export class Customers implements OnInit, OnDestroy {
                 }
             });
         } else {
+            if (!this.frontFile || !this.backFile) {
+                this.messageService.add({ severity: 'warn', summary: 'Thông báo', detail: 'Vui lòng chọn đủ cả 2 mặt ảnh CCCD', life: 3000 });
+                this.saving = false;
+                return;
+            }
+            const imageFiles = [this.frontFile, this.backFile];
+
             this.customerService.createCustomer({
                 fullName: this.customer.fullName!,
                 phone: this.newPhone || undefined,
                 email: this.newEmail || undefined,
                 address: this.customer.address,
                 notes: this.customer.notes,
+                citizenIdNumber: this.customer.citizenIdNumber,
                 locationId: payloadLocationId
-            }).subscribe({
+            }, imageFiles).subscribe({
                 next: (res) => {
                     this.currentPage = 0;
                     this.loadCustomers(this.selectedLocationId);
                     this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã tạo khách hàng mới', life: 3000 });
                     this.customerDialog = false;
                     this.saving = false;
+                    this.clearFilePreviews();
                     this.cdr.markForCheck();
                 },
                 error: () => {
@@ -645,6 +770,28 @@ export class Customers implements OnInit, OnDestroy {
         const names = fullName.trim().split(' ');
         if (names.length >= 2) return (names[0][0] + names[names.length - 1][0]).toUpperCase();
         return fullName.substring(0, 2).toUpperCase();
+    }
+
+    onFrontFileSelect(event: any) {
+        if (this.frontPreview) URL.revokeObjectURL(this.frontPreview);
+        this.frontFile = event.currentFiles[0];
+        if (this.frontFile) {
+            this.frontPreview = URL.createObjectURL(this.frontFile);
+        }
+    }
+
+    onBackFileSelect(event: any) {
+        if (this.backPreview) URL.revokeObjectURL(this.backPreview);
+        this.backFile = event.currentFiles[0];
+        if (this.backFile) {
+            this.backPreview = URL.createObjectURL(this.backFile);
+        }
+    }
+
+    getCcImage(img: any): string {
+        if (!img) return '';
+        if (typeof img === 'string') return img;
+        return img.originalUrl || img.original_url || img.mediumUrl || img.medium_url || img.url || '';
     }
 
     getStatusLabel(status: string | undefined): string {
