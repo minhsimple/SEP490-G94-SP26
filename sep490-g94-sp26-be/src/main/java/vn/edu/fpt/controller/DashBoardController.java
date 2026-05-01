@@ -6,13 +6,16 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.request.dashboard.AdminDashBoardRequest;
+import vn.edu.fpt.dto.request.dashboard.SaleDashBoardRequest;
 import vn.edu.fpt.dto.request.hall.HallRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.dashboard.AccountantDashBoardResponse;
 import vn.edu.fpt.dto.response.dashboard.AdminDashBoardResponse;
+import vn.edu.fpt.dto.response.dashboard.SaleDashBoardResponse;
 import vn.edu.fpt.dto.response.hall.HallResponse;
 import vn.edu.fpt.service.DashBoardService;
 
@@ -26,6 +29,7 @@ import java.util.List;
 public class DashBoardController {
     DashBoardService dashBoardService;
 
+    @PreAuthorize("hasRole('ADMIN,MANAGER')")
     @Operation(summary = "Lấy dashboard quản lý theo địa điểm")
     @PostMapping("/search")
     public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
@@ -34,15 +38,17 @@ public class DashBoardController {
                 .data(dashBoardService.getAdminDashBoard(request))
                 .build();
     }
-//
-//    public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
-//            @RequestPart("request") @Valid HallRequest request) throws Exception {
-//        HallResponse response = dashBoardService.getSaleDashBoard(request);
-//        return ApiResponse.<AdminDashBoardResponse>builder()
-//                .data(response)
-//                .build();
-//    }
-//
+
+    @PreAuthorize("hasRole('SALE')")
+    @Operation(summary = "Lấy dashboard sale ")
+    @PostMapping("/search-sale")
+    public ApiResponse<SaleDashBoardResponse> getSaleDashBoard(
+            @RequestBody @Valid SaleDashBoardRequest request) throws Exception {
+        return ApiResponse.<SaleDashBoardResponse>builder()
+                .data(dashBoardService.getSaleDashBoard(request))
+                .build();
+    }
+
 //    public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
 //            @RequestPart("request") @Valid HallRequest request) throws Exception {
 //        HallResponse response = dashBoardService.getCoordinatorDashBoard(request);

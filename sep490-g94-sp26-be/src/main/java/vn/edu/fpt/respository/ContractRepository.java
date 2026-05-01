@@ -29,6 +29,8 @@ public interface ContractRepository extends BaseRepository<Contract, Integer> {
     
     List<Contract> findAllByCustomerId(Integer customerId);
 
+    List<Contract> findAllBySalesId(Integer salesId);
+
     List<Contract> findAllByHallIdAndContractState(Integer hallId, ContractState bookingState);
 
     @Query("""
@@ -42,6 +44,8 @@ public interface ContractRepository extends BaseRepository<Contract, Integer> {
             @Param("fromDateTime") LocalDateTime fromDateTime,
             @Param("toDateTime") LocalDateTime toDateTime
     );
+
+    List<Contract> findAllBySalesIdAndCreatedAtBetween(Integer salesId, LocalDateTime createdAtAfter, LocalDateTime createdAtBefore);
 
     @Query("""
             SELECT new vn.edu.fpt.dto.response.contract.CalenderContractResponse(

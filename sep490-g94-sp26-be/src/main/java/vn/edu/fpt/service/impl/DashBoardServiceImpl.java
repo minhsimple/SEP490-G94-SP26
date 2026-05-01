@@ -1,9 +1,13 @@
 package vn.edu.fpt.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import vn.edu.fpt.dto.request.dashboard.AdminDashBoardRequest;
+import vn.edu.fpt.dto.request.dashboard.SaleDashBoardRequest;
 import vn.edu.fpt.dto.response.dashboard.AdminDashBoardResponse;
+import vn.edu.fpt.dto.response.dashboard.SaleDashBoardResponse;
 import vn.edu.fpt.entity.*;
 import vn.edu.fpt.exception.AppException;
 import vn.edu.fpt.exception.ERROR_CODE;
@@ -14,6 +18,7 @@ import vn.edu.fpt.util.enums.PaymentState;
 import vn.edu.fpt.util.enums.RecordStatus;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,6 +33,8 @@ public class DashBoardServiceImpl implements DashBoardService {
     private final PaymentRepository paymentRepository;
     private final LocationRepository locationRepository;
     private final CustomerRepository customerRepository;
+    private final UserRepository userRepository;
+    private final UserLocationRepository userLocationRepository;
 
     @Override
     public AdminDashBoardResponse getAdminDashBoard(AdminDashBoardRequest request) {
@@ -126,7 +133,7 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .filter(c -> c.getContractState() == ContractState.ACTIVE)
                 .count();
         Long expiringContracts = contracts.stream()
-                .filter(c -> c.getContractState() == ContractState.ACTIVE)
+                .filter(c -> c.getContractState() == ContractState.CANCELLED)
                 .count();
         Long liquidatedContracts = contracts.stream()
                 .filter(c -> c.getContractState() == ContractState.LIQUIDATED)
@@ -333,5 +340,96 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .newCustomers((int) newCustomers)
                 .totalActiveResidents((int) totalActiveResidents)
                 .build();
+    }
+
+    @Override
+    public SaleDashBoardResponse getSaleDashBoard(SaleDashBoardRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getName() == null) {
+            throw new AppException(ERROR_CODE.UNAUTHENTICATED);
+        }
+        String name = authentication.getName();
+        User user = userRepository.findByEmailAndStatus(name, RecordStatus.active)
+                .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
+        LocalDateTime fromDateTime = request.getFromDate().atStartOfDay();
+        LocalDateTime toDateTime = request.getToDate().atTime(23, 59, 59);
+        UserLocation userlocation = userLocationRepository.findByUserId(user.getId());
+
+        List<Hall> halls = hallRepository.findAllByLocationId(userlocation.getLocationId());
+        Set<Integer> hallIds = halls.stream().map(Hall::getId).collect(Collectors.toSet());
+
+        List<Contract> contracts = contractRepository.findAllBySalesId(user.getId());
+        Set<Integer> contractIds = contracts.stream().map(Contract::getId).collect(Collectors.toSet());
+        List<Payment> allPayments = paymentRepository.findAllByContractIdIn(contractIds);
+        List<Invoice> invoices = invoiceRepository.findAllByContractId(
+                contractIds
+        );
+
+        List<Contract> contractsInPeriod = contractRepository.findAllBySalesIdAndCreatedAtBetween(
+                user.getId(),
+                fromDateTime,
+                toDateTime
+        );
+
+
+        SaleDashBoardResponse response = new SaleDashBoardResponse();
+        Integer totalCustomersInCharge = contracts.stream()
+                .filter(c -> c.getContractState() == ContractState.ACTIVE)
+                .map(Contract::getCustomerId)
+                .collect(Collectors.toSet())
+                .size();
+        Integer activeContracts = contracts.stream()
+                .filter(c -> c.getContractState() == ContractState.ACTIVE)
+                .collect(Collectors.toSet())
+                .size();
+        BigDecimal totalRevenue = (BigDecimal.valueOf(paymentRepository.findAllByContractIdIn(contracts.stream().map(Contract::getId).collect(Collectors.toSet())).stream()
+                .filter(p -> p.getPaymentState() == PaymentState.SUCCESS)
+                .map(p -> p.getAmount().intValue())
+                .reduce(0, Integer::sum)));
+        Integer totalParticipateContracts = contracts.size();
+
+        BigDecimal totalContractValue = invoices.stream()
+                .map(c -> c.getTotalAmount() != null ? c.getTotalAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal remainingAmountToCollect = totalContractValue.subtract(totalRevenue);
+
+        BigDecimal filterRevenue = (BigDecimal.valueOf(paymentRepository.findAllByContractIdIn(contractsInPeriod.stream().map(Contract::getId).collect(Collectors.toSet())).stream()
+                .filter(p -> p.getPaymentState() == PaymentState.SUCCESS)
+                .map(p -> p.getAmount().intValue())
+                .reduce(0, Integer::sum)));
+
+        response.setCustomersInChargeCount(totalCustomersInCharge); // Số lượng khách hàng phụ trách 1
+        response.setTotalContracts(contracts.size()); // tong hop dong 2
+        response.setActiveContracts(activeContracts); // hop dong dang hoat dong 3
+        response.setTotalCollectedAmount(totalRevenue); // tong doanh thu 4
+        response.setFilteredContractsCount(contractsInPeriod.size()); // tong hop dong trong ky 5
+        response.setFilteredRevenue(filterRevenue); // tong doanh thu trong ky 6
+        BigDecimal averageContractValue = BigDecimal.ZERO;
+
+        if (!contracts.isEmpty()) {
+            averageContractValue = totalContractValue.divide(
+                    BigDecimal.valueOf(contracts.size()),
+                    2, // scale (nên có)
+                    RoundingMode.HALF_UP
+            );
+        }
+        response.setAverageContractValue(averageContractValue); // gia tri trung binh hop dong 7
+        response.setParticipatedContractsCount(totalParticipateContracts); // tong hop dong tham gia 8
+        response.setTotalContractValue(totalContractValue); // tong gia tri hop dong 9
+        response.setRemainingAmountToCollect(remainingAmountToCollect); // so tien con lai de thu 10
+        // Bieu do trang thai hop dong
+        Integer activeContractsCount = (int) contractsInPeriod.stream()
+                .filter(c -> c.getContractState() == ContractState.ACTIVE)
+                .count();
+        Integer cancelledContractsCount = (int) contractsInPeriod.stream()
+                .filter(c -> c.getContractState() == ContractState.CANCELLED)
+                .count();
+        Integer liquidatedContractsCount = (int) contractsInPeriod.stream()
+                .filter(c -> c.getContractState() == ContractState.LIQUIDATED)
+                .count();
+        response.setActiveCount(activeContractsCount);
+        response.setCanceledCount(cancelledContractsCount);
+        response.setLiquidatedCount(liquidatedContractsCount);
+        return  response;
     }
 }

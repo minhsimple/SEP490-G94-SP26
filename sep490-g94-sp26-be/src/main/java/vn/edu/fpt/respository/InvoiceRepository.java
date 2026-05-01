@@ -28,4 +28,11 @@ public interface InvoiceRepository extends BaseRepository<Invoice, Integer>{
             @Param("fromDateTime") LocalDateTime fromDateTime,
             @Param("toDateTime") LocalDateTime toDateTime
     );
+    @Query("""
+        SELECT i
+        FROM Invoice i
+        WHERE i.contractId IN :contractIds
+    """)
+    List<Invoice> findAllByContractId(
+            @Param("contractIds") Set<Integer> contractIds);
 }

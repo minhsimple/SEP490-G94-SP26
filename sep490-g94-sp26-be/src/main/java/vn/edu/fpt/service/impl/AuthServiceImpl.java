@@ -164,7 +164,7 @@ public class AuthServiceImpl implements AuthService {
         user.setRoleCode(role.getCode());
 
         // Fetch location IDs
-        List<Integer> locationIds = userLocationRepository.findByUserId(currentUser.getId())
+        List<Integer> locationIds = userLocationRepository.findAllByUserId(currentUser.getId())
                 .stream()
                 .map(ul -> ul.getLocationId())
                 .collect(Collectors.toList());
@@ -288,7 +288,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
 
         // Fetch location IDs
-        List<Integer> locationIds = userLocationRepository.findByUserId(user.getId())
+        List<Integer> locationIds = userLocationRepository.findAllByUserId(user.getId())
                 .stream()
                 .map(ul -> ul.getLocationId())
                 .collect(Collectors.toList());
