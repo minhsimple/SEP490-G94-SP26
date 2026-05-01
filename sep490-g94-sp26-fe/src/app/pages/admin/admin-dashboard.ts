@@ -88,9 +88,9 @@ import {
                         </div>
                     </div>
                     <div class="adm-card adm-card--expiring">
-                        <div class="adm-card__icon"><i class="pi pi-clock"></i></div>
+                        <div class="adm-card__icon"><i class="pi pi-times-circle"></i></div>
                         <div class="adm-card__body">
-                            <span>HĐ sắp hết hạn</span>
+                            <span>HĐ bị hủy</span>
                             <strong>{{ dashData()!.summary.business.expiringContracts }}</strong>
                         </div>
                     </div>
@@ -99,13 +99,6 @@ import {
                         <div class="adm-card__body">
                             <span>HĐ đã thanh lý</span>
                             <strong>{{ dashData()!.summary.business.liquidatedContracts }}</strong>
-                        </div>
-                    </div>
-                    <div class="adm-card adm-card--incident">
-                        <div class="adm-card__icon"><i class="pi pi-exclamation-triangle"></i></div>
-                        <div class="adm-card__body">
-                            <span>Sự cố</span>
-                            <strong>{{ dashData()!.summary.operation.totalIncidents }}</strong>
                         </div>
                     </div>
                     <div class="adm-card adm-card--customer">
@@ -118,7 +111,7 @@ import {
                     <div class="adm-card adm-card--resident">
                         <div class="adm-card__icon"><i class="pi pi-users"></i></div>
                         <div class="adm-card__body">
-                            <span>Cư dân hoạt động</span>
+                            <span>Khách hàng hoạt động</span>
                             <strong>{{ dashData()!.summary.customer.totalActiveResidents }}</strong>
                         </div>
                     </div>
@@ -143,7 +136,7 @@ import {
                         <p-chart type="doughnut" [data]="collectionPieData()" [options]="pieOptions()"></p-chart>
                     </div>
                     <div class="adm-chart-card">
-                        <h4>Khách hàng & sự cố theo chi nhánh</h4>
+                        <h4>Khách hàng & HĐ bị hủy theo chi nhánh</h4>
                         <p-chart type="bar" [data]="customerIncidentChartData()" [options]="barChartOptions()" class="h-80"></p-chart>
                     </div>
                 </div>
@@ -166,17 +159,13 @@ import {
                             <div class="adm-metric-group">
                                 <h5><i class="pi pi-briefcase"></i> Kinh doanh</h5>
                                 <div class="adm-metric"><span>HĐ mới</span><strong>{{ c.business.newContracts }}</strong></div>
-                                <div class="adm-metric"><span>HĐ sắp hết hạn</span><strong>{{ c.business.expiringContracts }}</strong></div>
+                                <div class="adm-metric"><span>HĐ bị hủy</span><strong>{{ c.business.expiringContracts }}</strong></div>
                                 <div class="adm-metric"><span>HĐ đã thanh lý</span><strong>{{ c.business.liquidatedContracts }}</strong></div>
-                            </div>
-                            <div class="adm-metric-group">
-                                <h5><i class="pi pi-exclamation-circle"></i> Vận hành</h5>
-                                <div class="adm-metric"><span>Tổng sự cố</span><strong>{{ c.operation.totalIncidents }}</strong></div>
                             </div>
                             <div class="adm-metric-group">
                                 <h5><i class="pi pi-users"></i> Khách hàng</h5>
                                 <div class="adm-metric"><span>KH mới</span><strong>{{ c.customer.newCustomers }}</strong></div>
-                                <div class="adm-metric"><span>Cư dân hoạt động</span><strong>{{ c.customer.totalActiveResidents }}</strong></div>
+                                <div class="adm-metric"><span>Khách hàng đang có hợp đồng</span><strong>{{ c.customer.totalActiveResidents }}</strong></div>
                             </div>
                         </div>
                     </div>
@@ -298,10 +287,18 @@ export class AdminDashboardComponent implements OnInit {
     selectedLocationIds: number[] = [];
     locationOptions: Array<{ label: string; value: number }> = [];
 
+    // ── Role-based filtering ──
+    readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    readonly isManager = this.roleCode.includes('MANAGER');
+    readonly managerLocationIds: number[] = (() => {
+        if (!this.isManager) return [];
+        try { return JSON.parse(localStorage.getItem('locationIds') ?? '[]') as number[]; } catch { return []; }
+    })();
+
     constructor(
         private dashboardService: DashboardService,
         private locationService: LocationService
-    ) {}
+    ) { }
 
     ngOnInit(): void {
         this.loadLocations();
@@ -315,6 +312,9 @@ export class AdminDashboardComponent implements OnInit {
         };
         if (this.selectedLocationIds && this.selectedLocationIds.length > 0) {
             request.locationIds = this.selectedLocationIds;
+        } else if (this.isManager && this.managerLocationIds.length > 0) {
+            // Manager không chọn lọc → mặc định gửi tất cả location được phân
+            request.locationIds = this.managerLocationIds;
         }
 
         this.loading.set(true);
@@ -374,7 +374,7 @@ export class AdminDashboardComponent implements OnInit {
             labels: centers.map(c => c.centerName),
             datasets: [
                 { label: 'KH mới', backgroundColor: '#06b6d4', borderRadius: 6, data: centers.map(c => c.customer.newCustomers) },
-                { label: 'Sự cố', backgroundColor: '#f97316', borderRadius: 6, data: centers.map(c => c.operation.totalIncidents) }
+                { label: 'HĐ bị hủy', backgroundColor: '#f97316', borderRadius: 6, data: centers.map(c => c.business.expiringContracts) }
             ]
         };
     }
@@ -404,10 +404,20 @@ export class AdminDashboardComponent implements OnInit {
         this.locationService.searchLocations({ page: 0, size: 500, sort: 'name,ASC' }).subscribe({
             next: (res) => {
                 const list = res.data?.content ?? [];
-                this.locationOptions = list.map(item => ({
+                const allOptions = list.map(item => ({
                     label: item.name ?? `Chi nhánh #${item.id}`,
                     value: Number(item.id)
                 }));
+
+                // MANAGER chỉ thấy các chi nhánh đã được Admin phân cho
+                if (this.isManager && this.managerLocationIds.length > 0) {
+                    this.locationOptions = allOptions.filter(opt =>
+                        this.managerLocationIds.includes(opt.value)
+                    );
+                } else {
+                    this.locationOptions = allOptions;
+                }
+
                 this.reload();
             },
             error: () => {
