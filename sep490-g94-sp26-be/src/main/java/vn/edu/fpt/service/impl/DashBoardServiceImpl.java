@@ -133,8 +133,9 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .filter(c -> c.getContractState() == ContractState.ACTIVE)
                 .count();
         Long expiringContracts = contracts.stream()
-                .filter(c -> c.getContractState() == ContractState.CANCELLED)
+                .filter(c -> c.getContractState()==ContractState.CANCELLED )
                 .count();
+
         Long liquidatedContracts = contracts.stream()
                 .filter(c -> c.getContractState() == ContractState.LIQUIDATED)
                 .count();
@@ -302,7 +303,7 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .newContracts((int) contracts.stream()
                         .filter(c -> c.getContractState() == ContractState.ACTIVE).count())
                 .expiringContracts((int) contracts.stream()
-                        .filter(c -> c.getContractState() == ContractState.ACTIVE).count())
+                        .filter(c -> c.getContractState() == ContractState.CANCELLED).count())
                 .liquidatedContracts((int) contracts.stream()
                         .filter(c -> c.getContractState() == ContractState.LIQUIDATED).count())
                 .build();
@@ -353,14 +354,9 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .orElseThrow(() -> new AppException(ERROR_CODE.USER_NOT_EXISTED));
         LocalDateTime fromDateTime = request.getFromDate().atStartOfDay();
         LocalDateTime toDateTime = request.getToDate().atTime(23, 59, 59);
-        UserLocation userlocation = userLocationRepository.findByUserId(user.getId());
-
-        List<Hall> halls = hallRepository.findAllByLocationId(userlocation.getLocationId());
-        Set<Integer> hallIds = halls.stream().map(Hall::getId).collect(Collectors.toSet());
 
         List<Contract> contracts = contractRepository.findAllBySalesId(user.getId());
         Set<Integer> contractIds = contracts.stream().map(Contract::getId).collect(Collectors.toSet());
-        List<Payment> allPayments = paymentRepository.findAllByContractIdIn(contractIds);
         List<Invoice> invoices = invoiceRepository.findAllByContractId(
                 contractIds
         );
@@ -409,7 +405,7 @@ public class DashBoardServiceImpl implements DashBoardService {
         if (!contracts.isEmpty()) {
             averageContractValue = totalContractValue.divide(
                     BigDecimal.valueOf(contracts.size()),
-                    2, // scale (nên có)
+                    2,
                     RoundingMode.HALF_UP
             );
         }
