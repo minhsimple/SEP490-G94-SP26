@@ -61,9 +61,6 @@ public class AuthServiceImpl implements AuthService {
     @Value("${jwt.refresh-expiration:604800000}")
     private Long refreshExpiration;
 
-    @Value("${mailtrap.email}")
-    private String mailtrapEmail;
-
     @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -202,7 +199,7 @@ public class AuthServiceImpl implements AuthService {
 
         mailtrapClient.send(MailtrapMail.builder()
                 .from(new Address(mailtrapDomainEmail, "WeddingLink"))
-                .to(List.of(new Address(mailtrapEmail)))
+                .to(List.of(new Address(email)))
                 .subject("Reset password")
                 .text("Your OTP for password reset is: " + otp + ". It will expire in 5 minutes.")
                 .category("Integration Test")
