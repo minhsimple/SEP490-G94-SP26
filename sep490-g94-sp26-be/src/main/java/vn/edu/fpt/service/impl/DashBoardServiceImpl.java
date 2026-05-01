@@ -303,7 +303,7 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .newContracts((int) contracts.stream()
                         .filter(c -> c.getContractState() == ContractState.ACTIVE).count())
                 .expiringContracts((int) contracts.stream()
-                        .filter(c -> c.getContractState() == ContractState.ACTIVE).count())
+                        .filter(c -> c.getContractState() == ContractState.CANCELLED).count())
                 .liquidatedContracts((int) contracts.stream()
                         .filter(c -> c.getContractState() == ContractState.LIQUIDATED).count())
                 .build();
