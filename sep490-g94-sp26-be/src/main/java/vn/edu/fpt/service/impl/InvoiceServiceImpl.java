@@ -273,8 +273,9 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         boolean isContractDraft = contract.getContractState() == ContractState.DRAFT;
         boolean isContractCancelled = contract.getContractState() == ContractState.CANCELLED;
+        boolean isContractLiquidated = contract.getContractState() == ContractState.LIQUIDATED;
 
-        if (paymentList.size() > 1 || isContractDraft || isContractCancelled ) {
+        if (paymentList.size() > 1 || isContractDraft || isContractCancelled || isContractLiquidated) {
             throw new AppException(ERROR_CODE.INVOICE_LIQUIDATE_INVALID);
         }
 
