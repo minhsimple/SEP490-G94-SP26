@@ -119,8 +119,14 @@ export class Login {
         if (normalizedRole === 'SALE') {
             return ['/pages/dashboard-sale'];
         }
+        if (normalizedRole.includes('COORD')) {
+            return ['/pages/booking'];
+        }
         if (normalizedRole === 'RECEPTION' || normalizedRole === 'RECEPTIONIST') {
             return ['/pages/calender'];
+        }
+        if (normalizedRole.includes('ACCOUNT') || normalizedRole.includes('KETOAN') || normalizedRole.includes('KE_TOAN')) {
+            return ['/pages/dashboard-accountant'];
         }
         return ['/'];
     }
@@ -142,13 +148,17 @@ export class Login {
             .subscribe({
                 next: (response) => {
                     if (response.code === 200 && response.data) {
+                        const normalizedRole = String(response.data.codeRole ?? '').toUpperCase();
+                        const isCoordinatorAccount = normalizedRole.includes('COORD');
                         const postLoginRoute = this.resolvePostLoginRoute(response.data.codeRole);
                         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
 
                         this.authService.saveSession(response.data);
 
                         this.isLoading = false;
-                        if (returnUrl && returnUrl !== '/auth/login') {
+                        if (isCoordinatorAccount) {
+                            void this.router.navigate(['/pages/booking']);
+                        } else if (returnUrl && returnUrl !== '/auth/login') {
                             void this.router.navigateByUrl(returnUrl);
                         } else {
                             void this.router.navigate(postLoginRoute);
