@@ -11,6 +11,11 @@ export interface AdminDashBoardRequest {
     toDate: string;     // yyyy-MM-dd
 }
 
+export interface SaleDashBoardRequest {
+    fromDate: string;   // yyyy-MM-dd
+    toDate: string;     // yyyy-MM-dd
+}
+
 // ─── Response blocks ───
 export interface DashFinancial {
     totalRevenue: number;
@@ -55,6 +60,22 @@ export interface AdminDashBoardResponse {
     centers: DashCenter[];
 }
 
+export interface SaleDashBoardResponse {
+    customersInChargeCount: number;
+    totalContracts: number;
+    activeContracts: number;
+    filteredContractsCount: number;
+    participatedContractsCount: number;
+    totalContractValue: number;
+    filteredRevenue: number;
+    averageContractValue: number;
+    totalCollectedAmount: number;
+    remainingAmountToCollect: number;
+    canceledCount: number;
+    liquidatedCount: number;
+    activeCount: number;
+}
+
 export interface ApiResponse<T> {
     code: number;
     data: T;
@@ -79,6 +100,14 @@ export class DashboardService {
     searchDashboard(request: AdminDashBoardRequest): Observable<ApiResponse<AdminDashBoardResponse>> {
         return this.http.post<ApiResponse<AdminDashBoardResponse>>(
             `${BASE}/dashboard/search`,
+            request,
+            { headers: this.getHeaders() }
+        );
+    }
+
+    searchSaleDashboard(request: SaleDashBoardRequest): Observable<ApiResponse<SaleDashBoardResponse>> {
+        return this.http.post<ApiResponse<SaleDashBoardResponse>>(
+            `${BASE}/dashboard/search-sale`,
             request,
             { headers: this.getHeaders() }
         );

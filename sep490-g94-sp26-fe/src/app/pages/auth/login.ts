@@ -113,6 +113,12 @@ export class Login {
 
     private resolvePostLoginRoute(codeRole: string): string[] {
         const normalizedRole = String(codeRole ?? '').toUpperCase();
+        if (normalizedRole.includes('ADMIN') || normalizedRole === 'MANAGER') {
+            return ['/pages/dashboardv2'];
+        }
+        if (normalizedRole === 'SALE') {
+            return ['/pages/dashboard-sale'];
+        }
         if (normalizedRole === 'RECEPTION' || normalizedRole === 'RECEPTIONIST') {
             return ['/pages/calender'];
         }

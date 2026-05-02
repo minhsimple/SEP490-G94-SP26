@@ -33,12 +33,14 @@ import { Dashboard } from './dashboard/dashboard';
 import { BranchReportsComponent } from './admin/branch-reports';
 import { AdminDashboardComponent } from './admin/admin-dashboard';
 import { UserDetailComponent } from './users/user-detail';
+import { SaleDashboard } from './dashboard/sale-dashboard';
 
 
 export default [
     { path: 'dashboard', component: Dashboard },
     { path: 'reports/branches', component: BranchReportsComponent },
-    { path: 'admin-dashboard', component: AdminDashboardComponent },
+    { path: 'dashboardv2', component: AdminDashboardComponent },
+    { path: 'dashboard-sale', component: SaleDashboard },
     { path: 'beo', component: BeoComponent },
     { path: 'beo/:id', component: BeoDetailComponent },
     { path: 'calender', component: EventCalendarComponent },

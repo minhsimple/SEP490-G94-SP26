@@ -29,4 +29,4 @@ import { AppFloatingConfigurator } from '../../layout/component/app.floatingconf
             </div>
         </div>`
 })
-export class Access {}
+export class Access { }
