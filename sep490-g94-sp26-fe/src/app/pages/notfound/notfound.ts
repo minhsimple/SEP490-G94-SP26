@@ -59,10 +59,18 @@ import { AppFloatingConfigurator } from '../../layout/component/app.floatingconf
                                 <span class="text-surface-600 dark:text-surface-200 lg:text-xl">Accumsan in nisl nisi scelerisque</span>
                             </span>
                         </a>
-                        <p-button label="Go to Dashboard" routerLink="/" />
+                        <p-button label="Go to Dashboard" [routerLink]="dashboardLink" />
                     </div>
                 </div>
             </div>
         </div>`
 })
-export class Notfound {}
+export class Notfound {
+    get dashboardLink() {
+        const role = (localStorage.getItem('codeRole') || '').toUpperCase();
+        if (role.includes('ADMIN') || role === 'MANAGER') {
+            return '/pages/dashboardv2';
+        }
+        return '/';
+    }
+}
