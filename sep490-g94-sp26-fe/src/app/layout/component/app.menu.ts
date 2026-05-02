@@ -29,6 +29,7 @@ export class AppMenu implements OnInit, OnDestroy {
 // { label: 'Dashboard', icon: 'pi pi-chart-bar', routerLink: ['/pages/dashboard'], id: 'dashboard' },
 // { label: 'Báo cáo chi nhánh', icon: 'pi pi-chart-line', routerLink: ['/pages/reports/branches'], id: 'branch-reports' },
   { label: 'Dashboard quản lý', icon: 'pi pi-gauge', routerLink: ['/pages/dashboardv2'], id: 'dashboardv2' },
+  { label: 'Dashboard cá nhân', icon: 'pi pi-user', routerLink: ['/pages/dashboard-sale'], id: 'dashboard-sale' },
   { label: 'Lịch sự kiện', icon: 'pi pi-calendar', routerLink: ['/pages/calender'], id: 'calender' },
 { label: 'Hợp đồng', icon: 'pi pi-file', routerLink: ['/pages/booking'], id: 'booking' },
 { label: 'Công việc', icon: 'pi pi-check-square', routerLink: ['/pages/beo'], id: 'beo' },
@@ -65,7 +66,7 @@ export class AppMenu implements OnInit, OnDestroy {
 ];
 
   private readonly rolePermissions: Record<string, string[] | 'all'> = {
-    SALE:         ['dashboard', 'leads', 'customers', 'service', 'menu', 'hall', 'booking', 'payment'],
+    SALE:         ['dashboard-sale', 'leads', 'customers', 'service', 'menu', 'hall', 'booking', 'payment'],
     RECEPTION:    ['leads', 'calender'],
     RECEPTIONIST: ['leads', 'calender'],
     ACCOUNT:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
