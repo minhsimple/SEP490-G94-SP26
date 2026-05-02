@@ -705,6 +705,7 @@ export class InvoiceDetailComponent implements OnInit {
 
     readonly roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly isAccountant = this.roleCode.includes('ACCOUNTANT');
+    readonly isSale = this.roleCode.includes('SALE');
 
     paymentForm: { amount: number | null; method: string; note: string; paymentDate: string; round: number } = {
         amount: null, method: 'CASH', note: '', paymentDate: '', round: 1
@@ -759,6 +760,7 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     get canLiquidate(): boolean {
+        if (this.isSale) return false;
         const paymentCount = this.invoice?.payments?.length ?? 0;
         if (paymentCount > 1) return false;
         const state = this.contractState.toUpperCase();
@@ -767,6 +769,7 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     get canRefund(): boolean {
+        if (this.isSale) return false;
         const invoiceState = String(this.invoice?.invoiceState ?? '').toUpperCase();
         if (invoiceState === 'REFUNDED' || invoiceState === 'PAID') return false;
         const state = this.contractState.toUpperCase();
