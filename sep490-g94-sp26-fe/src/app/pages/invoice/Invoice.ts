@@ -353,6 +353,7 @@ export class InvoicesComponent implements OnInit {
             UNPAID:  'Chưa thanh toán',
             PARTIAL: 'Thanh toán 1 phần',
             PAID:    'Đã thanh toán',
+            REFUNDED: 'Đã hoàn tiền',
         };
         return m[s ?? ''] ?? s ?? '-';
     }
@@ -362,6 +363,7 @@ export class InvoicesComponent implements OnInit {
             UNPAID:  '#ffffff',
             PARTIAL: '#1e293b',
             PAID:    '#166534',
+            REFUNDED: '#7c3aed',
         };
         return m[s ?? ''] ?? '#1e293b';
     }
@@ -371,6 +373,7 @@ export class InvoicesComponent implements OnInit {
             UNPAID:  '#ef4444',
             PARTIAL: '#fef3c7',
             PAID:    '#dcfce7',
+            REFUNDED: '#ede9fe',
         };
         return m[s ?? ''] ?? '#f1f5f9';
     }
