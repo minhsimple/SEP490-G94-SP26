@@ -8,17 +8,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.request.dashboard.AdminDashBoardRequest;
-import vn.edu.fpt.dto.request.dashboard.CoordinatorDashBoardRequest;
+import vn.edu.fpt.dto.request.dashboard.AccountantDashBoardRequest;
 import vn.edu.fpt.dto.request.dashboard.SaleDashBoardRequest;
-import vn.edu.fpt.dto.request.hall.HallRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.dashboard.AccountantDashBoardResponse;
 import vn.edu.fpt.dto.response.dashboard.AdminDashBoardResponse;
-import vn.edu.fpt.dto.response.dashboard.CoordinatorDashBoardResponse;
 import vn.edu.fpt.dto.response.dashboard.SaleDashBoardResponse;
-import vn.edu.fpt.dto.response.hall.HallResponse;
 import vn.edu.fpt.service.DashBoardService;
 
 import java.util.List;
@@ -51,14 +47,13 @@ public class DashBoardController {
                 .build();
     }
 
-    @PreAuthorize("hasRole('COORDINATOR')")
-    @Operation(summary = "Lấy dashboard COORDINATOR ")
+    @PreAuthorize("hasRole('ACCOUNTANT')")
+    @Operation(summary = "Lấy dashboard Acc ")
     @PostMapping("/search-coordinator")
-    public ApiResponse<CoordinatorDashBoardResponse> getCoordinatorDashBoard(
-            @RequestBody @Valid CoordinatorDashBoardRequest request) throws Exception {
-        CoordinatorDashBoardResponse response = dashBoardService.getCoordinatorDashBoard(request);
-        return ApiResponse.<CoordinatorDashBoardResponse>builder()
-                .data(response)
+    public ApiResponse<List<AccountantDashBoardResponse>> getAccountantDashBoard(
+            @RequestBody @Valid AccountantDashBoardRequest request) throws Exception {
+        return ApiResponse.<List<AccountantDashBoardResponse>>builder()
+                .data(dashBoardService.getAccountantDashBoard(request))
                 .build();
     }
 //
