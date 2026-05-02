@@ -26,9 +26,9 @@ export class AppMenu implements OnInit, OnDestroy {
   private sub!: Subscription;
 
   private readonly allMenuItems: MenuItem[] = [
-  { label: 'Dashboard', icon: 'pi pi-chart-bar', routerLink: ['/pages/dashboard'], id: 'dashboard' },
-  { label: 'Báo cáo chi nhánh', icon: 'pi pi-chart-line', routerLink: ['/pages/reports/branches'], id: 'branch-reports' },
-  { label: 'Dashboard quản lý', icon: 'pi pi-gauge', routerLink: ['/pages/admin-dashboard'], id: 'admin-dashboard' },
+// { label: 'Dashboard', icon: 'pi pi-chart-bar', routerLink: ['/pages/dashboard'], id: 'dashboard' },
+// { label: 'Báo cáo chi nhánh', icon: 'pi pi-chart-line', routerLink: ['/pages/reports/branches'], id: 'branch-reports' },
+  { label: 'Dashboard quản lý', icon: 'pi pi-gauge', routerLink: ['/pages/dashboardv2'], id: 'dashboardv2' },
   { label: 'Lịch sự kiện', icon: 'pi pi-calendar', routerLink: ['/pages/calender'], id: 'calender' },
 { label: 'Hợp đồng', icon: 'pi pi-file', routerLink: ['/pages/booking'], id: 'booking' },
 { label: 'Công việc', icon: 'pi pi-check-square', routerLink: ['/pages/beo'], id: 'beo' },
@@ -73,7 +73,7 @@ export class AppMenu implements OnInit, OnDestroy {
     ACCOUNTING:   ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
     KETOAN:       ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
     KE_TOAN:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    MANAGER:      ['dashboard', 'admin-dashboard', 'calender', 'booking', 'payment', 'invoice', 'customers', 'hall', 'service', 'menu', 'users'],
+    MANAGER:      ['dashboard', 'dashboardv2', 'calender', 'booking', 'payment', 'invoice', 'customers', 'hall', 'service', 'menu', 'users'],
     ADMIN:        'all',
     COORDINATOR:  ['dashboard', 'calender', 'booking', 'beo'],
   };
