@@ -800,14 +800,12 @@ export class BookingDetailComponent implements OnInit {
     readonly isManagerAccount = this.codeRole.includes('MANAGER');
     readonly canAssignCoordinator = this.isAdminAccount || this.isManagerAccount;
     readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
-    readonly managerLocationIds: number[] = (() => {
-        if (!this.isManagerAccount) return [];
-        try { return JSON.parse(localStorage.getItem('locationIds') ?? '[]') as number[]; } catch { return []; }
-    })();
     coordinatorRoleIds = new Set<number>();
     coordinatorNameMap: Record<number, string> = {};
     coordinatorOptions: Array<{ id: number; label: string }> = [];
+    coordinatorUsers: any[] = [];
     selectedCoordinatorId: number | null = null;
+    contractLocationId: number | null = null;
     assigningCoordinator = false;
     updatingContractState = false;
     invoicePreview: Invoice | null = null;
@@ -870,6 +868,11 @@ export class BookingDetailComponent implements OnInit {
         this.bookingService.getById(id).subscribe({
             next: (res) => {
                 this.booking = res.data;
+                const bookingLocationId = Number((this.booking as any)?.locationId ?? 0);
+                if (Number.isFinite(bookingLocationId) && bookingLocationId > 0) {
+                    this.contractLocationId = bookingLocationId;
+                    this.applyCoordinatorFilter();
+                }
 
                 if (!this.canCurrentUserAccessBooking(this.booking)) {
                     this.loading = false;
@@ -938,36 +941,40 @@ export class BookingDetailComponent implements OnInit {
         this.userService.searchUsers({ page: 0, size: 200, sort: 'fullName,ASC' }).subscribe({
             next: (res) => {
                 const users = res.data?.content ?? [];
-                this.coordinatorOptions = users
-                    .filter((user: any) => {
-                        if (!this.isCoordinatorUser(user)) return false;
-                        // Manager: only show coordinators belonging to their managed branches
-                        if (this.isManagerAccount && !this.isAdminAccount && this.managerLocationIds.length > 0) {
-                            const userLocIds = this.getUserLocationIdsFromUser(user);
-                            return userLocIds.some(lid => this.managerLocationIds.includes(lid));
-                        }
-                        return true;
-                    })
-                    .map((user: any) => {
-                        const id = Number(user.id);
-                        const label = user.fullName?.trim() || `Coordinator #${id}`;
-                        this.coordinatorNameMap[id] = label;
-                        return {
-                            id,
-                            label,
-                        };
-                    })
-                    .filter((item) => Number.isFinite(item.id) && item.id > 0);
-
-                this.ensureCoordinatorName(this.selectedCoordinatorId, this.booking?.assignCoordinatorName);
-
-                this.cdr.detectChanges();
+                this.coordinatorUsers = users.filter((user: any) => this.isCoordinatorUser(user));
+                this.applyCoordinatorFilter();
             },
             error: () => {
+                this.coordinatorUsers = [];
                 this.coordinatorOptions = [];
                 this.cdr.detectChanges();
             },
         });
+    }
+
+    private applyCoordinatorFilter() {
+        const contractLocationId = Number(this.contractLocationId ?? 0);
+        this.coordinatorOptions = this.coordinatorUsers
+            .filter((user: any) => {
+                if (this.isManagerAccount && !this.isAdminAccount) {
+                    if (!Number.isFinite(contractLocationId) || contractLocationId <= 0) {
+                        return false;
+                    }
+                    const userLocIds = this.getUserLocationIdsFromUser(user);
+                    return userLocIds.includes(contractLocationId);
+                }
+                return true;
+            })
+            .map((user: any) => {
+                const id = Number(user.id);
+                const label = user.fullName?.trim() || `Coordinator #${id}`;
+                this.coordinatorNameMap[id] = label;
+                return { id, label };
+            })
+            .filter((item) => Number.isFinite(item.id) && item.id > 0);
+
+        this.ensureCoordinatorName(this.selectedCoordinatorId, this.booking?.assignCoordinatorName);
+        this.cdr.detectChanges();
     }
 
     private getUserLocationIdsFromUser(user: any): number[] {
@@ -1484,6 +1491,11 @@ export class BookingDetailComponent implements OnInit {
     private loadHall(hallId: number) {
         this.hallService.getHallById(hallId).subscribe({
             next: (res) => {
+                const locationId = Number((res.data as any)?.locationId ?? (res.data as any)?.location?.id ?? 0);
+                if (Number.isFinite(locationId) && locationId > 0) {
+                    this.contractLocationId = locationId;
+                    this.applyCoordinatorFilter();
+                }
                 this.hallName = res.data?.name ?? '';
                 this.venueLocationName = String((res.data as any)?.locationName ?? '').trim();
                 const price = Number((res.data as any)?.basePrice ?? 0);

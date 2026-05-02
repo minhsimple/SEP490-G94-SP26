@@ -6,7 +6,6 @@ import { ButtonModule } from 'primeng/button';
 import { ChartModule } from 'primeng/chart';
 import { SelectModule } from 'primeng/select';
 import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
-import { TaskList, TaskListService } from '../service/beo.service';
 import { BookingService } from '../service/booking.service';
 import { CustomerService } from '../service/customer.service';
 import { Hall, HallService } from '../service/hall.service';
@@ -37,19 +36,6 @@ interface SalesMetrics {
     contractsInMonth: number;
     revenueInMonth: number;
     avgRevenuePerContractInMonth: number;
-}
-
-interface CoordinatorMetrics {
-    contracts: number;
-    activeContracts: number;
-    upcoming30Days: number;
-    contractsInMonth: number;
-    taskLists: number;
-    completedTaskLists: number;
-    pendingTaskLists: number;
-    totalTasks: number;
-    completedTasks: number;
-    completionRate: number;
 }
 
 interface AccountantMetrics {
@@ -227,117 +213,7 @@ interface AccountantMetrics {
                     </ng-container>
                 </ng-container>
 
-                <ng-container *ngIf="isCoordinatorAccount">
-                    <ng-container *ngIf="coordinatorMetrics() as coordinator">
-                        <div class="summary-grid">
-                            <div class="summary-card">
-                                <span>Hợp đồng phụ trách</span>
-                                <strong>{{ coordinator.contracts }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Hợp đồng hiệu lực</span>
-                                <strong>{{ coordinator.activeContracts }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Sự kiện 30 ngày tới</span>
-                                <strong>{{ coordinator.upcoming30Days }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>HĐ trong tháng {{ selectedMonthLabel() }}</span>
-                                <strong>{{ coordinator.contractsInMonth }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Tổng task list</span>
-                                <strong>{{ coordinator.taskLists }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Task list hoàn thành</span>
-                                <strong>{{ coordinator.completedTaskLists }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Task list chưa hoàn thành</span>
-                                <strong>{{ coordinator.pendingTaskLists }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Tổng task</span>
-                                <strong>{{ coordinator.totalTasks }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Task đã hoàn thành</span>
-                                <strong>{{ coordinator.completedTasks }}</strong>
-                            </div>
-                        </div>
 
-                        <div class="chart-card">
-                            <div class="chart-head">
-                                <h3>Tiến độ công việc coordinator</h3>
-                                <span>Tháng {{ selectedMonthLabel() }}</span>
-                            </div>
-                            <div class="progress-row">
-                                <span>Tỉ lệ hoàn thành task</span>
-                                <strong>{{ coordinator.completionRate }}%</strong>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-value" [style.width.%]="coordinator.completionRate"></div>
-                            </div>
-                        </div>
-                    </ng-container>
-                </ng-container>
-
-                <ng-container *ngIf="isAccountantAccount">
-                    <ng-container *ngIf="accountantMetrics() as accountant">
-                        <div class="summary-grid">
-                            <div class="summary-card">
-                                <span>Tổng khách hàng</span>
-                                <strong>{{ accountant.customers }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Tổng hợp đồng</span>
-                                <strong>{{ accountant.contracts }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Hợp đồng hiệu lực</span>
-                                <strong>{{ accountant.activeContracts }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Sự kiện 30 ngày tới</span>
-                                <strong>{{ accountant.upcoming30Days }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>HĐ trong tháng {{ selectedMonthLabel() }}</span>
-                                <strong>{{ accountant.contractsInMonth }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Tổng hóa đơn</span>
-                                <strong>{{ accountant.invoices }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Hóa đơn đã thu</span>
-                                <strong>{{ accountant.paidInvoices }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Hóa đơn chưa thu</span>
-                                <strong>{{ accountant.pendingInvoices }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Giao dịch thành công</span>
-                                <strong>{{ accountant.paymentsSuccess }}</strong>
-                            </div>
-                            <div class="summary-card">
-                                <span>Giao dịch chờ xử lý</span>
-                                <strong>{{ accountant.paymentsPending }}</strong>
-                            </div>
-                        </div>
-
-                        <div class="chart-card" *ngIf="accountantFinanceChartData()">
-                            <div class="chart-head">
-                                <h3>Biểu đồ doanh thu và công nợ</h3>
-                                <span>So sánh doanh thu tháng {{ selectedMonthLabel() }} với công nợ còn lại</span>
-                            </div>
-                            <p-chart type="bar" [data]="accountantFinanceChartData()" [options]="financeChartOptions()" class="h-90"></p-chart>
-                        </div>
-                    </ng-container>
-                </ng-container>
             </ng-container>
         </div>
     `,
@@ -530,7 +406,6 @@ export class Dashboard implements OnInit {
     locations = signal<Location[]>([]);
     metrics = signal<BranchMetrics[]>([]);
     salesMetrics = signal<SalesMetrics | null>(null);
-    coordinatorMetrics = signal<CoordinatorMetrics | null>(null);
     accountantMetrics = signal<AccountantMetrics | null>(null);
     salesFinanceChartData = signal<any>(null);
     accountantFinanceChartData = signal<any>(null);
@@ -566,17 +441,26 @@ export class Dashboard implements OnInit {
         private readonly customerService: CustomerService,
         private readonly bookingService: BookingService,
         private readonly paymentService: PaymentService,
-        private readonly invoiceService: InvoiceService,
-        private readonly taskListService: TaskListService
+        private readonly invoiceService: InvoiceService
     ) {}
 
     ngOnInit(): void {
+        if (this.isAccountantAccount) {
+            this.router.navigate(['/pages/dashboard-accountant']);
+            return;
+        }
+
+        if (this.isCoordinatorAccount) {
+            this.router.navigate(['/pages/booking']);
+            return;
+        }
+
         if (this.isBranchDashboard) {
             this.loadLocations();
             return;
         }
 
-        if (this.isSalesAccount || this.isCoordinatorAccount || this.isAccountantAccount) {
+        if (this.isSalesAccount) {
             this.reload();
             return;
         }
@@ -595,16 +479,6 @@ export class Dashboard implements OnInit {
     reload(): void {
         if (this.isSalesAccount) {
             this.loadSalesDashboard();
-            return;
-        }
-
-        if (this.isCoordinatorAccount) {
-            this.loadCoordinatorDashboard();
-            return;
-        }
-
-        if (this.isAccountantAccount) {
-            this.loadAccountantDashboard();
             return;
         }
 
@@ -631,7 +505,6 @@ export class Dashboard implements OnInit {
                 const sortedRows = rows.sort((a, b) => a.locationName.localeCompare(b.locationName));
                 this.metrics.set(sortedRows);
                 this.salesMetrics.set(null);
-                this.coordinatorMetrics.set(null);
                 this.accountantMetrics.set(null);
                 this.salesFinanceChartData.set(null);
                 this.accountantFinanceChartData.set(null);
@@ -659,7 +532,6 @@ export class Dashboard implements OnInit {
 
     dashboardTitle(): string {
         if (this.isSalesAccount) return 'Dashboard Sales';
-        if (this.isCoordinatorAccount) return 'Dashboard Coordinator';
         if (this.isAccountantAccount) return 'Dashboard Kế toán';
         return 'Dashboard Chi nhánh';
     }
@@ -667,9 +539,6 @@ export class Dashboard implements OnInit {
     dashboardSubtitle(): string {
         if (this.isSalesAccount) {
             return 'Tổng quan dữ liệu lead, hợp đồng và doanh thu theo tài khoản sales.';
-        }
-        if (this.isCoordinatorAccount) {
-            return 'Theo dõi hợp đồng được phân công và tiến độ công việc điều phối.';
         }
         if (this.isAccountantAccount) {
             return 'Tổng quan khách hàng, hợp đồng, hóa đơn và thanh toán theo chi nhánh phụ trách.';
@@ -708,7 +577,6 @@ export class Dashboard implements OnInit {
         }).subscribe({
             next: ({ leadsRes, contractsTotalRes, activeContractsRes, upcomingContractsRes, monthlyRevenue }) => {
                 this.metrics.set([]);
-                this.coordinatorMetrics.set(null);
                 this.accountantMetrics.set(null);
                 this.chartData.set(null);
                 this.accountantFinanceChartData.set(null);
@@ -737,195 +605,6 @@ export class Dashboard implements OnInit {
         });
     }
 
-    private loadCoordinatorDashboard(): void {
-        if (this.currentUserId <= 0) {
-            this.errorMessage.set('Không xác định được tài khoản coordinator hiện tại.');
-            this.coordinatorMetrics.set(null);
-            this.loading.set(false);
-            return;
-        }
-
-        this.errorMessage.set('');
-        this.loading.set(true);
-
-        forkJoin({
-            contractsTotalRes: this.bookingService.searchBookings({
-                page: 0,
-                size: 1,
-                assignCoordinatorId: this.currentUserId
-            }),
-            activeContractsRes: this.bookingService.searchBookings({
-                page: 0,
-                size: 1,
-                assignCoordinatorId: this.currentUserId,
-                contractState: 'ACTIVE'
-            }),
-            upcomingContractsRes: this.bookingService.searchBookings({
-                page: 0,
-                size: 1,
-                assignCoordinatorId: this.currentUserId,
-                ...this.next30DayFilter()
-            }),
-            monthlyContractsRes: this.bookingService.searchBookings({
-                page: 0,
-                size: 1,
-                assignCoordinatorId: this.currentUserId,
-                ...this.getSelectedMonthRange()
-            }),
-            taskListsRes: this.taskListService.searchTaskLists({
-                status: 'active',
-                coordinatorId: this.currentUserId
-            })
-        }).subscribe({
-            next: ({ contractsTotalRes, activeContractsRes, upcomingContractsRes, monthlyContractsRes, taskListsRes }) => {
-                this.metrics.set([]);
-                this.salesMetrics.set(null);
-                this.accountantMetrics.set(null);
-                this.chartData.set(null);
-                this.salesFinanceChartData.set(null);
-                this.accountantFinanceChartData.set(null);
-
-                const tasksSummary = this.summarizeTaskLists(taskListsRes.data ?? []);
-
-                this.coordinatorMetrics.set({
-                    contracts: contractsTotalRes.data?.totalElements ?? 0,
-                    activeContracts: activeContractsRes.data?.totalElements ?? 0,
-                    upcoming30Days: upcomingContractsRes.data?.totalElements ?? 0,
-                    contractsInMonth: monthlyContractsRes.data?.totalElements ?? 0,
-                    taskLists: tasksSummary.taskLists,
-                    completedTaskLists: tasksSummary.completedTaskLists,
-                    pendingTaskLists: tasksSummary.pendingTaskLists,
-                    totalTasks: tasksSummary.totalTasks,
-                    completedTasks: tasksSummary.completedTasks,
-                    completionRate: tasksSummary.completionRate
-                });
-
-                this.loading.set(false);
-            },
-            error: () => {
-                this.coordinatorMetrics.set(null);
-                this.salesFinanceChartData.set(null);
-                this.accountantFinanceChartData.set(null);
-                this.errorMessage.set('Không thể tải dashboard cho coordinator.');
-                this.loading.set(false);
-            }
-        });
-    }
-
-    private loadAccountantDashboard(): void {
-        if (!this.assignedLocationId || this.assignedLocationId <= 0) {
-            this.errorMessage.set('Không xác định được chi nhánh của tài khoản kế toán.');
-            this.accountantMetrics.set(null);
-            this.accountantFinanceChartData.set(null);
-            this.loading.set(false);
-            return;
-        }
-
-        this.errorMessage.set('');
-        this.loading.set(true);
-
-        this.hallService.searchHalls({ page: 0, size: 500, locationId: this.assignedLocationId, sort: 'name,ASC' }).pipe(
-            switchMap((hallRes) => {
-                const hallIds = (hallRes.data?.content ?? [])
-                    .map((item: Hall) => this.toNumber(item.id))
-                    .filter((id) => id > 0);
-
-                return forkJoin({
-                    customersRes: this.customerService.searchCustomers({
-                        page: 0,
-                        size: 1,
-                        locationId: this.assignedLocationId ?? undefined
-                    }),
-                    contractsTotal: this.sumContractsByHall(hallIds),
-                    contractsActive: this.sumContractsByHall(hallIds, { contractState: 'ACTIVE' }),
-                    upcoming30Days: this.sumContractsByHall(hallIds, this.next30DayFilter()),
-                    monthlyRevenue: this.getMonthlyRevenueByHall(hallIds),
-                    contractIds: this.getContractIdsByHall(hallIds),
-                    invoicesRes: this.invoiceService.searchInvoices({ page: 0, size: 1000, sort: 'id,DESC' }),
-                    paymentsRes: this.paymentService.searchPayments({ page: 0, size: 1000, sort: 'paidAt,DESC' })
-                });
-            })
-        ).subscribe({
-            next: ({
-                customersRes,
-                contractsTotal,
-                contractsActive,
-                upcoming30Days,
-                monthlyRevenue,
-                contractIds,
-                invoicesRes,
-                paymentsRes
-            }) => {
-                this.metrics.set([]);
-                this.salesMetrics.set(null);
-                this.coordinatorMetrics.set(null);
-                this.chartData.set(null);
-                this.salesFinanceChartData.set(null);
-
-                const contractIdSet = new Set(contractIds);
-                const invoiceRows = invoicesRes.data?.content ?? [];
-                const paymentRows = paymentsRes.data?.content ?? [];
-
-                const scopedInvoices = invoiceRows.filter((invoice) => {
-                    const invoiceContractId = this.toNumber(invoice.contractId);
-                    if (invoiceContractId > 0 && contractIdSet.has(invoiceContractId)) {
-                        return true;
-                    }
-
-                    const hallLocationId = this.toNumber(invoice.hall?.locationId);
-                    return hallLocationId > 0 && hallLocationId === this.assignedLocationId;
-                });
-
-                const scopedPayments = paymentRows.filter((payment) => {
-                    const paymentContractId = this.toNumber(payment.contractId);
-                    return paymentContractId > 0 && contractIdSet.has(paymentContractId);
-                });
-
-                const paidInvoices = scopedInvoices.filter((invoice) => this.isPaidInvoiceState(invoice.invoiceState ?? invoice.status)).length;
-                const successfulPayments = scopedPayments.filter((payment) => this.isSuccessfulPaymentState(payment.paymentState ?? payment.status)).length;
-                const outstandingAmount = scopedInvoices.reduce((sum, invoice) => sum + this.toNumber(invoice.remainingAmount), 0);
-
-                this.accountantMetrics.set({
-                    customers: customersRes.data?.totalElements ?? 0,
-                    contracts: contractsTotal,
-                    activeContracts: contractsActive,
-                    upcoming30Days,
-                    contractsInMonth: monthlyRevenue.contractsInMonth,
-                    invoices: scopedInvoices.length,
-                    paidInvoices,
-                    pendingInvoices: Math.max(scopedInvoices.length - paidInvoices, 0),
-                    paymentsSuccess: successfulPayments,
-                    paymentsPending: Math.max(scopedPayments.length - successfulPayments, 0),
-                    revenueInMonth: monthlyRevenue.revenueInMonth,
-                    avgRevenuePerContractInMonth: monthlyRevenue.avgRevenuePerContractInMonth,
-                    outstandingAmount
-                });
-                this.rebuildAccountantFinanceChart({
-                    customers: customersRes.data?.totalElements ?? 0,
-                    contracts: contractsTotal,
-                    activeContracts: contractsActive,
-                    upcoming30Days,
-                    contractsInMonth: monthlyRevenue.contractsInMonth,
-                    invoices: scopedInvoices.length,
-                    paidInvoices,
-                    pendingInvoices: Math.max(scopedInvoices.length - paidInvoices, 0),
-                    paymentsSuccess: successfulPayments,
-                    paymentsPending: Math.max(scopedPayments.length - successfulPayments, 0),
-                    revenueInMonth: monthlyRevenue.revenueInMonth,
-                    avgRevenuePerContractInMonth: monthlyRevenue.avgRevenuePerContractInMonth,
-                    outstandingAmount
-                });
-
-                this.loading.set(false);
-            },
-            error: () => {
-                this.accountantMetrics.set(null);
-                this.accountantFinanceChartData.set(null);
-                this.errorMessage.set('Không thể tải dashboard cho kế toán.');
-                this.loading.set(false);
-            }
-        });
-    }
 
     private loadLocations(): void {
         this.loading.set(true);
@@ -1214,47 +893,6 @@ export class Dashboard implements OnInit {
         return `${yyyy}-${mm}-${dd}`;
     }
 
-    private summarizeTaskLists(taskLists: TaskList[]): {
-        taskLists: number;
-        completedTaskLists: number;
-        pendingTaskLists: number;
-        totalTasks: number;
-        completedTasks: number;
-        completionRate: number;
-    } {
-        const safeTaskLists = taskLists ?? [];
-        const completedTaskLists = safeTaskLists.filter((item) => this.isTaskListCompleted(item)).length;
-
-        const allTaskStates = safeTaskLists
-            .flatMap((item) => item.taskCategoryGroups ?? [])
-            .flatMap((group) => group.tasks ?? [])
-            .map((task) => String(task.state ?? '').toUpperCase());
-
-        const totalTasks = allTaskStates.length;
-        const completedTasks = allTaskStates.filter((state) => state === 'COMPLETED').length;
-
-        return {
-            taskLists: safeTaskLists.length,
-            completedTaskLists,
-            pendingTaskLists: Math.max(safeTaskLists.length - completedTaskLists, 0),
-            totalTasks,
-            completedTasks,
-            completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-        };
-    }
-
-    private isTaskListCompleted(item: TaskList): boolean {
-        const taskStates = (item.taskCategoryGroups ?? [])
-            .flatMap((group) => group.tasks ?? [])
-            .map((task) => String(task.state ?? '').toUpperCase());
-
-        if (!taskStates.length) {
-            return false;
-        }
-
-        return taskStates.every((state) => state === 'COMPLETED');
-    }
-
     private rebuildChart(rows: BranchMetrics[]): void {
         if (!rows.length) {
             this.chartData.set(null);
@@ -1304,27 +942,7 @@ export class Dashboard implements OnInit {
         this.financeChartOptions.set(this.buildBarChartOptions());
     }
 
-    private rebuildAccountantFinanceChart(metrics: AccountantMetrics): void {
-        this.accountantFinanceChartData.set({
-            labels: [`Tháng ${this.selectedMonthLabel()}`],
-            datasets: [
-                {
-                    label: 'Doanh thu tháng',
-                    backgroundColor: '#0ea5e9',
-                    borderRadius: 6,
-                    data: [metrics.revenueInMonth]
-                },
-                {
-                    label: 'Công nợ còn lại',
-                    backgroundColor: '#f97316',
-                    borderRadius: 6,
-                    data: [metrics.outstandingAmount]
-                }
-            ]
-        });
 
-        this.financeChartOptions.set(this.buildBarChartOptions());
-    }
 
     private buildBarChartOptions(): any {
         const style = getComputedStyle(document.documentElement);
