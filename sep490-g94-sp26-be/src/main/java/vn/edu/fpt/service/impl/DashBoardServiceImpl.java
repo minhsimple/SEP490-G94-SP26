@@ -509,6 +509,7 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+
         // Tổng nợ còn lại
         BigDecimal totalOutstandingDebt = totalExpectedRevenue.subtract(totalCollectedAmount);
 
@@ -520,7 +521,7 @@ public class DashBoardServiceImpl implements DashBoardService {
 
         return AccountantDashBoardResponse.CashFlow.builder()
                 .totalExpectedRevenue(totalExpectedRevenue)
-                .totalCollectedAmount(totalCollectedAmount)
+                .totalCollectedAmount(totalCollectedAmount.subtract(totalRefundedAmount))
                 .totalOutstandingDebt(totalOutstandingDebt)
                 .totalRefundedAmount(totalRefundedAmount)
                 .build();
