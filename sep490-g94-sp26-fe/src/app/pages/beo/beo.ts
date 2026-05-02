@@ -226,8 +226,8 @@ export class BeoComponent implements OnInit {
 
     getShiftLabel(shift?: string): string {
         const m: Record<string, string> = {
-            SLOT_1: 'Trưa', SLOT_2: 'Tối', SLOT_3: 'Cả ngày',
-            AFTERNOON: 'Trưa', EVENING: 'Tối', FULL_DAY: 'Cả ngày',
+            SLOT_1: 'Sáng', SLOT_2: 'Chiều', SLOT_3: 'Cả ngày',
+            AFTERNOON: 'Sáng', EVENING: 'Chiều', FULL_DAY: 'Cả ngày',
         };
         return m[shift ?? ''] ?? shift ?? '-';
     }

@@ -97,7 +97,7 @@ export class AppMenu implements OnInit, OnDestroy {
     const normalizedRole = (codeRole ?? '').toUpperCase().trim();
     const allowed = this.rolePermissions[normalizedRole] ?? (normalizedRole.includes('ADMIN') ? 'all' : undefined);
     const isAdmin = normalizedRole.includes('ADMIN');
-    const adminHiddenIds = ['leads', 'beo'];
+    const adminHiddenIds = ['leads', 'beo', 'dashboard-sale'];
 
     let filteredItems =
       allowed === 'all'
