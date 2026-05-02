@@ -583,6 +583,12 @@ import { forkJoin, of } from 'rxjs';
                                 {{ formatPrice(paidAmountValue) }}
                             </span>
                         </div>
+                        <div class="summary-line" *ngIf="refundAmountValue > 0">
+                            <span>Hoàn tiền:</span>
+                            <span style="color:#7c3aed; font-weight:600;">
+                                {{ formatPrice(refundAmountValue) }}
+                            </span>
+                        </div>
                         <div class="summary-line">
                             <span>Còn lại:</span>
                             <span class="remain-val" style="color:#dc2626; font-weight:600;">
@@ -719,7 +725,18 @@ export class InvoiceDetailComponent implements OnInit {
     get remainingAmount(): number {
         const total = Number(this.invoice?.totalAmount ?? 0);
         const paid = this.paidAmountValue;
-        return Math.max(total - paid, 0);
+        const refunded = this.refundAmountValue;
+        return Math.max(total - (paid - refunded), 0);
+    }
+
+    get refundAmountValue(): number {
+        const payments = this.invoice?.payments ?? [];
+        if (payments.length > 0) {
+            return payments
+                .filter((p) => String(p.status).toUpperCase() === 'REFUNDED')
+                .reduce((sum, p) => sum + Number(p.amount ?? 0), 0);
+        }
+        return 0;
     }
 
     get paidAmountValue(): number {
