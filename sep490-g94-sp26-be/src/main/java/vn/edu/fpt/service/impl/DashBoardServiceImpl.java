@@ -5,10 +5,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import vn.edu.fpt.dto.request.dashboard.AdminDashBoardRequest;
-import vn.edu.fpt.dto.request.dashboard.CoordinatorDashBoardRequest;
+import vn.edu.fpt.dto.request.dashboard.AccountantDashBoardRequest;
 import vn.edu.fpt.dto.request.dashboard.SaleDashBoardRequest;
+import vn.edu.fpt.dto.response.dashboard.AccountantDashBoardResponse;
 import vn.edu.fpt.dto.response.dashboard.AdminDashBoardResponse;
-import vn.edu.fpt.dto.response.dashboard.CoordinatorDashBoardResponse;
 import vn.edu.fpt.dto.response.dashboard.SaleDashBoardResponse;
 import vn.edu.fpt.entity.*;
 import vn.edu.fpt.exception.AppException;
@@ -16,6 +16,8 @@ import vn.edu.fpt.exception.ERROR_CODE;
 import vn.edu.fpt.respository.*;
 import vn.edu.fpt.service.DashBoardService;
 import vn.edu.fpt.util.enums.ContractState;
+import vn.edu.fpt.util.enums.InvoiceState;
+import vn.edu.fpt.util.enums.PaymentMethod;
 import vn.edu.fpt.util.enums.PaymentState;
 import vn.edu.fpt.util.enums.RecordStatus;
 
@@ -432,7 +434,154 @@ public class DashBoardServiceImpl implements DashBoardService {
     }
 
     @Override
-    public CoordinatorDashBoardResponse getCoordinatorDashBoard(CoordinatorDashBoardRequest request) {
-        return null;
+    public List<AccountantDashBoardResponse> getAccountantDashBoard(AccountantDashBoardRequest request) {
+        LocalDateTime fromDateTime = request.getFromDate().atStartOfDay();
+        LocalDateTime toDateTime = request.getToDate().atTime(23, 59, 59);
+
+        List<Integer> locationIds = request.getLocationIds();
+        if (locationIds == null || locationIds.isEmpty()) {
+            locationIds = locationRepository.findAllByStatus(RecordStatus.active).stream()
+                    .map(Location::getId)
+                    .toList();
+        }
+
+        List<AccountantDashBoardResponse> responses = new ArrayList<>();
+
+        for (Integer locationId : locationIds) {
+            Location location = locationRepository.findByIdAndStatus(locationId, RecordStatus.active)
+                    .orElseThrow(() -> new AppException(ERROR_CODE.LOCATION_NOT_FOUND));
+
+            List<Hall> locationHalls = hallRepository.findAllByLocationId(locationId);
+            Set<Integer> hallIds = locationHalls.stream().map(Hall::getId).collect(Collectors.toSet());
+
+            List<Contract> contracts = contractRepository.findAllByHallIdInAndCreatedAtBetween(
+                    hallIds,
+                    fromDateTime,
+                    toDateTime
+            );
+            Set<Integer> contractIds = contracts.stream().map(Contract::getId).collect(Collectors.toSet());
+
+            List<Invoice> invoices = invoiceRepository.findAllByContractIdAndCreatedAtBetween(
+                    contractIds,
+                    fromDateTime,
+                    toDateTime
+            );
+
+            List<Payment> payments = paymentRepository.findAllByContractIdIn(contractIds);
+
+            AccountantDashBoardResponse.CashFlow cashFlow = buildCashFlow(invoices, payments);
+
+            AccountantDashBoardResponse.Invoice invoiceStatus = buildInvoiceStatus(invoices);
+
+            AccountantDashBoardResponse.PendingAction pendingAction = buildPendingAction(payments);
+
+            AccountantDashBoardResponse.PaymentMethod paymentMethod = buildPaymentMethod(payments);
+
+            AccountantDashBoardResponse response = AccountantDashBoardResponse.builder()
+                    .fromDate(request.getFromDate())
+                    .toDate(request.getToDate())
+                    .locationId(locationId)
+                    .locationName(location.getName())
+                    .cashFlow(cashFlow)
+                    .invoice(invoiceStatus)
+                    .pendingAction(pendingAction)
+                    .paymentMethod(paymentMethod)
+                    .build();
+
+            responses.add(response);
+        }
+
+        return responses;
     }
+
+    private AccountantDashBoardResponse.CashFlow buildCashFlow(
+            List<Invoice> invoices,
+            List<Payment> payments) {
+
+        // Tổng doanh thu dự kiến
+        BigDecimal totalExpectedRevenue = invoices.stream()
+                .map(i -> i.getTotalAmount() != null ? i.getTotalAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tổng tiền đã thu (payments thành công)
+        BigDecimal totalCollectedAmount = payments.stream()
+                .filter(p -> p.getPaymentState() == PaymentState.SUCCESS)
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tổng nợ còn lại
+        BigDecimal totalOutstandingDebt = totalExpectedRevenue.subtract(totalCollectedAmount);
+
+        // Tổng tiền đã hoàn (refunded payments)
+        BigDecimal totalRefundedAmount = payments.stream()
+                .filter(p -> p.getPaymentState() == PaymentState.REFUNDED)
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return AccountantDashBoardResponse.CashFlow.builder()
+                .totalExpectedRevenue(totalExpectedRevenue)
+                .totalCollectedAmount(totalCollectedAmount)
+                .totalOutstandingDebt(totalOutstandingDebt)
+                .totalRefundedAmount(totalRefundedAmount)
+                .build();
+    }
+
+    private AccountantDashBoardResponse.Invoice buildInvoiceStatus(List<Invoice> invoices) {
+        Integer totalUnpaid = (int) invoices.stream()
+                .filter(i -> i.getInvoiceState() == InvoiceState.UNPAID)
+                .count();
+
+        Integer totalPartiallyPaid = (int) invoices.stream()
+                .filter(i -> i.getInvoiceState() == InvoiceState.PARTIALLY_PAID)
+                .count();
+
+        Integer totalPaid = (int) invoices.stream()
+                .filter(i -> i.getInvoiceState() == InvoiceState.PAID)
+                .count();
+
+        return AccountantDashBoardResponse.Invoice.builder()
+                .totalUnpaid(totalUnpaid)
+                .totalPartiallyPaid(totalPartiallyPaid)
+                .totalPaid(totalPaid)
+                .build();
+    }
+
+    private AccountantDashBoardResponse.PendingAction buildPendingAction(List<Payment> payments) {
+        List<Payment> pendingPayments = payments.stream()
+                .filter(p -> p.getPaymentState() == PaymentState.PENDING)
+                .toList();
+
+        Integer pendingPaymentsCount = pendingPayments.size();
+
+        BigDecimal pendingPaymentsAmount = pendingPayments.stream()
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return AccountantDashBoardResponse.PendingAction.builder()
+                .pendingPaymentsCount(pendingPaymentsCount)
+                .pendingPaymentsAmount(pendingPaymentsAmount)
+                .build();
+    }
+
+    private AccountantDashBoardResponse.PaymentMethod buildPaymentMethod(List<Payment> payments) {
+        List<Payment> successPayments = payments.stream()
+                .filter(p -> p.getPaymentState() == PaymentState.SUCCESS)
+                .toList();
+
+        BigDecimal totalCash = successPayments.stream()
+                .filter(p -> p.getMethod() == PaymentMethod.CASH)
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalBankTransfer = successPayments.stream()
+                .filter(p -> p.getMethod() == PaymentMethod.BANK_TRANSFER)
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return AccountantDashBoardResponse.PaymentMethod.builder()
+                .totalCash(totalCash)
+                .totalBankTransfer(totalBankTransfer)
+                .build();
+    }
+
 }
