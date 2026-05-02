@@ -503,15 +503,6 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .map(i -> i.getTotalAmount() != null ? i.getTotalAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Tổng tiền đã thu (payments thành công)
-        BigDecimal totalCollectedAmount = payments.stream()
-                .filter(p -> p.getPaymentState() == PaymentState.SUCCESS)
-                .map(Payment::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-
-        // Tổng nợ còn lại
-        BigDecimal totalOutstandingDebt = totalExpectedRevenue.subtract(totalCollectedAmount);
 
         // Tổng tiền đã hoàn (refunded payments)
         BigDecimal totalRefundedAmount = payments.stream()
@@ -519,9 +510,20 @@ public class DashBoardServiceImpl implements DashBoardService {
                 .map(Payment::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Tổng tiền đã thu (payments thành công)
+        BigDecimal totalCollectedAmount = payments.stream()
+                .filter(p -> p.getPaymentState() == PaymentState.SUCCESS)
+                .map(Payment::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add).subtract(totalRefundedAmount);
+
+
+        // Tổng nợ còn lại
+        BigDecimal totalOutstandingDebt = totalExpectedRevenue.subtract(totalCollectedAmount);
+
+
         return AccountantDashBoardResponse.CashFlow.builder()
                 .totalExpectedRevenue(totalExpectedRevenue)
-                .totalCollectedAmount(totalCollectedAmount.subtract(totalRefundedAmount))
+                .totalCollectedAmount(totalCollectedAmount)
                 .totalOutstandingDebt(totalOutstandingDebt)
                 .totalRefundedAmount(totalRefundedAmount)
                 .build();
