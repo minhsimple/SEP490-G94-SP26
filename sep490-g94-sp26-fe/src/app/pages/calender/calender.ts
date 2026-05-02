@@ -31,7 +31,7 @@ export interface CalendarEvent {
     hallId?: number;
     hallName: string;
     branchName: string;
-    /** SLOT_1 = Trưa 10-14h | SLOT_2 = Tối 17-21h | SLOT_3 = Cả ngày */
+    /** SLOT_1 = Sáng 10-14h | SLOT_2 = Chiều 17-21h | SLOT_3 = Cả ngày */
     shift: 'SLOT_1' | 'SLOT_2' | 'SLOT_3';
     tableCount: number;
     status?: string;
@@ -367,7 +367,7 @@ interface EmptySlotGroup {
         }
 
         <div class="ec-footnote">
-            * Mỗi sảnh tối đa 2 sự kiện/ngày: Trưa (10:00-14:00) và Tối (17:00-21:00)
+            * Mỗi sảnh tối đa 2 sự kiện/ngày: Sáng (10:00-14:00) và Chiều (17:00-21:00)
         </div>
     </div>
 
@@ -1220,7 +1220,7 @@ export class EventCalendarComponent implements OnInit, OnChanges {
     // ── Label helpers ─────────────────────────────────────────────────────────
 
     shiftShort(shift: string): string {
-        return ({ SLOT_1: 'Trưa', SLOT_2: 'Tối', SLOT_3: 'Cả ngày' } as Record<string, string>)[shift] ?? shift;
+        return ({ SLOT_1: 'Sáng', SLOT_2: 'Chiều', SLOT_3: 'Cả ngày' } as Record<string, string>)[shift] ?? shift;
     }
 
     shiftTime(shift: string): string {

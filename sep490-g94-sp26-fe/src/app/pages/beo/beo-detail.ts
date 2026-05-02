@@ -776,11 +776,11 @@ export class BeoDetailComponent implements OnInit {
 
     getShiftLabel(shift?: string): string {
         const map: Record<string, string> = {
-            SLOT_1: 'Trưa',
-            SLOT_2: 'Tối',
+            SLOT_1: 'Sáng',
+            SLOT_2: 'Chiều',
             SLOT_3: 'Cả ngày',
-            AFTERNOON: 'Trưa',
-            EVENING: 'Tối',
+            AFTERNOON: 'Sáng',
+            EVENING: 'Chiều',
             FULL_DAY: 'Cả ngày',
         };
         return map[shift ?? ''] ?? shift ?? '-';
