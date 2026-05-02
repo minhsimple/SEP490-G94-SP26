@@ -61,7 +61,7 @@ interface Column {
             (onClick)="openNew()"
           />
           <p-select
-            *ngIf="!isSingleLocation"
+            *ngIf="isAdmin"
             [options]="locationOptions"
             [(ngModel)]="selectedLocationId"
             optionLabel="label"
