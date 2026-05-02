@@ -696,7 +696,7 @@ import { RoleService } from '../service/role.service';
                                 <p-button label="Xem hợp đồng" icon="pi pi-file" (onClick)="openContractDialog()" />
                                 <p-button label="In hợp đồng" icon="pi pi-print" severity="secondary" (onClick)="printContract()" />
                             </div>
-                            <div class="coordinator-panel" *ngIf="isAdminAccount">
+                            <div class="coordinator-panel" *ngIf="canAssignCoordinator">
                                 <div class="coordinator-panel-head">
                                     <span class="coordinator-panel-title">Phân công điều phối viên cho hợp đồng</span>
                                     <span class="coordinator-panel-current">Hiện tại: {{ coordinatorDisplayName() }}</span>
@@ -797,7 +797,13 @@ export class BookingDetailComponent implements OnInit {
     readonly codeRole = (localStorage.getItem('codeRole') ?? '').toUpperCase();
     readonly currentUserId = Number(localStorage.getItem('userId')) || 0;
     readonly isAdminAccount = this.codeRole.includes('ADMIN');
+    readonly isManagerAccount = this.codeRole.includes('MANAGER');
+    readonly canAssignCoordinator = this.isAdminAccount || this.isManagerAccount;
     readonly isCoordinatorAccount = this.codeRole.includes('COORDINATOR') || this.codeRole.includes('COORD');
+    readonly managerLocationIds: number[] = (() => {
+        if (!this.isManagerAccount) return [];
+        try { return JSON.parse(localStorage.getItem('locationIds') ?? '[]') as number[]; } catch { return []; }
+    })();
     coordinatorRoleIds = new Set<number>();
     coordinatorNameMap: Record<number, string> = {};
     coordinatorOptions: Array<{ id: number; label: string }> = [];
@@ -851,7 +857,7 @@ export class BookingDetailComponent implements OnInit {
             return;
         }
 
-        if (this.isAdminAccount) {
+        if (this.canAssignCoordinator) {
             this.loadCoordinatorOptions();
         }
 
@@ -933,7 +939,15 @@ export class BookingDetailComponent implements OnInit {
             next: (res) => {
                 const users = res.data?.content ?? [];
                 this.coordinatorOptions = users
-                    .filter((user: any) => this.isCoordinatorUser(user))
+                    .filter((user: any) => {
+                        if (!this.isCoordinatorUser(user)) return false;
+                        // Manager: only show coordinators belonging to their managed branches
+                        if (this.isManagerAccount && !this.isAdminAccount && this.managerLocationIds.length > 0) {
+                            const userLocIds = this.getUserLocationIdsFromUser(user);
+                            return userLocIds.some(lid => this.managerLocationIds.includes(lid));
+                        }
+                        return true;
+                    })
                     .map((user: any) => {
                         const id = Number(user.id);
                         const label = user.fullName?.trim() || `Coordinator #${id}`;
@@ -954,6 +968,15 @@ export class BookingDetailComponent implements OnInit {
                 this.cdr.detectChanges();
             },
         });
+    }
+
+    private getUserLocationIdsFromUser(user: any): number[] {
+        const locationIds = user?.locationIds;
+        if (Array.isArray(locationIds)) {
+            return locationIds.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id) && id > 0);
+        }
+        const singleId = Number(user?.locationId ?? 0);
+        return Number.isFinite(singleId) && singleId > 0 ? [singleId] : [];
     }
 
     private isCoordinatorRole(role: any): boolean {
@@ -993,7 +1016,7 @@ export class BookingDetailComponent implements OnInit {
     }
 
     assignCoordinator() {
-        if (!this.isAdminAccount || !this.booking?.id || this.selectedCoordinatorId == null) {
+        if (!this.canAssignCoordinator || !this.booking?.id || this.selectedCoordinatorId == null) {
             return;
         }
 

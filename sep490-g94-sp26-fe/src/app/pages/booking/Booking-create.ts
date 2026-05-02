@@ -2425,7 +2425,7 @@ export class BookingCreateComponent implements OnInit {
         });
     }
 
-    private resolveCustomerIdForSubmit(): Observable<number> {
+    private resolveCustomerIdForSubmit(): Observable<number | null> {
         const currentCustomerId = Number(this.form.customerId);
         if (Number.isFinite(currentCustomerId) && currentCustomerId > 0) {
             return of(currentCustomerId);
@@ -2437,9 +2437,12 @@ export class BookingCreateComponent implements OnInit {
             return throwError(() => new Error('Vui lòng nhập số điện thoại khách hàng'));
         }
 
+        // Search for existing customer by phone to reuse their ID.
+        // If not found, return null — the backend contract API will create the customer
+        // from the customerRequest embedded in the contract payload.
         return this.customerService.searchCustomers({ phone, page: 0, size: 20, sort: 'updatedAt,DESC' }).pipe(
             map((res) => this.findExactCustomerByPhone(res.data?.content ?? [], phone)),
-            switchMap((matched) => {
+            map((matched) => {
                 if (matched?.id != null) {
                     const customerId = Number(matched.id);
                     this.form.customerId = customerId;
@@ -2449,55 +2452,11 @@ export class BookingCreateComponent implements OnInit {
                         phone: matched.phone?.trim() || phone,
                     };
                     this.matchedExistingCustomer = this.selectedCustomer;
-                    this.customerDraft = {
-                        phone: matched.phone?.trim() || phone,
-                        fullName: matched.fullName?.trim() || this.customerDraft.fullName,
-                        citizenIdNumber: matched.citizenIdNumber?.trim() || this.customerDraft.citizenIdNumber,
-                        email: matched.email?.trim() || this.customerDraft.email,
-                        address: matched.address?.trim() || this.customerDraft.address,
-                    };
-                    return of(customerId);
+                    return customerId;
                 }
 
-                const fullName = this.customerDraft.fullName?.trim();
-                if (!fullName) {
-                    return throwError(() => new Error('Vui lòng nhập tên khách hàng mới'));
-                }
-
-                const address = this.customerDraft.address?.trim();
-                if (!address) {
-                    return throwError(() => new Error('Vui lòng nhập địa chỉ khách hàng'));
-                }
-
-                const locationId = Number(this.form.locationId);
-                if (!Number.isFinite(locationId) || locationId <= 0) {
-                    return throwError(() => new Error('Vui lòng chọn chi nhánh trước khi tạo khách hàng'));
-                }
-
-                return this.customerService.createCustomer({
-                    fullName,
-                    citizenIdNumber: this.customerDraft.citizenIdNumber?.trim() || undefined,
-                    phone,
-                    email: this.customerDraft.email?.trim() || undefined,
-                    address,
-                    locationId,
-                }, this.getCitizenCardImageFiles()).pipe(
-                    map((createRes) => {
-                        const createdId = Number(createRes.data?.id);
-                        if (!Number.isFinite(createdId) || createdId <= 0) {
-                            throw new Error('Không thể tạo khách hàng mới');
-                        }
-
-                        this.form.customerId = createdId;
-                        this.selectedCustomer = {
-                            id: createdId,
-                            label: createRes.data?.fullName?.trim() || fullName,
-                            phone: createRes.data?.phone?.trim() || phone,
-                        };
-                        this.matchedExistingCustomer = this.selectedCustomer;
-                        return createdId;
-                    })
-                );
+                // No existing customer found — let the backend handle creation
+                return null;
             })
         );
     }
