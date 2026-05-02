@@ -85,6 +85,7 @@ public class ContractServiceImpl implements ContractService {
         validateNumberOfTable(request.getExpectedTables(), request.getExpectedGuests());
 
         Contract booking = contractMapper.toEntity(request);
+        booking.setCustomerId(customerResponse.getId());
         booking.setContractNo(generateContractNo(customerResponse.getLocationName()));
         booking.setContractState(ContractState.DRAFT);
         booking.setStatus(RecordStatus.active);
