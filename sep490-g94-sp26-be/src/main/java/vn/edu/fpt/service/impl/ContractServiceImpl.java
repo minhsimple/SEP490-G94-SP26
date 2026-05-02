@@ -33,8 +33,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.time.temporal.ChronoUnit;
+import java.util.stream.Collectors;
 
 import static java.lang.Math.ceil;
 
@@ -83,7 +85,7 @@ public class ContractServiceImpl implements ContractService {
         validateNumberOfTable(request.getExpectedTables(), request.getExpectedGuests());
 
         Contract booking = contractMapper.toEntity(request);
-        booking.setContractNo(generateContractNo());
+        booking.setContractNo(generateContractNo(customerResponse.getLocationName()));
         booking.setContractState(ContractState.DRAFT);
         booking.setStatus(RecordStatus.active);
 
@@ -466,8 +468,11 @@ public class ContractServiceImpl implements ContractService {
         }
     }
 
-    private String generateContractNo() {
-        String prefix = "NPS-";
+    private String generateContractNo(String locationName) {
+        String prefix = Arrays.stream(locationName.split("\\s+"))
+                .filter(word -> !word.isEmpty())
+                .map(word -> String.valueOf(word.charAt(0)).toUpperCase())
+                .collect(Collectors.joining());
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String random = String.valueOf((int) (Math.random() * 9000) + 1000);
         return prefix + timestamp + random;

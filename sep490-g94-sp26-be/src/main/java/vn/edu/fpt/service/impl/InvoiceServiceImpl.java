@@ -197,6 +197,12 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.getData().setIncidents(incidents);
         invoice.setTotalAmount(invoice.getTotalAmount().subtract(varianceAmount));
 
+        if (contract.getContractState() == ContractState.DRAFT) {
+            paymentRepository.findAllByContractIdAndPaymentStateAndStatus(contract.getId(), PaymentState.PENDING, RecordStatus.active).stream()
+                    .findFirst().ifPresent(payment -> payment.setAmount(invoice.getTotalAmount().multiply(BigDecimal.valueOf(contract.getPaymentPercent()))
+                            .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)));
+        }
+
         return invoice.getData().getIncidents();
     }
 
@@ -254,6 +260,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         );
     }
 
+    @Transactional
     @Override
     public InvoiceResponse liquidateInvoice(Integer id) {
         Invoice invoice = invoiceRepository.findByIdAndStatus(id, RecordStatus.active)
@@ -273,13 +280,31 @@ public class InvoiceServiceImpl implements InvoiceService {
 
         BigDecimal amount = invoice.getTotalAmount().subtract(paymentList.getFirst().getAmount());
 
-        PaymentRequest paymentRequest = PaymentRequest.builder()
-                .contractId(contract.getId())
-                .amount(amount)
-                .method(PaymentMethod.BANK_TRANSFER)
-                .paymentState(PaymentState.PENDING)
-                .note("Thanh toán đợt 2")
-                .build();
+        PaymentRequest paymentRequest = null;
+
+        if (amount.compareTo(BigDecimal.ZERO) > 0) {
+            paymentRequest = PaymentRequest.builder()
+                    .contractId(contract.getId())
+                    .amount(amount)
+                    .method(PaymentMethod.BANK_TRANSFER)
+                    .paymentState(PaymentState.PENDING)
+                    .note("Thanh toán đợt 2")
+                    .build();
+        } else if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            paymentRequest = PaymentRequest.builder()
+                    .contractId(contract.getId())
+                    .amount(amount.abs())
+                    .method(PaymentMethod.BANK_TRANSFER)
+                    .paymentState(PaymentState.REFUNDED)
+                    .note("Hoàn trả chi phí thừa")
+                    .build();
+
+            contract.setContractState(ContractState.LIQUIDATED);
+            invoice.setInvoiceState(InvoiceState.PAID);
+        } else {
+            contract.setContractState(ContractState.LIQUIDATED);
+            invoice.setInvoiceState(InvoiceState.PAID);
+        }
 
         paymentService.createPayment(paymentRequest);
 
