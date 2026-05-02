@@ -31,7 +31,7 @@ import java.util.List;
 public class HallController {
 
     HallService hallService;
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(summary = "Tạo hội trường mới")
     @PostMapping("/create")
     public ApiResponse<HallResponse> createHall(
@@ -43,7 +43,7 @@ public class HallController {
                 .build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(summary = "Cập nhật hội trường")
     @PutMapping("/update")
     public ApiResponse<HallResponse> updateHall(
@@ -78,7 +78,7 @@ public class HallController {
                 .build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Operation(summary = "Thay đổi trạng thái hội trường")
     @PatchMapping("/{id}/change-status")
     public ApiResponse<HallResponse> changeHallStatus(@PathVariable Integer id) {

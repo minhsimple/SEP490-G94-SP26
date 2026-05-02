@@ -50,7 +50,7 @@ public class UserController {
                 .data(response)
                 .build();
     }
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Thay đổi status (bật tắt) tai khoan nguoi dung ")
     @PatchMapping("/{id}/change-status")
     public ApiResponse<UserResponse> changeStatus(@PathVariable Integer id) {
@@ -59,7 +59,7 @@ public class UserController {
                 .data(response)
                 .build();
     }
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Tạo tai khoan nguoi dung")
     @PostMapping("/create")
     public ApiResponse<UserResponse> createUser(@RequestBody @Valid UserRequest request) {
@@ -68,7 +68,7 @@ public class UserController {
                 .data(response)
                 .build();
     }
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     @Operation(summary = "Cập nhật tài khoản người dùng")
     @PutMapping("/{id}/update")
     public ApiResponse<UserResponse> updateUser(@RequestBody UserRequest request,
