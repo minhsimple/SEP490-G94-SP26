@@ -5,8 +5,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import vn.edu.fpt.dto.request.dashboard.AdminDashBoardRequest;
+import vn.edu.fpt.dto.request.dashboard.CoordinatorDashBoardRequest;
 import vn.edu.fpt.dto.request.dashboard.SaleDashBoardRequest;
 import vn.edu.fpt.dto.response.dashboard.AdminDashBoardResponse;
+import vn.edu.fpt.dto.response.dashboard.CoordinatorDashBoardResponse;
 import vn.edu.fpt.dto.response.dashboard.SaleDashBoardResponse;
 import vn.edu.fpt.entity.*;
 import vn.edu.fpt.exception.AppException;
@@ -427,5 +429,10 @@ public class DashBoardServiceImpl implements DashBoardService {
         response.setCanceledCount(cancelledContractsCount);
         response.setLiquidatedCount(liquidatedContractsCount);
         return  response;
+    }
+
+    @Override
+    public CoordinatorDashBoardResponse getCoordinatorDashBoard(CoordinatorDashBoardRequest request) {
+        return null;
     }
 }

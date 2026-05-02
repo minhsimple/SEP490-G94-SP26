@@ -10,11 +10,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import vn.edu.fpt.dto.request.dashboard.AdminDashBoardRequest;
+import vn.edu.fpt.dto.request.dashboard.CoordinatorDashBoardRequest;
 import vn.edu.fpt.dto.request.dashboard.SaleDashBoardRequest;
 import vn.edu.fpt.dto.request.hall.HallRequest;
 import vn.edu.fpt.dto.response.ApiResponse;
 import vn.edu.fpt.dto.response.dashboard.AccountantDashBoardResponse;
 import vn.edu.fpt.dto.response.dashboard.AdminDashBoardResponse;
+import vn.edu.fpt.dto.response.dashboard.CoordinatorDashBoardResponse;
 import vn.edu.fpt.dto.response.dashboard.SaleDashBoardResponse;
 import vn.edu.fpt.dto.response.hall.HallResponse;
 import vn.edu.fpt.service.DashBoardService;
@@ -49,13 +51,16 @@ public class DashBoardController {
                 .build();
     }
 
-//    public ApiResponse<AdminDashBoardResponse> getAdminDashBoard(
-//            @RequestPart("request") @Valid HallRequest request) throws Exception {
-//        HallResponse response = dashBoardService.getCoordinatorDashBoard(request);
-//        return ApiResponse.<AdminDashBoardResponse>builder()
-//                .data(response)
-//                .build();
-//    }
+    @PreAuthorize("hasRole('COORDINATOR')")
+    @Operation(summary = "Lấy dashboard COORDINATOR ")
+    @PostMapping("/search-coordinator")
+    public ApiResponse<CoordinatorDashBoardResponse> getCoordinatorDashBoard(
+            @RequestBody @Valid CoordinatorDashBoardRequest request) throws Exception {
+        CoordinatorDashBoardResponse response = dashBoardService.getCoordinatorDashBoard(request);
+        return ApiResponse.<CoordinatorDashBoardResponse>builder()
+                .data(response)
+                .build();
+    }
 //
 //    public ApiResponse<AccountantDashBoardResponse> getAdminDashBoard(
 //            @RequestPart("request") @Valid HallRequest request) throws Exception {
