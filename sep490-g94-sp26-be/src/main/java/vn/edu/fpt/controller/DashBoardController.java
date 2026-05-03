@@ -49,7 +49,7 @@ public class DashBoardController {
 
     @PreAuthorize("hasRole('ACCOUNTANT')")
     @Operation(summary = "Lấy dashboard Acc ")
-    @PostMapping("/search-coordinator")
+    @PostMapping("/search-accountant")
     public ApiResponse<List<AccountantDashBoardResponse>> getAccountantDashBoard(
             @RequestBody @Valid AccountantDashBoardRequest request) throws Exception {
         return ApiResponse.<List<AccountantDashBoardResponse>>builder()

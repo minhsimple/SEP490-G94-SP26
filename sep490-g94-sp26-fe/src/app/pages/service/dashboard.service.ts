@@ -16,6 +16,12 @@ export interface SaleDashBoardRequest {
     toDate: string;     // yyyy-MM-dd
 }
 
+export interface AccountantDashBoardRequest {
+    fromDate: string;   // yyyy-MM-dd
+    toDate: string;     // yyyy-MM-dd
+    locationIds?: number[];
+}
+
 // ─── Response blocks ───
 export interface DashFinancial {
     totalRevenue: number;
@@ -76,6 +82,32 @@ export interface SaleDashBoardResponse {
     activeCount: number;
 }
 
+export interface AccountantDashBoardResponse {
+    fromDate: string;
+    toDate: string;
+    locationId: number;
+    locationName: string;
+    cashFlow: {
+        totalExpectedRevenue: number;
+        totalCollectedAmount: number;
+        totalOutstandingDebt: number;
+        totalRefundedAmount: number;
+    };
+    invoice: {
+        totalUnpaid: number;
+        totalPartiallyPaid: number;
+        totalPaid: number;
+    };
+    pendingAction: {
+        pendingPaymentsCount: number;
+        pendingPaymentsAmount: number;
+    };
+    paymentMethod: {
+        totalCash: number;
+        totalBankTransfer: number;
+    };
+}
+
 export interface ApiResponse<T> {
     code: number;
     data: T;
@@ -108,6 +140,14 @@ export class DashboardService {
     searchSaleDashboard(request: SaleDashBoardRequest): Observable<ApiResponse<SaleDashBoardResponse>> {
         return this.http.post<ApiResponse<SaleDashBoardResponse>>(
             `${BASE}/dashboard/search-sale`,
+            request,
+            { headers: this.getHeaders() }
+        );
+    }
+
+    searchAccountantDashboard(request: AccountantDashBoardRequest): Observable<ApiResponse<AccountantDashBoardResponse[]>> {
+        return this.http.post<ApiResponse<AccountantDashBoardResponse[]>>(
+            `${BASE}/dashboard/search-accountant`,
             request,
             { headers: this.getHeaders() }
         );

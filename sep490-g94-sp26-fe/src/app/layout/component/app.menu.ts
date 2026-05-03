@@ -30,6 +30,7 @@ export class AppMenu implements OnInit, OnDestroy {
 // { label: 'Báo cáo chi nhánh', icon: 'pi pi-chart-line', routerLink: ['/pages/reports/branches'], id: 'branch-reports' },
   { label: 'Dashboard quản lý', icon: 'pi pi-gauge', routerLink: ['/pages/dashboardv2'], id: 'dashboardv2' },
   { label: 'Dashboard cá nhân', icon: 'pi pi-user', routerLink: ['/pages/dashboard-sale'], id: 'dashboard-sale' },
+  { label: 'Dashboard kế toán', icon: 'pi pi-chart-line', routerLink: ['/pages/dashboard-accountant'], id: 'dashboard-accountant' },
   { label: 'Lịch sự kiện', icon: 'pi pi-calendar', routerLink: ['/pages/calender'], id: 'calender' },
 { label: 'Hợp đồng', icon: 'pi pi-file', routerLink: ['/pages/booking'], id: 'booking' },
 { label: 'Công việc', icon: 'pi pi-check-square', routerLink: ['/pages/beo'], id: 'beo' },
@@ -69,14 +70,14 @@ export class AppMenu implements OnInit, OnDestroy {
     SALE:         ['dashboard-sale', 'leads', 'customers', 'service', 'menu', 'hall', 'booking', 'payment', 'invoice'],
     RECEPTION:    ['leads', 'calender'],
     RECEPTIONIST: ['leads', 'calender'],
-    ACCOUNT:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    ACCOUNTANT:   ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    ACCOUNTING:   ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    KETOAN:       ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
-    KE_TOAN:      ['dashboard', 'customers', 'booking', 'invoice', 'payment'],
+    ACCOUNT:      ['dashboard-accountant', 'customers', 'booking', 'invoice', 'payment'],
+    ACCOUNTANT:   ['dashboard-accountant', 'customers', 'booking', 'invoice', 'payment'],
+    ACCOUNTING:   ['dashboard-accountant', 'customers', 'booking', 'invoice', 'payment'],
+    KETOAN:       ['dashboard-accountant', 'customers', 'booking', 'invoice', 'payment'],
+    KE_TOAN:      ['dashboard-accountant', 'customers', 'booking', 'invoice', 'payment'],
     MANAGER:      ['dashboard', 'dashboardv2', 'calender', 'booking', 'payment', 'invoice', 'customers', 'hall', 'service', 'menu', 'users'],
     ADMIN:        'all',
-    COORDINATOR:  ['dashboard', 'calender', 'booking', 'beo'],
+    COORDINATOR:  ['calender', 'booking', 'beo'],
   };
 
   constructor(private authService: AuthService) {}

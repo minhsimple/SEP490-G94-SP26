@@ -680,10 +680,6 @@ interface BookingSummary {
                                 <input pInputText [(ngModel)]="form.brideName" placeholder="Trần Thị B" style="width:100%" />
                             </div>
                             <div class="field-wrap">
-                                <label class="field-label">Tuổi cô dâu</label>
-                                <p-inputnumber [(ngModel)]="form.brideAge" [min]="1" [max]="120" styleClass="w-full" inputStyleClass="w-full" />
-                            </div>
-                            <div class="field-wrap">
                                 <label class="field-label">Tên cha cô dâu</label>
                                 <input pInputText [(ngModel)]="form.brideFatherName" placeholder="Trần Văn..." style="width:100%" />
                             </div>
@@ -698,10 +694,6 @@ interface BookingSummary {
                             <div class="field-wrap">
                                 <label class="field-label">Họ tên chú rể <span class="req">*</span></label>
                                 <input pInputText [(ngModel)]="form.groomName" placeholder="Nguyễn Văn A" style="width:100%" />
-                            </div>
-                            <div class="field-wrap">
-                                <label class="field-label">Tuổi chú rể</label>
-                                <p-inputnumber [(ngModel)]="form.groomAge" [min]="1" [max]="120" styleClass="w-full" inputStyleClass="w-full" />
                             </div>
                             <div class="field-wrap">
                                 <label class="field-label">Tên cha chú rể</label>
@@ -1125,9 +1117,7 @@ export class BookingCreateComponent implements OnInit {
         reservedUntil: null as Date | null,
         notes: '',
         brideName: '',
-        brideAge: null as number | null,
         groomName: '',
-        groomAge: null as number | null,
         brideFatherName: '',
         brideMotherName: '',
         groomFatherName: '',
@@ -1389,9 +1379,7 @@ export class BookingCreateComponent implements OnInit {
         this.form.reservedUntil = booking.reservedUntil ? new Date(booking.reservedUntil) : null;
         this.form.notes = booking.notes ?? '';
         this.form.brideName = booking.brideName ?? '';
-        this.form.brideAge = this.toNumberOrNull(booking.brideAge);
         this.form.groomName = booking.groomName ?? '';
-        this.form.groomAge = this.toNumberOrNull(booking.groomAge);
         this.form.brideFatherName = booking.brideFatherName ?? '';
         this.form.brideMotherName = booking.brideMotherName ?? '';
         this.form.groomFatherName = booking.groomFatherName ?? '';
@@ -2542,14 +2530,6 @@ export class BookingCreateComponent implements OnInit {
             this.warn('Vui lòng chọn ngày tổ chức');
             return false;
         }
-        if (this.form.groomAge != null && (this.form.groomAge < 18 || this.form.groomAge > 100)) {
-            this.warn('Tuổi của cô dâu/chú rể không hợp lệ, bạn vui lòng kiểm tra lại');
-            return false;
-        }
-        if (this.form.brideAge != null && (this.form.brideAge < 18 || this.form.brideAge > 100)) {
-            this.warn('Tuổi của cô dâu/chú rể không hợp lệ, bạn vui lòng kiểm tra lại');
-            return false;
-        }
         if (this.form.setMenuId != null && !this.setMenuOptions.some((menu) => menu.id === this.form.setMenuId)) {
             this.warn('Set menu đã chọn hiện không còn hoạt động hoặc không thuộc chi nhánh hiện tại');
             return false;
@@ -2619,9 +2599,7 @@ export class BookingCreateComponent implements OnInit {
             reservedUntil: this.toISOString(this.form.reservedUntil),
             notes: this.form.notes?.trim() || undefined,
             brideName: this.form.brideName.trim(),
-            brideAge: this.form.brideAge,
             groomName: this.form.groomName.trim(),
-            groomAge: this.form.groomAge,
             brideFatherName: this.form.brideFatherName?.trim() || undefined,
             brideMotherName: this.form.brideMotherName?.trim() || undefined,
             groomFatherName: this.form.groomFatherName?.trim() || undefined,
