@@ -673,6 +673,7 @@ import { RoleService } from '../service/role.service';
                             </div>
 
                             <p-button
+                                *ngIf="!isCoordinatorAccount"
                                 label="Xem chi tiết & Thanh toán"
                                 icon="pi pi-external-link"
                                 severity="secondary"
@@ -842,7 +843,7 @@ export class BookingDetailComponent implements OnInit {
         private messageService: MessageService,
         private cdr: ChangeDetectorRef,
         private sanitizer: DomSanitizer,
-    ) {}
+    ) { }
 
     ngOnInit() {
         const navState = this.router.getCurrentNavigation()?.extras?.state as { returnUrl?: string } | undefined;
