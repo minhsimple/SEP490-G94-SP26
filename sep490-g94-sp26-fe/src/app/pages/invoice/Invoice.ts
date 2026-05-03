@@ -55,22 +55,6 @@ interface Column { field: string; header: string; }
                         style="width:180px"
                     />
 
-                    <input
-                        pInputText
-                        type="number"
-                        [(ngModel)]="filterLowerBoundTotalAmount"
-                        placeholder="Tổng tiền từ"
-                        style="width: 170px"
-                    />
-
-                    <input
-                        pInputText
-                        type="number"
-                        [(ngModel)]="filterUpperBoundTotalAmount"
-                        placeholder="Đến"
-                        style="width: 170px"
-                    />
-
                     <p-button label="Lọc" icon="pi pi-filter" size="small" (click)="onFilter()" />
                     <p-button label="Xóa lọc" icon="pi pi-refresh" size="small" severity="secondary" [text]="true" (click)="resetFilter()" />
                 </div>
@@ -225,8 +209,7 @@ export class InvoicesComponent implements OnInit {
     currentPage = 0;
     filterContractId: number | null = null;
     filterInvoiceState: string | null = null;
-    filterLowerBoundTotalAmount: number | null = null;
-    filterUpperBoundTotalAmount: number | null = null;
+
 
     invoiceStateOptions = [
         { label: 'Chưa thanh toán', value: 'UNPAID' },
@@ -265,8 +248,7 @@ export class InvoicesComponent implements OnInit {
             page, size,
             contractId: this.filterContractId ?? undefined,
             invoiceState: this.filterInvoiceState ?? undefined,
-            lowerBoundTotalAmount: this.filterLowerBoundTotalAmount ?? undefined,
-            upperBoundTotalAmount: this.filterUpperBoundTotalAmount ?? undefined,
+
         }).subscribe({
             next: (res) => {
                 if (res?.data) {
@@ -296,8 +278,7 @@ export class InvoicesComponent implements OnInit {
     resetFilter() {
         this.filterContractId = null;
         this.filterInvoiceState = null;
-        this.filterLowerBoundTotalAmount = null;
-        this.filterUpperBoundTotalAmount = null;
+
         if (this.dt) this.dt.reset();
         this.loadInvoices();
     }
