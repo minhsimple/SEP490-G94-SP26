@@ -40,7 +40,7 @@ public class ContractController {
     @PostMapping("/create")
     public ApiResponse<ContractResponse> createContract(
             @RequestPart("request") @Valid ContractRequest request,
-            @RequestPart("imageFiles") List<MultipartFile> imageFiles) throws Exception {
+            @RequestPart(value = "imageFiles", required = false) List<MultipartFile> imageFiles) throws Exception {
         ContractResponse response = contractService.createContract(request, imageFiles);
         return ApiResponse.<ContractResponse>builder()
                 .data(response)
