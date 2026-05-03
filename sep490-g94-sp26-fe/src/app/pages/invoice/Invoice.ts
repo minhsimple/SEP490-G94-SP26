@@ -40,7 +40,7 @@ interface Column { field: string; header: string; }
                 <div class="px-4 py-3 flex items-center gap-3 border-bottom-1 surface-border flex-wrap">
                     <input
                         pInputText
-                        type="number"
+                        type="text"
                         [(ngModel)]="filterContractId"
                         placeholder="Lọc theo Contract ID"
                         style="width: 220px"
@@ -64,9 +64,6 @@ interface Column { field: string; header: string; }
                     [value]="invoices()"
                     [rows]="pageSize"
                     [paginator]="true"
-                    [totalRecords]="totalRecords"
-                    [lazy]="true"
-                    (onLazyLoad)="onLazyLoad($event)"
                     [tableStyle]="{ 'min-width': '60rem' }"
                     [rowHover]="true"
                     dataKey="id"
@@ -203,17 +200,16 @@ interface Column { field: string; header: string; }
 export class InvoicesComponent implements OnInit {
 
     invoices = signal<Invoice[]>([]);
+    allInvoices = signal<Invoice[]>([]);
     loading = false;
-    totalRecords = 0;
     pageSize = 20;
-    currentPage = 0;
-    filterContractId: number | null = null;
+    filterContractId: string | null = null;
     filterInvoiceState: string | null = null;
 
 
     invoiceStateOptions = [
         { label: 'Chưa thanh toán', value: 'UNPAID' },
-        { label: 'Thanh toán một phần', value: 'PARTIAL' },
+        { label: 'Thanh toán một phần', value: 'PARTIALLY_PAID' },
         { label: 'Đã thanh toán', value: 'PAID' },
     ];
 
@@ -230,7 +226,7 @@ export class InvoicesComponent implements OnInit {
 
     ngOnInit() {
         this.cols = [
-            { field: 'code',         header: 'Mã HĐơn'   },
+            { field: 'id',           header: 'Mã HĐơn'   },
             { field: 'contractNo',   header: 'Hợp đồng'  },
             { field: 'hall.name',    header: 'Sảnh'       },
             { field: 'servicesPackage.name', header: 'Gói dịch vụ' },
@@ -242,18 +238,19 @@ export class InvoicesComponent implements OnInit {
         this.loadInvoices();
     }
 
-    loadInvoices(page = 0, size = this.pageSize) {
+    loadInvoices() {
         this.loading = true;
         this.invoiceService.searchInvoices({
-            page, size,
-            contractId: this.filterContractId ?? undefined,
-            invoiceState: this.filterInvoiceState ?? undefined,
-
+            page: 0, size: 1000
         }).subscribe({
             next: (res) => {
                 if (res?.data) {
-                    this.invoices.set(res.data.content);
-                    this.totalRecords = res.data.totalElements;
+                    const normalized = (res.data.content || []).map(inv => ({
+                        ...inv,
+                        invoiceState: inv.invoiceState ?? (inv as any).status
+                    }));
+                    this.allInvoices.set(normalized);
+                    this.applyFilter();
                 }
                 this.loading = false;
             },
@@ -264,23 +261,34 @@ export class InvoicesComponent implements OnInit {
         });
     }
 
-    onLazyLoad(event: any) {
-        this.currentPage = event.first / event.rows;
-        this.pageSize    = event.rows;
-        this.loadInvoices(this.currentPage, this.pageSize);
+    applyFilter() {
+        let list = [...this.allInvoices()];
+
+        if (this.filterContractId !== null && this.filterContractId !== undefined && String(this.filterContractId).trim() !== '') {
+            const searchVal = String(this.filterContractId).trim().toLowerCase();
+            list = list.filter(inv => 
+                String(inv.contractId) === searchVal || 
+                String(inv.id) === searchVal ||
+                (inv.contractNo && inv.contractNo.toLowerCase().includes(searchVal))
+            );
+        }
+
+        if (this.filterInvoiceState) {
+            list = list.filter(inv => inv.invoiceState === this.filterInvoiceState);
+        }
+
+        this.invoices.set(list);
+        if (this.dt) this.dt.reset();
     }
 
     onFilter() {
-        if (this.dt) this.dt.reset();
-        this.loadInvoices();
+        this.applyFilter();
     }
 
     resetFilter() {
         this.filterContractId = null;
         this.filterInvoiceState = null;
-
-        if (this.dt) this.dt.reset();
-        this.loadInvoices();
+        this.applyFilter();
     }
 
     viewDetail(inv: Invoice) {
@@ -293,7 +301,7 @@ export class InvoicesComponent implements OnInit {
 
     confirmDelete(inv: Invoice) {
         this.confirmationService.confirm({
-            message: `Bạn có chắc muốn xoá hóa đơn <strong>${inv.code}</strong>?`,
+            message: `Bạn có chắc muốn xoá hóa đơn <strong>#${inv.id}</strong>?`,
             header: 'Xác nhận xoá',
             icon: 'pi pi-exclamation-triangle',
             acceptLabel: 'Xoá',
@@ -303,7 +311,7 @@ export class InvoicesComponent implements OnInit {
                 this.invoiceService.deleteInvoice(inv.id!).subscribe({
                     next: () => {
                         this.messageService.add({ severity: 'success', summary: 'Thành công', detail: 'Đã xoá hóa đơn', life: 3000 });
-                        this.loadInvoices(this.currentPage, this.pageSize);
+                        this.loadInvoices();
                     },
                     error: () => {
                         this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể xoá hóa đơn', life: 3000 });
@@ -332,7 +340,7 @@ export class InvoicesComponent implements OnInit {
     getStatusLabel(s?: string): string {
         const m: Record<string, string> = {
             UNPAID:  'Chưa thanh toán',
-            PARTIAL: 'Thanh toán 1 phần',
+            PARTIALLY_PAID: 'Thanh toán 1 phần',
             PAID:    'Đã thanh toán',
             REFUNDED: 'Đã hoàn tiền',
         };
@@ -342,7 +350,7 @@ export class InvoicesComponent implements OnInit {
     getStatusColor(s?: string): string {
         const m: Record<string, string> = {
             UNPAID:  '#ffffff',
-            PARTIAL: '#1e293b',
+            PARTIALLY_PAID: '#1e293b',
             PAID:    '#166534',
             REFUNDED: '#7c3aed',
         };
@@ -352,7 +360,7 @@ export class InvoicesComponent implements OnInit {
     getStatusBg(s?: string): string {
         const m: Record<string, string> = {
             UNPAID:  '#ef4444',
-            PARTIAL: '#fef3c7',
+            PARTIALLY_PAID: '#fef3c7',
             PAID:    '#dcfce7',
             REFUNDED: '#ede9fe',
         };

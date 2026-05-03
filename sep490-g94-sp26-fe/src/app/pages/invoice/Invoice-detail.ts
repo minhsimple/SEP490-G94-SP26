@@ -1781,15 +1781,15 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     getStatusLabel(s?: string): string {
-        return { UNPAID: 'Chưa thanh toán', PARTIAL: 'Thanh toán 1 phần', PAID: 'Đã thanh toán', REFUNDED: 'Đã hoàn tiền' }[s ?? ''] ?? s ?? '-';
+        return { UNPAID: 'Chưa thanh toán', PARTIALLY_PAID: 'Thanh toán 1 phần', PAID: 'Đã thanh toán', REFUNDED: 'Đã hoàn tiền' }[s ?? ''] ?? s ?? '-';
     }
 
     getStatusColor(s?: string): string {
-        return { UNPAID: '#ffffff', PARTIAL: '#1e293b', PAID: '#166534', REFUNDED: '#7c3aed' }[s ?? ''] ?? '#1e293b';
+        return { UNPAID: '#ffffff', PARTIALLY_PAID: '#1e293b', PAID: '#166534', REFUNDED: '#7c3aed' }[s ?? ''] ?? '#1e293b';
     }
 
     getStatusBg(s?: string): string {
-        return { UNPAID: '#ef4444', PARTIAL: '#fef3c7', PAID: '#dcfce7', REFUNDED: '#ede9fe' }[s ?? ''] ?? '#f1f5f9';
+        return { UNPAID: '#ef4444', PARTIALLY_PAID: '#fef3c7', PAID: '#dcfce7', REFUNDED: '#ede9fe' }[s ?? ''] ?? '#f1f5f9';
     }
 
     getMethodLabel(m?: string): string {
