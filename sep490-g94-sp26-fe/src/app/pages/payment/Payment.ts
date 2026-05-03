@@ -18,6 +18,7 @@ import { Booking, BookingService } from '../service/booking.service';
 import { Customer, CustomerService } from '../service/customer.service';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { HallService } from '../service/hall.service';
 
 interface Column { field: string; header: string; }
 
@@ -94,9 +95,6 @@ interface Column { field: string; header: string; }
                     [value]="payments()"
                     [rows]="pageSize"
                     [paginator]="true"
-                    [totalRecords]="totalRecords"
-                    [lazy]="true"
-                    (onLazyLoad)="onLazyLoad($event)"
                     [tableStyle]="{ 'min-width': '65rem' }"
                     [rowHover]="true"
                     dataKey="id"
@@ -231,16 +229,26 @@ interface Column { field: string; header: string; }
             .p-datatable .p-datatable-tbody > tr:last-child > td { border-bottom: none; }
         }
     `],
-    providers: [MessageService, ConfirmationService, PaymentService, InvoiceService, BookingService, CustomerService]
+    providers: [MessageService, ConfirmationService, PaymentService, InvoiceService, BookingService, CustomerService, HallService]
 })
 export class PaymentsComponent implements OnInit {
 
     payments = signal<Payment[]>([]);
+    allPayments = signal<Payment[]>([]);
     loading = false;
     totalRecords = 0;
     pageSize = 20;
-    currentPage = 0;
     searchKeyword = '';
+
+    // Branch restriction
+    userLocationId = Number(localStorage.getItem('locationId') ?? 0) || null;
+    roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    isAdmin = this.roleCode.includes('ADMIN');
+    isManager = this.roleCode.includes('MANAGER');
+    isSale = this.roleCode.includes('SALE');
+    isRestricted = !this.isAdmin && !this.isManager;
+    currentUserId = Number(localStorage.getItem('userId') ?? 0) || null;
+    allowedContractIds = new Set<number>();
     searchTimeout: any;
     filterStatus: string | null = 'SUCCESS';
     filterMethod: string | null = null;
@@ -266,6 +274,7 @@ export class PaymentsComponent implements OnInit {
         private invoiceService: InvoiceService,
         private bookingService: BookingService,
         private customerService: CustomerService,
+        private hallService: HallService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private router: Router,
@@ -282,22 +291,64 @@ export class PaymentsComponent implements OnInit {
             { field: 'status',       header: 'Trạng thái'   },
             { field: 'amount',       header: 'Số tiền'      },
         ];
-        this.loadPayments();
+        this.initData();
     }
 
-    loadPayments(page = 0, size = this.pageSize) {
+    initData() {
+        if (this.isSale && this.currentUserId) {
+            this.loading = true;
+            this.bookingService.searchBookings({
+                salesId: this.currentUserId,
+                page: 0,
+                size: 1000
+            }).subscribe({
+                next: (res) => {
+                    const ids = (res?.data?.content || []).map(b => Number(b.id));
+                    this.allowedContractIds = new Set(ids);
+                    this.loadPayments();
+                },
+                error: () => {
+                    this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải thông tin hợp đồng của bạn', life: 3000 });
+                    this.loadPayments();
+                }
+            });
+        } else if (this.isRestricted && this.userLocationId) {
+            this.loading = true;
+            // Step 1: Get Halls for this location
+            this.hallService.searchHalls({ locationId: this.userLocationId, page: 0, size: 1000 }).subscribe({
+                next: (hallRes) => {
+                    const hallIds = new Set((hallRes?.data?.content || []).map(h => Number(h.id)));
+                    // Step 2: Get Bookings to match Hall IDs (FE-only filtering)
+                    this.bookingService.searchBookings({ page: 0, size: 1000 }).subscribe({
+                        next: (bookingRes) => {
+                            const contractIds = (bookingRes?.data?.content || [])
+                                .filter(b => b.hallId && hallIds.has(Number(b.hallId)))
+                                .map(b => Number(b.id));
+                            this.allowedContractIds = new Set(contractIds);
+                            this.loadPayments();
+                        },
+                        error: () => this.loadPayments()
+                    });
+                },
+                error: () => this.loadPayments()
+            });
+        } else {
+            this.loadPayments();
+        }
+    }
+
+    loadPayments() {
         this.loading = true;
         this.paymentService.searchPayments({
-            page, size,
-            keyword: this.searchKeyword || undefined,
+            page: 0, size: 1000,
             paymentState: this.filterStatus || undefined,
             method:  this.filterMethod  || undefined,
         }).subscribe({
             next: (res) => {
                 if (res?.data) {
                     const rows = res.data.content ?? [];
-                    this.payments.set(rows);
-                    this.totalRecords = res.data.totalElements;
+                    this.allPayments.set(rows);
+                    this.applyFilter();
                     this.enrichPaymentRows(rows);
                 }
                 this.loading = false;
@@ -310,6 +361,29 @@ export class PaymentsComponent implements OnInit {
                 this.loading = false;
             }
         });
+    }
+
+    applyFilter() {
+        let list = [...this.allPayments()];
+
+        if (this.searchKeyword) {
+            const kw = this.searchKeyword.toLowerCase().trim();
+            list = list.filter(p => 
+                (p.code && p.code.toLowerCase().includes(kw)) ||
+                (p.invoiceCode && p.invoiceCode.toLowerCase().includes(kw)) ||
+                (p.customerName && p.customerName.toLowerCase().includes(kw)) ||
+                String(p.id).includes(kw) ||
+                String(p.contractId).includes(kw)
+            );
+        }
+
+        if (this.isRestricted && this.userLocationId) {
+            list = list.filter(p => this.allowedContractIds.has(Number(p.contractId)));
+        }
+
+        this.payments.set(list);
+        this.totalRecords = list.length;
+        if (this.dt) this.dt.reset();
     }
 
     private enrichPaymentRows(rows: Payment[]) {
@@ -387,31 +461,19 @@ export class PaymentsComponent implements OnInit {
         });
     }
 
-    onLazyLoad(event: any) {
-        this.currentPage = event.first / event.rows;
-        this.pageSize    = event.rows;
-        this.loadPayments(this.currentPage, this.pageSize);
-    }
-
     onSearch() {
-        clearTimeout(this.searchTimeout);
-        this.searchTimeout = setTimeout(() => {
-            if (this.dt) this.dt.reset();
-            this.loadPayments();
-        }, 400);
+        this.applyFilter();
     }
 
     onFilter() {
-        if (this.dt) this.dt.reset();
-        this.loadPayments();
+        this.applyFilter();
     }
 
     clearFilters() {
         this.filterStatus = null;
         this.filterMethod = null;
         this.searchKeyword = '';
-        if (this.dt) this.dt.reset();
-        this.loadPayments();
+        this.applyFilter();
     }
 
     goToInvoice(payment: Payment) {
@@ -440,7 +502,7 @@ export class PaymentsComponent implements OnInit {
                             severity: 'success', summary: 'Thành công',
                             detail: 'Đã xoá thanh toán', life: 3000
                         });
-                        this.loadPayments(this.currentPage, this.pageSize);
+                        this.loadPayments();
                     },
                     error: () => {
                         this.messageService.add({

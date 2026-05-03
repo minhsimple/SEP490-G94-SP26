@@ -13,6 +13,8 @@ import { TableModule, Table } from 'primeng/table';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { Invoice, InvoiceService } from '../service/invoice.service';
+import { HallService } from '../service/hall.service';
+import { BookingService } from '../service/booking.service';
 
 interface Column { field: string; header: string; }
 
@@ -195,7 +197,7 @@ interface Column { field: string; header: string; }
             .p-datatable .p-datatable-tbody > tr:last-child > td { border-bottom: none; }
         }
     `],
-    providers: [MessageService, ConfirmationService, InvoiceService]
+    providers: [MessageService, ConfirmationService, InvoiceService, HallService, BookingService]
 })
 export class InvoicesComponent implements OnInit {
 
@@ -205,6 +207,17 @@ export class InvoicesComponent implements OnInit {
     pageSize = 20;
     filterContractId: string | null = null;
     filterInvoiceState: string | null = null;
+
+    // Branch restriction
+    userLocationId = Number(localStorage.getItem('locationId') ?? 0) || null;
+    roleCode = (localStorage.getItem('codeRole') ?? '').toUpperCase();
+    isAdmin = this.roleCode.includes('ADMIN');
+    isManager = this.roleCode.includes('MANAGER');
+    isSale = this.roleCode.includes('SALE');
+    isRestricted = !this.isAdmin && !this.isManager;
+    currentUserId = Number(localStorage.getItem('userId') ?? 0) || null;
+    allowedHallIds = new Set<number>();
+    allowedContractIds = new Set<number>();
 
 
     invoiceStateOptions = [
@@ -218,6 +231,8 @@ export class InvoicesComponent implements OnInit {
 
     constructor(
         private invoiceService: InvoiceService,
+        private hallService: HallService,
+        private bookingService: BookingService,
         private messageService: MessageService,
         private confirmationService: ConfirmationService,
         private router: Router,
@@ -235,7 +250,47 @@ export class InvoicesComponent implements OnInit {
             { field: 'invoiceState', header: 'Trạng thái hóa đơn' },
             { field: 'totalAmount',  header: 'Tổng'       },
         ];
-        this.loadInvoices();
+        this.initData();
+    }
+
+    initData() {
+        if (this.isSale && this.currentUserId) {
+            this.loading = true;
+            this.bookingService.searchBookings({
+                salesId: this.currentUserId,
+                page: 0,
+                size: 1000
+            }).subscribe({
+                next: (res) => {
+                    const ids = (res?.data?.content || []).map(b => Number(b.id));
+                    this.allowedContractIds = new Set(ids);
+                    this.loadInvoices();
+                },
+                error: () => {
+                    this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải thông tin hợp đồng của bạn', life: 3000 });
+                    this.loadInvoices();
+                }
+            });
+        } else if (this.isRestricted && this.userLocationId) {
+            this.loading = true;
+            this.hallService.searchHalls({
+                locationId: this.userLocationId,
+                page: 0,
+                size: 1000
+            }).subscribe({
+                next: (res) => {
+                    const ids = (res?.data?.content || []).map(h => Number(h.id));
+                    this.allowedHallIds = new Set(ids);
+                    this.loadInvoices();
+                },
+                error: () => {
+                    this.messageService.add({ severity: 'error', summary: 'Lỗi', detail: 'Không thể tải thông tin chi nhánh', life: 3000 });
+                    this.loadInvoices();
+                }
+            });
+        } else {
+            this.loadInvoices();
+        }
     }
 
     loadInvoices() {
@@ -275,6 +330,15 @@ export class InvoicesComponent implements OnInit {
 
         if (this.filterInvoiceState) {
             list = list.filter(inv => inv.invoiceState === this.filterInvoiceState);
+        }
+
+        if (this.isSale && this.currentUserId) {
+            list = list.filter(inv => this.allowedContractIds.has(Number(inv.contractId)));
+        } else if (this.isRestricted && this.userLocationId) {
+            list = list.filter(inv => {
+                const hallId = inv.hallId ?? inv.hall?.id ?? inv.data?.hall_invoice?.id;
+                return this.allowedHallIds.has(Number(hallId));
+            });
         }
 
         this.invoices.set(list);
