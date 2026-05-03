@@ -859,6 +859,7 @@ interface BookingSummary {
                             [maxFractionDigits]="0"
                             styleClass="w-full"
                             inputStyleClass="w-full"
+                            [disabled]="isEditMode && loadedBookingState !== 'DRAFT'"
                         />
                     </div>
                 </div>
