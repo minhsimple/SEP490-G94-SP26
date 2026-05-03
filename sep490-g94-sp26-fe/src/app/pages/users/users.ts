@@ -71,6 +71,7 @@ interface Column {
             class="ml-2"
             [showClear]="true"
             style="width: 200px"
+            appendTo="body"
           />
           <!-- <p-button
                         severity="danger"
@@ -280,6 +281,7 @@ interface Column {
                 [showClear]="true"
                 [disabled]="isSingleLocation"
                 fluid
+                appendTo="body"
               />
             </div>
 
@@ -295,6 +297,7 @@ interface Column {
                 placeholder="-- Chọn vai trò --"
                 [loading]="loadingRoles"
                 fluid
+                appendTo="body"
               />
               <small class="text-red-500" *ngIf="submitted && !user.roleId"
                 >Vai trò là bắt buộc.</small
