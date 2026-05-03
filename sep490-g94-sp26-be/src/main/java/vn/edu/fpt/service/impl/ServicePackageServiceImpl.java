@@ -182,6 +182,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         List<PackageService> packageServices = packageServiceRepository
                 .findByPackageIdAndStatus(servicePackageId, RecordStatus.active);
 
+
+
         return mapToServicePackageResponse(servicePackage, location, packageServices);
     }
 
@@ -261,14 +263,12 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         Page<ServicePackage> servicePackagePage = servicePackageRepository.findAll(spec, pageable);
         List<ServicePackage> servicePackageList = servicePackagePage.getContent();
 
-        // Map locations
         Map<Integer, Location> locationMap = locationRepository.findAllById(servicePackageList.stream()
                         .map(ServicePackage::getLocationId)
                         .collect(Collectors.toSet()))
                 .stream()
                 .collect(Collectors.toMap(Location::getId, location -> location));
 
-        // Build all package services for all packages
         Map<Integer, List<PackageService>> allPackageServicesMap = new HashMap<>();
         for (ServicePackage servicePackage : servicePackageList) {
             List<PackageService> services = packageServiceRepository
@@ -297,6 +297,15 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             Location location,
             List<PackageService> packageServices) {
 
+        List<Integer> serviceIds = packageServices.stream()
+                .map(PackageService::getServiceId)
+                .toList();
+        List<Services> services  = serviceItemRepository.findAllByIdInAndStatus(serviceIds, RecordStatus.active);
+
+            BigDecimal totalPrice = services.stream()
+                    .map(Services::getBasePrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         // Create response
         return ServicePackageResponse.builder()
                 .id(servicePackage.getId())
@@ -304,7 +313,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .name(servicePackage.getName())
                 .description(servicePackage.getDescription())
                 .locationId(location.getId())
-                .basePrice(servicePackage.getBasePrice())
+                .basePrice(totalPrice)
                 .ServiceResponseList(packageServices)
                 .status(servicePackage.getStatus())
                 .build();
